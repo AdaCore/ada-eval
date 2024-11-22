@@ -1,0 +1,27 @@
+[tool.poetry]
+name = "ada-eval"
+version = "0.1.0"
+description = "Simple project for evaluating LLM based tools for Ada"
+authors = ["Rowan Walshe <walshe@adacore.com>"]
+readme = "README.md"
+packages = [
+    { include = "src" }
+]
+
+[tool.poetry.dependencies]
+python = "^3.12"
+
+
+[tool.poetry.group.dev.dependencies]
+flake8 = "^7.1.1"
+isort = "^5.13.2"
+ipykernel = "^6.29.5"
+black = {extras = ["jupyter"], version = "^24.10.0"}
+
+[tool.isort]
+profile = "black"
+src_paths = ["app", "packages"]
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

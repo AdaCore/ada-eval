@@ -1,0 +1,9 @@
+20241122150238
+-c
+-x
+ada
+-gnatA
+-gnata
+-gnata
+-gnatc
+-gnates=/Users/walshe/projects/ai/ada-eval/data/expanded/spark/ineffective_statements/solution/obj/gnatprove/7aee7a0b.tmp

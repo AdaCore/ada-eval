@@ -1,0 +1,85 @@
+# Ada Eval
+Framework for evaluating LLM based tools for Ada/SPARK use cases.
+
+## Brainstorming
+
+- [ ] Dataset - Each item in the dataset should include
+  - [ ] task_type (string) - text that describes the type of problem. Either "explain", "ada", "spark"
+  - [ ] input_code (string) - text that we can run gnatchop on to get the starting Ada code
+  - [ ] location_of_interest (string) - the line number and (optionaly) the column that the problem is interested in (line number of subprogram specification or )
+  - [ ] prompt (optional string) - optional prompt to provide context for the problem. Imagining for explain tasks, the user may want different things explained for the same piece of code
+  - [ ] canonical_solution
+    - [ ] coding completion tasks (string) - text that we can run gnatchop, that would give a working solution to the problem
+    - [ ] explain task (object)
+      - [ ] explanation written by a domain expert
+      - [ ] list of key points to hit in the explanation
+      - [ ] maybe also a list of points that the explanation should not include, as they would be incorrect
+- [ ] Tool config - a json file that specifies any options that should be passed to the tool. This could include things like
+  - [ ] timeout and/or iteration limit
+  - [ ] thread count
+  - [ ] models to use
+    - [ ] This might have to take into account the type of endpoint
+    - [ ] This may also need different models/endpoints for different tasks
+  - [ ] etc.
+- [ ] Evaluation scripts
+  - [ ] Generate solutions. We probably want an executor per task. The executor's job will depend on the task:
+    - [ ] code completion
+      - [ ] Create a temporary directory that will act as the home for the project that the tool is to run on
+      - [ ] Run gnatchop on the input_code, producing the source code for the project
+      - [ ] Generate any other template files like a gpr file
+      - [ ] Run the tool on the project, with options as specified in the tool config and the problem
+      - [ ] Record output
+        - [ ] The contents of the project after the tool has run. TODO should this include all files, in case the tool has generated new files, or modified template files?
+        - [ ] If the tool crashed record why (e.g. out of memory, timeout, bug, etc.), and maybe a stack trace if it exists
+        - [ ] Whether the tool reported success or failure
+        - [ ] Wall and CPU time of the process (this will most likely exclude calls to an LLM)
+        - [ ] How many input tokens the tool used while running
+        - [ ] How many output tokens the tool used while running
+        - [ ] How many iterations the tool took to run, if any
+      - [ ] Clean up the temporary directory
+    - [ ] code/spark explanation
+      - [ ] Create a temporary directory that will act as the home for the project that the tool is to run on
+      - [ ] Run gnatchop on the input_code, producing the source code for the project
+      - [ ] Generate any other template files like a gpr file
+      - [ ] Run the tool on the project, with options as specified in the tool config and the problem
+      - [ ] Record output
+        - [ ] The explanation that the tool produced
+        - [ ] If the tool crashed record why (e.g. out of memory, timeout, bug, etc.), and maybe a stack trace if it exists
+        - [ ] Whether the tool reported success or failure
+        - [ ] Wall and CPU time of the process (this will most likely exclude calls to an LLM)
+        - [ ] How many input tokens the tool used while running
+        - [ ] How many output tokens the tool used while running
+      - [ ] Clean up the temporary directory
+  - [ ] Evaluate solutions. We probably want multiple evaluators, depending on how they will be evaluating the output of the tool
+    - [ ] code completion
+      - [ ] Create a temporary directory that will act as the home for the project and any test harnesses
+      - [ ] Check that the output of the tool is a valid Ada program that:
+        - [ ] compiles
+        - [ ] compiles with no warnings other than style warnings
+        - [ ] runs
+        - [ ] produces the expected output. To do this we can:
+          - [ ] run unit tests defined in the dataset
+          - [ ] perform differential fuzzing against the canonical solution
+        - [ ] exits in a reasonable amount of time (compare as a percentage difference to the canonical solution)
+        - [ ] proves
+          - [ ] I don't know much about SPARK yet/have forgotten most of what I previously learned, but maybe we can also record to what level the program is provable
+      - [ ] Record results for all of the above
+      - [ ] Clean up the temporary directory
+    - [ ] code/spark explanation
+      - [ ] Compute the BLEU score of the explanation produced by the tool against the canonical solution
+      - [ ] Compute the ROUGE score of the explanation produced by the tool against the canonical solution
+      - [ ] Use an embedding model to compute the cosine similarity of the explanation produced by the tool against the canonical solution
+      - [ ] Use an LLM to identify whether or not each key point in the canonical solution was hit by the explanation produced by the tool
+      - [ ] Use an LLM to identify whether or not any of the points that should not be included in the explanation were included
+      - [ ] Record results for all of the above
+  - [ ] Report results - this should include (per solution and summaries)
+    - [ ] accuracy (including pass@k)
+    - [ ] time taken (even if failed)
+    - [ ] iterations taken (even if failed)
+    - [ ] if it failed, why it failed e.g.
+      - [ ] tool reported failure, and the reason why e.g. timeout, iteration limit, etc.
+      - [ ] executor reported failure (e.g. out of memory error, task timeout, etc.)
+      - [ ] evaluation failed (e.g. compilation error, spark error, test failure, etc.)
+    - [ ] input tokens used while attempting to solve the problem
+    - [ ] output tokens used while attempting to solve the problem
+  - [ ] End-to-end evaluation - a script to perform the entire evaluation process

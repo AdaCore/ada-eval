@@ -1,0 +1,13 @@
+from pathlib import Path
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+DATA_DIR = PROJECT_ROOT / 'data'
+
+EXPANDED_DATASETS_DIR = DATA_DIR / 'expanded'
+COMPACTED_DATASETS_DIR = DATA_DIR / 'compacted'
+DATASET_TEMPLATES_DIR = DATA_DIR / 'templates'
+
+#  Templates
+ADA_TEMPLATE =  DATASET_TEMPLATES_DIR / "ada"
+EXPLAIN_TEMPLATE =  DATASET_TEMPLATES_DIR / "explain"
+SPARK_TEMPLATE =  DATASET_TEMPLATES_DIR / "spark"
