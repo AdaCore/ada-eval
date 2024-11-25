@@ -5,9 +5,18 @@ This is the reverse process of the pack_datasets.py script.
 """
 import argparse
 import json
+
+from dataclasses import dataclass
 from pathlib import Path
 
-from src.paths import COMPACTED_DATASETS_DIR, EXPANDED_DATASETS_DIR, DATASET_TEMPLATES_DIR
+from ada_eval.paths import COMPACTED_DATASETS_DIR, EXPANDED_DATASETS_DIR, DATASET_TEMPLATES_DIR
+
+@dataclass
+class Args:
+    pass
+
+def pass_args() -> Args:
+    pass
 
 if __name__ == "__main__":
     pass

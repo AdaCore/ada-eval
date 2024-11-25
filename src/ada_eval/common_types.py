@@ -24,6 +24,17 @@ class Location:
     end: Sloc | None
 
 @dataclass(kw_only=True)
+class SampleTemplate:
+    sources: Dict[Path, str]
+    others: Dict[str, Any]
+
+@dataclass(kw_only=True)
+class ExplainSolution:
+    reference_answer: str
+    correct_statements: list[str]
+    incorrect_statements: list[str]
+
+@dataclass(kw_only=True)
 class BaseDataset:
     type: DatasetType
     name: str
@@ -38,12 +49,6 @@ class AdaDataset(BaseDataset):
     type: DatasetType = DatasetType.ADA
     canonical_solution: Dict[Path, str]
     test_cases: Dict[Path, str]
-
-@dataclass(kw_only=True)
-class ExplainSolution:
-    reference_answer: str
-    correct_statements: list[str]
-    incorrect_statements: list[str]
 
 @dataclass(kw_only=True)
 class ExplainDataset(BaseDataset):
