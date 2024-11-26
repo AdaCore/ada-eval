@@ -90,13 +90,18 @@ def remove_template_files(files: List[Path], dataset: UnpackedDataSetMetadata) -
 def git_ls_files(root: Path) -> List[Path]:
     """Returns a list of files in a directory using git ls-files"""
     result = subprocess.run(
-        ["git", "ls-files"],
+        ["git", "ls-files", "-com", "--exclude-standard"],
         cwd=root,
         capture_output=True,
         encoding="utf-8",
         check=True
     )
-    return [Path(line) for line in result.stdout.splitlines()]
+
+    git_files = [root / line for line in result.stdout.splitlines()]
+
+    # We have to check that a path exists, as git ls-files will return files that
+    # were previously committed but have since been deleted.
+    return [path for path in git_files if path.is_file()]
 
 def pack_base_dataset(dataset: UnpackedDataSetMetadata):
     pass
@@ -113,7 +118,6 @@ def pack_spark_dataset(dataset: UnpackedDataSetMetadata):
 def pack_dataset(dataset: UnpackedDataSetMetadata):
     """Packs a dataset into a jsonl file"""
     for sample in dataset.dir.iterdir():
-        print(sample)
         if not is_sample(sample):
             continue
         other_json_file = sample / "other.json"
@@ -121,16 +125,16 @@ def pack_dataset(dataset: UnpackedDataSetMetadata):
 
         files = []
         # Use git ls-files to get the list of all files
-        all_files = []
+        base_files = git_ls_files(sample / BASE_DIR_NAME)
+        make_files_relative_to(sample / BASE_DIR_NAME, base_files)
+        print('\n'.join(map(str, base_files)))
 
-
-
-        for root, _, filenames in (sample / BASE_DIR_NAME).walk():
-            for filename in filenames:
-                files.append((root / filename).relative_to(sample))
-        print("before:", len(files))
-        files = remove_template_files(files, dataset)
-        print("after:", len(files))
+        # for root, _, filenames in (sample / BASE_DIR_NAME).walk():
+        #     for filename in filenames:
+        #         files.append((root / filename).relative_to(sample))
+        # print("before:", len(files))
+        # files = remove_template_files(files, dataset)
+        # print("after:", len(files))
 
         match dataset.type:
             case DatasetType.ADA:
@@ -143,7 +147,6 @@ def pack_dataset(dataset: UnpackedDataSetMetadata):
 def pack_datasets(datasets: list[UnpackedDataSetMetadata]):
     """Packs each datasets into into a jsonl file"""
     for dataset in datasets:
-        print(dataset)
         pack_dataset(dataset)
 
 def get_sample_template(template_dir: Path) -> SampleTemplate:
@@ -188,7 +191,4 @@ def get_datasets(path: Path, template_root: Path) -> list[UnpackedDataSetMetadat
 if __name__ == "__main__":
     args = parse_args()
     datasets = get_datasets(args.src_dir, args.template_dir)
-    print(args.src_dir)
-    print(is_collection_of_datasets(args.src_dir))
-    print(is_dataset(args.src_dir))
     pack_datasets(datasets)

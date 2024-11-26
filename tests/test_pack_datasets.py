@@ -267,8 +267,41 @@ def test_git_ls_files_empty(tmp_path):
     setup_git_repo(tmp_path)
     assert git_ls_files(tmp_path) == []
 
-def test_git_ls_files_empty(tmp_path):
+def test_git_ls_files_non_empty(tmp_path):
+    setup_git_repo(tmp_path)
+    file1 = tmp_path / "file1.txt"
+    file2 = tmp_path / "file2.txt"
+    dir_1 = tmp_path / "dir_1"
+    dir_2 = tmp_path / "dir_2"
+    dir_1.mkdir()
+    dir_2.mkdir()
+    file3 = dir_1 / "files3.txt"
+    file1.write_text("content1", encoding="utf-8")
+    file2.write_text("content2", encoding="utf-8")
+    file3.write_text("content3", encoding="utf-8")
+    assert len(git_ls_files(tmp_path)) == 3
+
+def test_git_ls_files_staged(tmp_path):
     setup_git_repo(tmp_path)
     file1 = tmp_path / "file1.txt"
     file1.write_text("content1", encoding="utf-8")
+    subprocess.run(["git", "add", str(file1)], cwd=tmp_path, check=True)
     assert len(git_ls_files(tmp_path)) == 1
+
+def test_git_ls_files_committed(tmp_path):
+    setup_git_repo(tmp_path)
+    file1 = tmp_path / "file1.txt"
+    file1.write_text("content1", encoding="utf-8")
+    subprocess.run(["git", "add", str(file1)], cwd=tmp_path, check=True)
+    subprocess.run(["git", "commit", '-m "foo"'], cwd=tmp_path, check=True)
+    assert len(git_ls_files(tmp_path)) == 1
+
+def test_git_ls_files_deleted(tmp_path):
+    setup_git_repo(tmp_path)
+    file1 = tmp_path / "file1.txt"
+    file1.write_text("content1", encoding="utf-8")
+    subprocess.run(["git", "add", str(file1)], cwd=tmp_path, check=True)
+    subprocess.run(["git", "commit", '-m "foo"'], cwd=tmp_path, check=True)
+    file1.unlink()
+    print(git_ls_files(tmp_path))
+    assert len(git_ls_files(tmp_path)) == 0
