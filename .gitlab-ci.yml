@@ -22,7 +22,10 @@ flake8:
   stage: lint
   image: python:3.9
   script:
-    - poetry run flake8 .
+    - poetry run flake8 --format gl-codeclimate --output-file gl-code-quality-report.json .
+  artifacts:
+    reports:
+      codequality: gl-code-quality-report.json
 
 isort:
   stage: lint
@@ -35,6 +38,16 @@ black:
   image: python:3.9
   script:
     - poetry run black --check .
+
+pylint:
+  stage: lint
+  image: python:3.9
+  script:
+    - poetry run pylint --output-format=pylint_gitlab.GitlabCodeClimateReporter
+  artifacts:
+    when: always
+    reports:
+      junit: report.xml
 
 pytest:
   stage: test
