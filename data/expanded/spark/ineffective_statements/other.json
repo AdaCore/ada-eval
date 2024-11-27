@@ -1,7 +1,7 @@
 {
   "location": {
-    "path": "foo.txt",
-    "start": { "line": 1, "column": 1 },
-    "end": { "line": 1, "column": 2 }
+    "path": "src/show_ineffective_statements.ads",
+    "start": { "line": 5, "column": null },
+    "end": null
   }
 }
