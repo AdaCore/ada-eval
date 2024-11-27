@@ -2,6 +2,7 @@ from enum import Enum
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict
+from dataclass_wizard import JSONWizard
 
 # Enum that specifies the type of dataset
 class DatasetType(Enum):
@@ -18,7 +19,7 @@ class Sloc:
     column: int | None
 
 @dataclass(kw_only=True)
-class Location:
+class Location(JSONWizard):
     path: Path
     start: Sloc | None
     end: Sloc | None
@@ -35,8 +36,7 @@ class ExplainSolution:
     incorrect_statements: list[str]
 
 @dataclass(kw_only=True)
-class BaseDataset:
-    type: DatasetType
+class BaseSample(JSONWizard):
     name: str
     location: Location
     prompt: str
@@ -45,16 +45,14 @@ class BaseDataset:
     comments: str
 
 @dataclass(kw_only=True)
-class AdaDataset(BaseDataset):
-    type: DatasetType = DatasetType.ADA
+class AdaSample(BaseSample):
     canonical_solution: Dict[Path, str]
-    test_cases: Dict[Path, str]
+    unit_tests: Dict[Path, str]
 
 @dataclass(kw_only=True)
-class ExplainDataset(BaseDataset):
-    type: DatasetType = DatasetType.EXPLAIN
+class ExplainSample(BaseSample):
     canonical_solution: ExplainSolution
 
 @dataclass(kw_only=True)
-class SparkDataset(AdaDataset):
-    type: DatasetType = DatasetType.SPARK
+class SparkSample(AdaSample):
+    pass

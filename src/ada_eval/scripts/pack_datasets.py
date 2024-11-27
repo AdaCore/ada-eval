@@ -7,17 +7,19 @@ import argparse
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List
 
 # from ada_eval.common_types import DatasetType
 from ada_eval.paths import COMPACTED_DATASETS_DIR, EXPANDED_DATASETS_DIR, DATASET_TEMPLATES_DIR
-from ada_eval.common_types import DatasetType, SampleTemplate, AdaDataset, ExplainSolution, ExplainDataset, SparkDataset
+from ada_eval.common_types import DatasetType, SampleTemplate, AdaSample, ExplainSolution, ExplainSample, SparkSample, Location
 import subprocess
 
 # Unpacked samples, will always have one file and two dirs: "base", "solution", and "other.json"
 BASE_DIR_NAME = "base"
 SOLUTION_DIR_NAME = "solution"
+UNIT_TEST_DIR_NAME = "unit_test"
 OTHER_JSON_NAME = "other.json"
+COMMENTS_FILE = "comments.md"
+PROMPT_FILE = "prompt.md"
 
 @dataclass
 class Args:
@@ -73,24 +75,46 @@ def get_template_dir(template_root: Path, dataset_type: DatasetType) -> Path:
     """Returns the path the the template dir for a given dataset"""
     return template_root / dataset_type.value
 
-def make_files_relative_to(path: Path, files: List[Path]) -> List[Path]:
+def make_files_relative_to(path: Path, files: list[Path]) -> list[Path]:
     """Makes a list of files relative to a given path"""
     return [file.relative_to(path) for file in files]
 
-def remove_template_files(files: List[Path], dataset: UnpackedDataSetMetadata) -> List[Path]:
-    """Removes template files from the list of files"""
+def get_sample_prompt(sample_root: Path) -> str:
+    """Returns the prompt for a sample"""
+    prompt_file = sample_root / PROMPT_FILE
+    if not prompt_file.is_file():
+        return ""
+    return prompt_file.read_text(encoding="utf-8")
+
+def get_sample_comments(sample_root: Path) -> str:
+    """Returns any comments for a sample"""
+    comments_file = sample_root / COMMENTS_FILE
+    if not comments_file.is_file():
+        return ""
+    return comments_file.read_text(encoding="utf-8")
+
+def filter_template_files(files: list[tuple[Path, Path]], dataset: UnpackedDataSetMetadata) -> list[Path]:
+    """Removes template files from the list of files.
+
+    Args:
+        files (list[tuple[Path, Path]]): List of file paths. Each tuple contains the short path (relative to the sample's base dir) and the full path.
+        dataset (UnpackedDataSetMetadata): metadata for the dataset that contains the sample
+
+    Returns:
+        list[Path]: list of filtered full paths
+    """
     res = []
-    for file in files:
-        if file.relative_to(dataset.dir / BASE_DIR_NAME) not in dataset.sample_template.sources:
-            res.append(file)
-        elif file.read_text() != dataset.sample_template.sources[file.relative_to(dataset.dir / BASE_DIR_NAME)]:
-            res.append(file)
+    for short, long in files:
+        if short not in dataset.sample_template.sources:
+            res.append(long)
+        elif long.read_text() != dataset.sample_template.sources[short]:
+            res.append(long)
     return res
 
-def git_ls_files(root: Path) -> List[Path]:
+def git_ls_files(root: Path) -> list[Path]:
     """Returns a list of files in a directory using git ls-files"""
     result = subprocess.run(
-        ["git", "ls-files", "-com", "--exclude-standard"],
+        ["git", "ls-files", "-co", "--exclude-standard"],
         cwd=root,
         capture_output=True,
         encoding="utf-8",
@@ -103,51 +127,63 @@ def git_ls_files(root: Path) -> List[Path]:
     # were previously committed but have since been deleted.
     return [path for path in git_files if path.is_file()]
 
-def pack_base_dataset(dataset: UnpackedDataSetMetadata):
-    pass
+def get_non_template_files(root: Path, dataset: UnpackedDataSetMetadata) -> list[Path]:
+    """Returns a list of files in a directory that are not in the template"""
+    full_paths = git_ls_files(root)
+    short_paths = make_files_relative_to(root, full_paths)
+    unique_files = filter_template_files(zip(short_paths, full_paths), dataset)
+    return unique_files
 
-def pack_ada_dataset(dataset: UnpackedDataSetMetadata):
-    pass
-
-def pack_explain_dataset(dataset: UnpackedDataSetMetadata):
-    pass
-
-def pack_spark_dataset(dataset: UnpackedDataSetMetadata):
-    pass
-
-def pack_dataset(dataset: UnpackedDataSetMetadata):
+def pack_dataset(dataset: UnpackedDataSetMetadata, dest_dir: Path) -> list[AdaSample] | list[ExplainSample] | list[SparkSample]:
     """Packs a dataset into a jsonl file"""
-    for sample in dataset.dir.iterdir():
-        if not is_sample(sample):
+    dest_file = dest_dir / f"{dataset.type.value}.jsonl"
+    dest_file.write_text("")
+    for sample_dir in dataset.dir.iterdir():
+        if not is_sample(sample_dir):
             continue
-        other_json_file = sample / "other.json"
+        other_json_file = sample_dir / "other.json"
         other_data = dataset.sample_template.others | json.loads(other_json_file.read_text())
 
-        files = []
         # Use git ls-files to get the list of all files
-        base_files = git_ls_files(sample / BASE_DIR_NAME)
-        make_files_relative_to(sample / BASE_DIR_NAME, base_files)
-        print('\n'.join(map(str, base_files)))
+        unique_base_files = get_non_template_files(sample_dir / BASE_DIR_NAME, dataset)
+        unique_solution_files = get_non_template_files(sample_dir /SOLUTION_DIR_NAME, dataset)
+        unique_unit_test_files = get_non_template_files(sample_dir / UNIT_TEST_DIR_NAME, dataset)
 
-        # for root, _, filenames in (sample / BASE_DIR_NAME).walk():
-        #     for filename in filenames:
-        #         files.append((root / filename).relative_to(sample))
-        # print("before:", len(files))
-        # files = remove_template_files(files, dataset)
-        # print("after:", len(files))
+        prompt = get_sample_prompt(sample_dir)
+        comments = get_sample_comments(sample_dir)
 
         match dataset.type:
-            case DatasetType.ADA:
-                pass
+            case DatasetType.ADA | DatasetType.SPARK:
+                sample_class = AdaSample if dataset.type == DatasetType.ADA else SparkSample
+                sample = sample_class(
+                    name=sample_dir.name,
+                    location=Location.from_dict(other_data["location"]),
+                    prompt=prompt,
+                    comments=comments,
+                    sources={p: p.read_text(encoding="utf-8") for p in unique_base_files},
+                    canonical_solution={p: p.read_text(encoding="utf-8") for p in unique_solution_files},
+                    unit_tests={p: p.read_text(encoding="utf-8") for p in unique_unit_test_files},
+                )
             case DatasetType.EXPLAIN:
-                pass
-            case DatasetType.SPARK:
-                pass
+                sample = ExplainSample(
+                    name=sample_dir.name,
+                    location=Location.from_dict(other_data["location"]),
+                    prompt=prompt,
+                    comments=comments,
+                    sources={p: p.read_text(encoding="utf-8") for p in unique_base_files},
+                    canonical_solution={p: p.read_text(encoding="utf-8") for p in unique_solution_files},
+                    unit_tests={p: p.read_text(encoding="utf-8") for p in unique_unit_test_files},
+                )
+            case _:
+                raise ValueError(f"Unknown dataset type: {dataset.type}")
+        # Write the sample to the jsonl file
+        with open(dest_file, "a") as f:
+            f.write(sample.to_json() + "\n")
 
-def pack_datasets(datasets: list[UnpackedDataSetMetadata]):
+def pack_datasets(datasets: list[UnpackedDataSetMetadata], dest_dir: Path):
     """Packs each datasets into into a jsonl file"""
     for dataset in datasets:
-        pack_dataset(dataset)
+        pack_dataset(dataset, dest_dir)
 
 def get_sample_template(template_dir: Path) -> SampleTemplate:
     """Returns the sample template for a dataset"""
@@ -191,4 +227,4 @@ def get_datasets(path: Path, template_root: Path) -> list[UnpackedDataSetMetadat
 if __name__ == "__main__":
     args = parse_args()
     datasets = get_datasets(args.src_dir, args.template_dir)
-    pack_datasets(datasets)
+    pack_datasets(datasets, args.dest_dir)

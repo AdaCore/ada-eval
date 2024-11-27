@@ -152,7 +152,7 @@ def test_get_datasets_with_non_dataset_in_collection(tmp_path):
     datasets = get_datasets(tmp_path, template_root)
     assert len(datasets) == 3
 
-def test_remove_template_files_with_matching_files(tmp_path):
+def test_filter_template_files_with_matching_files(tmp_path):
     dataset_dir = tmp_path / "dataset"
     base_dir = dataset_dir / BASE_DIR_NAME
     base_dir.mkdir(parents=True)
@@ -166,7 +166,7 @@ def test_remove_template_files_with_matching_files(tmp_path):
     file2 = base_dir / "file2.txt"
     file2.write_text("content2", encoding="utf-8")
 
-    file3 = base_dir / "sub_dir" / "file3.txt"
+    file3 = sub_dir / "file3.txt"
     file3.write_text("content3", encoding="utf-8")
 
     sample_template = SampleTemplate(
@@ -184,11 +184,12 @@ def test_remove_template_files_with_matching_files(tmp_path):
         sample_template=sample_template
     )
 
-    files = [file1, file2, file3]
-    result = remove_template_files(files, dataset)
+    full_paths = [file1, file2, file3]
+    short_paths = make_files_relative_to(base_dir, full_paths)
+    result = filter_template_files(zip(short_paths, full_paths), dataset)
     assert result == []
 
-def test_remove_template_files_with_different_file_names(tmp_path):
+def test_filter_template_files_with_different_file_names(tmp_path):
     dataset_dir = tmp_path / "dataset"
     base_dir = dataset_dir / BASE_DIR_NAME
     base_dir.mkdir(parents=True)
@@ -202,7 +203,7 @@ def test_remove_template_files_with_different_file_names(tmp_path):
     file2 = base_dir / "file2.txt"
     file2.write_text("content2", encoding="utf-8")
 
-    file3 = base_dir / "sub_dir" / "file3.txt"
+    file3 = sub_dir / "file3.txt"
     file3.write_text("content3", encoding="utf-8")
 
     sample_template = SampleTemplate(
@@ -220,11 +221,12 @@ def test_remove_template_files_with_different_file_names(tmp_path):
         sample_template=sample_template
     )
 
-    files = [file1, file2, file3]
-    result = remove_template_files(files, dataset)
+    full_paths = [file1, file2, file3]
+    short_paths = make_files_relative_to(base_dir, full_paths)
+    result = filter_template_files(zip(short_paths, full_paths), dataset)
     assert result == [file3]
 
-def test_remove_template_files_with_different_contents(tmp_path):
+def test_filter_template_files_with_different_contents(tmp_path):
     dataset_dir = tmp_path / "dataset"
     base_dir = dataset_dir / BASE_DIR_NAME
     base_dir.mkdir(parents=True)
@@ -238,7 +240,7 @@ def test_remove_template_files_with_different_contents(tmp_path):
     file2 = base_dir / "file2.txt"
     file2.write_text("content2", encoding="utf-8")
 
-    file3 = base_dir / "sub_dir" / "file3.txt"
+    file3 = sub_dir / "file3.txt"
     file3.write_text("content3", encoding="utf-8")
 
     sample_template = SampleTemplate(
@@ -256,8 +258,9 @@ def test_remove_template_files_with_different_contents(tmp_path):
         sample_template=sample_template
     )
 
-    files = [file1, file2, file3]
-    result = remove_template_files(files, dataset)
+    full_paths = [file1, file2, file3]
+    short_paths = make_files_relative_to(base_dir, full_paths)
+    result = filter_template_files(zip(short_paths, full_paths), dataset)
     assert result == [file3]
 
 def setup_git_repo(tmp_path):
@@ -303,5 +306,13 @@ def test_git_ls_files_deleted(tmp_path):
     subprocess.run(["git", "add", str(file1)], cwd=tmp_path, check=True)
     subprocess.run(["git", "commit", '-m "foo"'], cwd=tmp_path, check=True)
     file1.unlink()
-    print(git_ls_files(tmp_path))
     assert len(git_ls_files(tmp_path)) == 0
+
+def test_git_ls_files_modified(tmp_path):
+    setup_git_repo(tmp_path)
+    file1 = tmp_path / "file1.txt"
+    file1.write_text("content1", encoding="utf-8")
+    subprocess.run(["git", "add", str(file1)], cwd=tmp_path, check=True)
+    subprocess.run(["git", "commit", '-m "foo"'], cwd=tmp_path, check=True)
+    file1.write_text("modified content", encoding="utf-8")
+    assert len(git_ls_files(tmp_path)) == 1
