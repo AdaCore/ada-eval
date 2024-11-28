@@ -139,7 +139,7 @@ def get_explain_solution(sample_root: Path) -> ExplainSolution:
 def git_ls_files(root: Path) -> list[Path]:
     """Returns a list of files in a directory using git ls-files"""
     result = subprocess.run(
-        ["git", "ls-files", "-co", "--exclude-standard"],
+        ["git", "ls-files", "-com", "--exclude-standard", "--deduplicate"],
         cwd=root,
         capture_output=True,
         encoding="utf-8",
