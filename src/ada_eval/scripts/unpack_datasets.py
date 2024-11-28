@@ -26,17 +26,12 @@ from ada_eval.common_types import (
     ExplainSample,
     ExplainSolution,
     Location,
-    SampleTemplate,
     SparkSample,
 )
 
 # from ada_eval.common_types import DatasetType
-from ada_eval.paths import (
-    COMPACTED_DATASETS_DIR,
-    DATASET_TEMPLATES_DIR,
-    EXPANDED_DATASETS_DIR,
-)
-from ada_eval.utils import get_sample_template, make_files_relative_to
+from ada_eval.paths import COMPACTED_DATASETS_DIR, EXPANDED_DATASETS_DIR
+from ada_eval.utils import make_files_relative_to
 
 
 class UnpackException(Exception):
@@ -47,14 +42,12 @@ class UnpackException(Exception):
 class Args:
     src_dir: Path  # Path to dir containing unpacked dataset or datasets
     dest_dir: Path  # Path to dir containing unpacked dataset or datasets
-    template_dir: Path  # Path to dir containing dataset templates
 
 
 @dataclass
 class UnpackedDataSetMetadata:
     dir: Path
     type: DatasetType
-    sample_template: SampleTemplate
 
 
 def parse_args() -> Args:
@@ -74,33 +67,8 @@ def parse_args() -> Args:
         help="Destination dir for unpacked datasets",
         default=EXPANDED_DATASETS_DIR,
     )
-    arg_parser.add_argument(
-        "--template_root",
-        type=Path,
-        help="Directory containing dataset templates",
-        default=DATASET_TEMPLATES_DIR,
-    )
     args = arg_parser.parse_args()
-    return Args(src_dir=args.src, dest_dir=args.dest, template_dir=args.template_root)
-
-
-def filter_template_files(
-    files: dict[Path, str], sample_template: SampleTemplate
-) -> list[Path]:
-    """Removes template files from the list of files.
-
-    Args:
-        files (dict[Path, str]): files to filter
-        dataset (UnpackedDataSetMetadata): metadata for the dataset that contains the sample
-
-    Returns:
-        dict[Path, str]: filtered files
-    """
-    return {
-        p: files[p]
-        for p in files
-        if p not in sample_template.sources or files[p] != sample_template.sources[p]
-    }
+    return Args(src_dir=args.src, dest_dir=args.dest)
 
 
 def is_packed_dataset(path: Path) -> bool:
@@ -170,15 +138,12 @@ def get_and_make_sample_dir(dest_dir: Path, sample: BaseSample) -> Path:
     return sample_dir
 
 
-def unpack_base_sample(
-    sample: BaseSample, sample_dir: Path, sample_template: SampleTemplate
-):
+def unpack_base_sample(sample: BaseSample, sample_dir: Path):
     with open(sample_dir / PROMPT_FILE_NAME, "w") as f:
         f.write(sample.prompt)
     with open(sample_dir / COMMENTS_FILE_NAME, "w") as f:
         f.write(sample.comments)
-    files = filter_template_files(sample.sources, sample_template)
-    for file, contents in files.items():
+    for file, contents in sample.sources.items():
         src_path = sample_dir / file
         src_path.parent.mkdir(parents=True, exist_ok=True)
         with open(src_path, "w") as f:
@@ -188,36 +153,27 @@ def unpack_base_sample(
         f.write(json.dumps(other_json, indent=4))
 
 
-def unpack_ada_sample(
-    sample: AdaSample, dest_dir: Path, sample_template: SampleTemplate
-):
-    sample_dir = get_and_make_sample_dir(dest_dir, sample, sample_template)
+def unpack_ada_sample(sample: AdaSample, dest_dir: Path):
+    sample_dir = get_and_make_sample_dir(dest_dir, sample)
     unpack_base_sample(sample, sample_dir)
     other_json = {
         "location": sample.to_dict(),
-        "location_solution": sample.location_solution
+        "location_solution": sample.location_solution,
     }
     with open(sample_dir / OTHER_JSON_NAME, "w") as f:
         f.write(json.dumps(other_json, indent=4))
 
 
-
-def unpack_explain_sample(
-    sample: AdaSample, dest_dir: Path, sample_template: SampleTemplate
-):
-    sample_dir = get_and_make_sample_dir(dest_dir, sample, sample_template)
+def unpack_explain_sample(sample: AdaSample, dest_dir: Path):
+    sample_dir = get_and_make_sample_dir(dest_dir, sample)
     unpack_base_sample(sample, sample_dir)
 
 
-def unpack_spark_sample(
-    sample: AdaSample, dest_dir: Path, sample_template: SampleTemplate
-):
-    unpack_ada_sample(sample, dest_dir, sample_template)
+def unpack_spark_sample(sample: AdaSample, dest_dir: Path):
+    unpack_ada_sample(sample, dest_dir)
 
 
-def unpack_dataset(
-    dataset_file: Path, dest_root_dir: Path, sample_template: SampleTemplate
-):
+def unpack_dataset(dataset_file: Path, dest_root_dir: Path):
     """Unpacks a dataset.
 
     Args:
@@ -259,12 +215,11 @@ def unpack_dataset(
             raise UnpackException(
                 f'Found duplicate sample name "{sample.name}" in "{dataset_file}"'
             )
-        unpack_sample_function(sample, dest_dir, sample_template)
+        unpack_sample_function(sample, dest_dir)
 
 
 if __name__ == "__main__":
     args = parse_args()
     dataset_files = get_dataset_files(args.src_dir)
-    sample_template = get_sample_template(args.template_dir)
     for dataset_file in dataset_files:
-        unpack_dataset(dataset_file, args.dest_dir, sample_template)
+        unpack_dataset(dataset_file, args.dest_dir)

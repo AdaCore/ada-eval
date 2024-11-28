@@ -23,30 +23,23 @@ from ada_eval.common_types import (
     ExplainSample,
     ExplainSolution,
     Location,
-    SampleTemplate,
     SparkSample,
 )
 
 # from ada_eval.common_types import DatasetType
-from ada_eval.paths import (
-    COMPACTED_DATASETS_DIR,
-    DATASET_TEMPLATES_DIR,
-    EXPANDED_DATASETS_DIR,
-)
+from ada_eval.paths import COMPACTED_DATASETS_DIR, EXPANDED_DATASETS_DIR
 
 
 @dataclass
 class Args:
     src_dir: Path  # Path to dir containing unpacked dataset or datasets
     dest_dir: Path  # Path to dir containing unpacked dataset or datasets
-    template_dir: Path  # Path to dir containing dataset templates
 
 
 @dataclass
 class UnpackedDataSetMetadata:
     dir: Path
     type: DatasetType
-    sample_template: SampleTemplate
 
 
 def parse_args() -> Args:
@@ -66,14 +59,8 @@ def parse_args() -> Args:
         help="Destination dir for packed dataset or datasets",
         default=COMPACTED_DATASETS_DIR,
     )
-    arg_parser.add_argument(
-        "--template_root",
-        type=Path,
-        help="Directory containing dataset templates",
-        default=DATASET_TEMPLATES_DIR,
-    )
     args = arg_parser.parse_args()
-    return Args(src_dir=args.src, dest_dir=args.dest, template_dir=args.template_root)
+    return Args(src_dir=args.src, dest_dir=args.dest)
 
 
 def is_sample(path: Path) -> bool:
@@ -107,16 +94,6 @@ def get_dataset_type(path: Path) -> DatasetType | None:
         return None
 
 
-def get_template_dir(template_root: Path, dataset_type: DatasetType) -> Path:
-    """Returns the path the the template dir for a given dataset"""
-    return template_root / dataset_type.value
-
-
-def make_files_relative_to(path: Path, files: list[Path]) -> list[Path]:
-    """Makes a list of files relative to a given path"""
-    return [file.relative_to(path) for file in files]
-
-
 def get_file_or_empty(path: Path) -> str:
     """Returns the contents of a file, or an empty string if the file does not exist"""
     if path.is_file():
@@ -138,6 +115,8 @@ def get_explain_solution(sample_root: Path) -> ExplainSolution:
 
 def git_ls_files(root: Path) -> list[Path]:
     """Returns a list of files in a directory using git ls-files"""
+    if not root.exists():
+        return []
     result = subprocess.run(
         ["git", "ls-files", "-com", "--exclude-standard", "--deduplicate"],
         cwd=root,
@@ -153,13 +132,11 @@ def git_ls_files(root: Path) -> list[Path]:
     return [path for path in git_files if path.is_file()]
 
 
-def get_files_including_templates(
-    root: Path, dataset: UnpackedDataSetMetadata
-) -> dict[Path, str]:
-    """Returns a list of files in a directory that are not in the template"""
+def get_sample_files(root: Path) -> dict[Path, str]:
+    """Returns a list of files in a directory and their contents, exluding any
+    files that are ignored by git."""
     full_paths = git_ls_files(root)
     files = {p.relative_to(root): p.read_text("utf-8") for p in full_paths}
-    files = dataset.sample_template.sources | files
     return files
 
 
@@ -173,23 +150,17 @@ def pack_dataset(
         if not is_sample(sample_dir):
             continue
         other_json_file = sample_dir / "other.json"
-        other_data = dataset.sample_template.others | json.loads(
-            other_json_file.read_text()
-        )
+        other_data = json.loads(other_json_file.read_text())
 
-        base_files = get_files_including_templates(sample_dir / BASE_DIR_NAME, dataset)
+        base_files = get_sample_files(sample_dir / BASE_DIR_NAME)
 
         prompt = get_sample_prompt(sample_dir)
         comments = get_sample_comments(sample_dir)
 
         match dataset.type:
             case DatasetType.ADA | DatasetType.SPARK:
-                solution_files = get_files_including_templates(
-                    sample_dir / SOLUTION_DIR_NAME, dataset
-                )
-                unit_test_files = get_files_including_templates(
-                    sample_dir / UNIT_TEST_DIR_NAME, dataset
-                )
+                solution_files = get_sample_files(sample_dir / SOLUTION_DIR_NAME)
+                unit_test_files = get_sample_files(sample_dir / UNIT_TEST_DIR_NAME)
 
                 sample_class = (
                     AdaSample if dataset.type == DatasetType.ADA else SparkSample
@@ -232,23 +203,7 @@ def pack_datasets(datasets: list[UnpackedDataSetMetadata], dest_dir: Path):
         pack_dataset(dataset, dest_dir)
 
 
-def get_sample_template(template_dir: Path) -> SampleTemplate:
-    """Returns the sample template for a dataset"""
-    other_json_path = template_dir / OTHER_JSON_NAME
-    other_json_contents = {}
-    if other_json_path.is_file():
-        other_json_contents = json.loads(other_json_path.read_text())
-    files = {}
-    for root, _, filenames in template_dir.walk():
-        for file in filenames:
-            file = root / file
-            contents = file.read_text()
-            file = file.relative_to(template_dir)
-            files[file] = contents
-    return SampleTemplate(sources=files, others=other_json_contents)
-
-
-def get_datasets(path: Path, template_root: Path) -> list[UnpackedDataSetMetadata]:
+def get_datasets(path: Path) -> list[UnpackedDataSetMetadata]:
     """Returns a list of datasets in the given path"""
     if not is_collection_of_datasets(path) and not is_dataset(path):
         return []
@@ -257,13 +212,7 @@ def get_datasets(path: Path, template_root: Path) -> list[UnpackedDataSetMetadat
         dataset_type = get_dataset_type(path)
         if dataset_type is None:
             return []
-        template_dir = get_template_dir(template_root, dataset_type)
-        sample_template = get_sample_template(template_dir)
-        return [
-            UnpackedDataSetMetadata(
-                dir=path, type=dataset_type, sample_template=sample_template
-            )
-        ]
+        return [UnpackedDataSetMetadata(dir=path, type=dataset_type)]
     datasets = []
     for d in path.iterdir():
         if not is_dataset(d):
@@ -271,17 +220,11 @@ def get_datasets(path: Path, template_root: Path) -> list[UnpackedDataSetMetadat
         dataset_type = get_dataset_type(d)
         if dataset_type is None:
             continue
-        template_dir = get_template_dir(template_root, dataset_type)
-        sample_template = get_sample_template(template_dir)
-        datasets.append(
-            UnpackedDataSetMetadata(
-                dir=d, type=dataset_type, sample_template=sample_template
-            )
-        )
+        datasets.append(UnpackedDataSetMetadata(dir=d, type=dataset_type))
     return datasets
 
 
 if __name__ == "__main__":
     args = parse_args()
-    datasets = get_datasets(args.src_dir, args.template_dir)
+    datasets = get_datasets(args.src_dir)
     pack_datasets(datasets, args.dest_dir)
