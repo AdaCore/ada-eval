@@ -58,25 +58,25 @@ def setup_templates(template_root: Path):
         other_json_file.write_text("{}", encoding="utf-8")
 
 
-def test_is_dataset_with_valid_dataset(tmp_path):
+def test_is_dataset_with_valid_dataset(tmp_path: Path):
     setup_dataset(tmp_path)
     assert is_dataset(tmp_path) is True
 
 
-def test_is_dataset_with_no_samples(tmp_path):
+def test_is_dataset_with_no_samples(tmp_path: Path):
     assert is_dataset(tmp_path) is False
 
 
-def test_is_collection_of_datasets_with_valid_datasets(tmp_path):
+def test_is_collection_of_datasets_with_valid_datasets(tmp_path: Path):
     setup_datasets(tmp_path)
     assert is_collection_of_datasets(tmp_path) is True
 
 
-def test_is_collection_of_datasets_with_no_datasets(tmp_path):
+def test_is_collection_of_datasets_with_no_datasets(tmp_path: Path):
     assert is_collection_of_datasets(tmp_path) is False
 
 
-def test_is_sample_with_valid_sample(tmp_path):
+def test_is_sample_with_valid_sample(tmp_path: Path):
     sample_dir = tmp_path / "sample"
     sample_dir.mkdir()
     other_json_file = sample_dir / OTHER_JSON_NAME
@@ -84,47 +84,47 @@ def test_is_sample_with_valid_sample(tmp_path):
     assert is_sample(sample_dir) is True
 
 
-def test_is_sample_with_no_other_json(tmp_path):
+def test_is_sample_with_no_other_json(tmp_path: Path):
     sample_dir = tmp_path / "sample"
     sample_dir.mkdir()
     assert is_sample(sample_dir) is False
 
 
-def test_is_sample_with_other_json_as_file(tmp_path):
+def test_is_sample_with_other_json_as_file(tmp_path: Path):
     other_json_file = tmp_path / OTHER_JSON_NAME
     other_json_file.write_text("{}", encoding="utf-8")
     assert is_sample(other_json_file) is False
 
 
-def test_is_sample_with_non_directory_path(tmp_path):
+def test_is_sample_with_non_directory_path(tmp_path: Path):
     non_dir_file = tmp_path / "file.txt"
     non_dir_file.write_text("sample content", encoding="utf-8")
     assert is_sample(non_dir_file) is False
 
 
-def test_get_dataset_type_with_valid_dataset(tmp_path):
+def test_get_dataset_type_with_valid_dataset(tmp_path: Path):
     dataset_dir = tmp_path / "ada"
     setup_dataset(dataset_dir)
     assert get_dataset_type(dataset_dir) == DatasetType.ADA
 
 
-def test_get_dataset_type_with_invalid_dataset(tmp_path):
+def test_get_dataset_type_with_invalid_dataset(tmp_path: Path):
     dataset_dir = tmp_path / "INVALID"
     setup_dataset(dataset_dir)
     assert get_dataset_type(dataset_dir) is None
 
 
-def test_get_dataset_type_with_no_dataset(tmp_path):
+def test_get_dataset_type_with_no_dataset(tmp_path: Path):
     assert get_dataset_type(tmp_path) is None
 
 
-def test_get_dataset_type_with_non_directory_path(tmp_path):
+def test_get_dataset_type_with_non_directory_path(tmp_path: Path):
     non_dir_file = tmp_path / "file.txt"
     non_dir_file.write_text("sample content", encoding="utf-8")
     assert get_dataset_type(non_dir_file) is None
 
 
-def test_get_datasets_with_single_dataset(tmp_path):
+def test_get_datasets_with_single_dataset(tmp_path: Path):
     dataset_dir = tmp_path / "ada"
     setup_dataset(dataset_dir)
     template_root = tmp_path / "templates"
@@ -135,7 +135,7 @@ def test_get_datasets_with_single_dataset(tmp_path):
     assert datasets[0].type == DatasetType.ADA
 
 
-def test_get_datasets_with_multiple_datasets(tmp_path):
+def test_get_datasets_with_multiple_datasets(tmp_path: Path):
     setup_datasets(tmp_path)
     template_root = tmp_path / "templates"
     setup_templates(template_root)
@@ -144,13 +144,13 @@ def test_get_datasets_with_multiple_datasets(tmp_path):
     assert len(datasets) == 3
 
 
-def test_get_datasets_with_no_datasets(tmp_path):
+def test_get_datasets_with_no_datasets(tmp_path: Path):
     template_root = setup_templates(tmp_path / "templates")
     datasets = get_datasets(tmp_path, template_root)
     assert len(datasets) == 0
 
 
-def test_get_datasets_with_invalid_dataset(tmp_path):
+def test_get_datasets_with_invalid_dataset(tmp_path: Path):
     dataset_dir = tmp_path / "INVALID"
     setup_dataset(dataset_dir)
     template_root = tmp_path / "templates"
@@ -159,7 +159,7 @@ def test_get_datasets_with_invalid_dataset(tmp_path):
     assert len(datasets) == 0
 
 
-def test_get_datasets_with_non_directory_path(tmp_path):
+def test_get_datasets_with_non_directory_path(tmp_path: Path):
     non_dir_file = tmp_path / "file.txt"
     non_dir_file.write_text("sample content", encoding="utf-8")
     template_root = tmp_path / "templates"
@@ -168,7 +168,7 @@ def test_get_datasets_with_non_directory_path(tmp_path):
     assert len(datasets) == 0
 
 
-def test_get_datasets_with_non_dataset_in_collection(tmp_path):
+def test_get_datasets_with_non_dataset_in_collection(tmp_path: Path):
     setup_datasets(tmp_path)
     invalid_dir = tmp_path / "INVALID"
     invalid_dir.mkdir()
@@ -178,7 +178,7 @@ def test_get_datasets_with_non_dataset_in_collection(tmp_path):
     assert len(datasets) == 3
 
 
-# def test_filter_template_files_with_matching_files(tmp_path):
+# def test_filter_template_files_with_matching_files(tmp_path: Path):
 #     dataset_dir = tmp_path / "dataset"
 #     base_dir = dataset_dir / BASE_DIR_NAME
 #     base_dir.mkdir(parents=True)
@@ -214,7 +214,7 @@ def test_get_datasets_with_non_dataset_in_collection(tmp_path):
 #     assert result == []
 
 
-# def test_filter_template_files_with_different_file_names(tmp_path):
+# def test_filter_template_files_with_different_file_names(tmp_path: Path):
 #     dataset_dir = tmp_path / "dataset"
 #     base_dir = dataset_dir / BASE_DIR_NAME
 #     base_dir.mkdir(parents=True)
@@ -250,7 +250,7 @@ def test_get_datasets_with_non_dataset_in_collection(tmp_path):
 #     assert result == [file3]
 
 
-# def test_filter_template_files_with_different_contents(tmp_path):
+# def test_filter_template_files_with_different_contents(tmp_path: Path):
 #     dataset_dir = tmp_path / "dataset"
 #     base_dir = dataset_dir / BASE_DIR_NAME
 #     base_dir.mkdir(parents=True)
@@ -286,16 +286,16 @@ def test_get_datasets_with_non_dataset_in_collection(tmp_path):
 #     assert result == [file3]
 
 
-def setup_git_repo(tmp_path):
+def setup_git_repo(tmp_path: Path):
     subprocess.run(["git", "init"], cwd=tmp_path, check=True)
 
 
-def test_git_ls_files_empty(tmp_path):
+def test_git_ls_files_empty(tmp_path: Path):
     setup_git_repo(tmp_path)
     assert git_ls_files(tmp_path) == []
 
 
-def test_git_ls_files_non_empty(tmp_path):
+def test_git_ls_files_non_empty(tmp_path: Path):
     setup_git_repo(tmp_path)
     file1 = tmp_path / "file1.txt"
     file2 = tmp_path / "file2.txt"
@@ -310,7 +310,7 @@ def test_git_ls_files_non_empty(tmp_path):
     assert len(git_ls_files(tmp_path)) == 3
 
 
-def test_git_ls_files_staged(tmp_path):
+def test_git_ls_files_staged(tmp_path: Path):
     setup_git_repo(tmp_path)
     file1 = tmp_path / "file1.txt"
     file1.write_text("content1", encoding="utf-8")
@@ -318,7 +318,7 @@ def test_git_ls_files_staged(tmp_path):
     assert len(git_ls_files(tmp_path)) == 1
 
 
-def test_git_ls_files_committed(tmp_path):
+def test_git_ls_files_committed(tmp_path: Path):
     setup_git_repo(tmp_path)
     file1 = tmp_path / "file1.txt"
     file1.write_text("content1", encoding="utf-8")
@@ -327,7 +327,7 @@ def test_git_ls_files_committed(tmp_path):
     assert len(git_ls_files(tmp_path)) == 1
 
 
-def test_git_ls_files_deleted(tmp_path):
+def test_git_ls_files_deleted(tmp_path: Path):
     setup_git_repo(tmp_path)
     file1 = tmp_path / "file1.txt"
     file1.write_text("content1", encoding="utf-8")
@@ -337,7 +337,7 @@ def test_git_ls_files_deleted(tmp_path):
     assert len(git_ls_files(tmp_path)) == 0
 
 
-def test_git_ls_files_modified(tmp_path):
+def test_git_ls_files_modified(tmp_path: Path):
     setup_git_repo(tmp_path)
     file1 = tmp_path / "file1.txt"
     file1.write_text("content1", encoding="utf-8")
