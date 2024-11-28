@@ -144,11 +144,11 @@ def unpack_base_sample(sample: BaseSample, sample_dir: Path):
     with open(sample_dir / COMMENTS_FILE_NAME, "w") as f:
         f.write(sample.comments)
     for file, contents in sample.sources.items():
-        src_path = sample_dir / file
+        src_path = sample_dir / BASE_DIR_NAME / file
         src_path.parent.mkdir(parents=True, exist_ok=True)
         with open(src_path, "w") as f:
             f.write(contents)
-    other_json = {"location": sample.to_dict()}
+    other_json = {"location": sample.location.to_dict()}
     with open(sample_dir / OTHER_JSON_NAME, "w") as f:
         f.write(json.dumps(other_json, indent=4))
 
@@ -157,17 +157,34 @@ def unpack_ada_sample(sample: AdaSample, dest_dir: Path):
     sample_dir = get_and_make_sample_dir(dest_dir, sample)
     unpack_base_sample(sample, sample_dir)
     other_json = {
-        "location": sample.to_dict(),
-        "location_solution": sample.location_solution,
+        "location": sample.location.to_dict(),
+        "location_solution": sample.location_solution.to_dict() if sample.location_solution else None,
     }
     with open(sample_dir / OTHER_JSON_NAME, "w") as f:
         f.write(json.dumps(other_json, indent=4))
+    for file, contents in sample.canonical_solution.items():
+        src_path = sample_dir / SOLUTION_DIR_NAME / file
+        src_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(src_path, "w") as f:
+            f.write(contents)
+    for file, contents in sample.unit_tests.items():
+        src_path = sample_dir / UNIT_TEST_DIR_NAME / file
+        src_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(src_path, "w") as f:
+            f.write(contents)
 
 
 def unpack_explain_sample(sample: AdaSample, dest_dir: Path):
     sample_dir = get_and_make_sample_dir(dest_dir, sample)
     unpack_base_sample(sample, sample_dir)
-
+    with open(sample_dir / REFERENCE_ANSWER_FILE_NAME, "w") as f:
+        f.write(sample.solution.reference_answer)
+    other_json = {
+        "correct_statements": sample.solution.correct_statements,
+        "incorrect_statements": sample.solution.incorrect_statements,
+    }
+    with open(sample_dir / OTHER_JSON_NAME, "w") as f:
+        f.write(json.dumps(other_json, indent=4))
 
 def unpack_spark_sample(sample: AdaSample, dest_dir: Path):
     unpack_ada_sample(sample, dest_dir)
@@ -210,12 +227,12 @@ def unpack_dataset(dataset_file: Path, dest_root_dir: Path):
             raise ValueError(f"Unknown dataset type: {dataset_type}")
 
     seen_samples = set()
-    for sample in sample:
-        if sample.name in seen_samples:
+    for s in samples:
+        if s.name in seen_samples:
             raise UnpackException(
-                f'Found duplicate sample name "{sample.name}" in "{dataset_file}"'
+                f'Found duplicate sample name "{s.name}" in "{dataset_file}"'
             )
-        unpack_sample_function(sample, dest_dir)
+        unpack_sample_function(s, dest_dir)
 
 
 if __name__ == "__main__":

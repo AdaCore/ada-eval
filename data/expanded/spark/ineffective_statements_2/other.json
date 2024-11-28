@@ -1,7 +1,11 @@
 {
-  "location": {
-    "path": "src/show_ineffective_statements.ads",
-    "start": { "line": 6, "column": null },
-    "end": null
-  }
+    "location": {
+        "path": "src/show_ineffective_statements.ads",
+        "start": {
+            "line": 6,
+            "column": null
+        },
+        "end": null
+    },
+    "location_solution": null
 }

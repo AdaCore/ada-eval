@@ -167,7 +167,7 @@ def pack_dataset(
                 )
 
                 location_solution = None
-                if "location_solution" in other_data:
+                if "location_solution" in other_data and other_data["location_solution"]:
                     location_solution = Location.from_dict(
                         other_data["location_solution"]
                     )
