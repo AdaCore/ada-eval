@@ -1,6 +1,27 @@
+import shutil
+import subprocess
 from pathlib import Path
 
-from ada_eval.scripts.pack_datasets import *
+from ada_eval.common_types import OTHER_JSON_NAME, DatasetType
+from ada_eval.paths import COMPACTED_DATASETS_DIR, EXPANDED_DATASETS_DIR
+from ada_eval.scripts.pack_datasets import Args as PackArgs
+from ada_eval.scripts.pack_datasets import (
+    get_dataset_type,
+    get_datasets,
+    git_ls_files,
+    is_collection_of_unpacked_datasets,
+    is_dataset,
+    is_sample,
+)
+from ada_eval.scripts.pack_datasets import main as pack_main
+from ada_eval.scripts.unpack_datasets import Args as UnpackArgs
+from ada_eval.scripts.unpack_datasets import (
+    get_dataset_files,
+    is_collection_of_packed_datasets,
+    is_git_up_to_date,
+    is_packed_dataset,
+)
+from ada_eval.scripts.unpack_datasets import main as unpack_main
 
 
 def setup_dataset(dataset_root: Path):
@@ -17,14 +38,6 @@ def setup_datasets(datasets_root: Path):
         setup_dataset(dataset_root)
 
 
-def setup_templates(template_root: Path):
-    for i in ["ada", "explain", "spark"]:
-        template_dir = template_root / i
-        template_dir.mkdir(parents=True)
-        other_json_file = template_dir / OTHER_JSON_NAME
-        other_json_file.write_text("{}", encoding="utf-8")
-
-
 def test_is_dataset_with_valid_dataset(tmp_path: Path):
     setup_dataset(tmp_path)
     assert is_dataset(tmp_path) is True
@@ -36,11 +49,11 @@ def test_is_dataset_with_no_samples(tmp_path: Path):
 
 def test_is_collection_of_datasets_with_valid_datasets(tmp_path: Path):
     setup_datasets(tmp_path)
-    assert is_collection_of_datasets(tmp_path) is True
+    assert is_collection_of_unpacked_datasets(tmp_path) is True
 
 
 def test_is_collection_of_datasets_with_no_datasets(tmp_path: Path):
-    assert is_collection_of_datasets(tmp_path) is False
+    assert is_collection_of_unpacked_datasets(tmp_path) is False
 
 
 def test_is_sample_with_valid_sample(tmp_path: Path):
@@ -94,9 +107,7 @@ def test_get_dataset_type_with_non_directory_path(tmp_path: Path):
 def test_get_datasets_with_single_dataset(tmp_path: Path):
     dataset_dir = tmp_path / "ada"
     setup_dataset(dataset_dir)
-    template_root = tmp_path / "templates"
-    setup_templates(template_root)
-    datasets = get_datasets(dataset_dir, template_root)
+    datasets = get_datasets(dataset_dir)
     assert len(datasets) == 1
     assert datasets[0].dir == dataset_dir
     assert datasets[0].type == DatasetType.ADA
@@ -104,34 +115,27 @@ def test_get_datasets_with_single_dataset(tmp_path: Path):
 
 def test_get_datasets_with_multiple_datasets(tmp_path: Path):
     setup_datasets(tmp_path)
-    template_root = tmp_path / "templates"
-    setup_templates(template_root)
-    datasets = get_datasets(tmp_path, template_root)
+    datasets = get_datasets(tmp_path)
     print(datasets)
     assert len(datasets) == 3
 
 
 def test_get_datasets_with_no_datasets(tmp_path: Path):
-    template_root = setup_templates(tmp_path / "templates")
-    datasets = get_datasets(tmp_path, template_root)
+    datasets = get_datasets(tmp_path)
     assert len(datasets) == 0
 
 
 def test_get_datasets_with_invalid_dataset(tmp_path: Path):
     dataset_dir = tmp_path / "INVALID"
     setup_dataset(dataset_dir)
-    template_root = tmp_path / "templates"
-    setup_templates(template_root)
-    datasets = get_datasets(dataset_dir, template_root)
+    datasets = get_datasets(dataset_dir)
     assert len(datasets) == 0
 
 
 def test_get_datasets_with_non_directory_path(tmp_path: Path):
     non_dir_file = tmp_path / "file.txt"
     non_dir_file.write_text("sample content", encoding="utf-8")
-    template_root = tmp_path / "templates"
-    setup_templates(template_root)
-    datasets = get_datasets(non_dir_file, template_root)
+    datasets = get_datasets(non_dir_file)
     assert len(datasets) == 0
 
 
@@ -139,118 +143,8 @@ def test_get_datasets_with_non_dataset_in_collection(tmp_path: Path):
     setup_datasets(tmp_path)
     invalid_dir = tmp_path / "INVALID"
     invalid_dir.mkdir()
-    template_root = tmp_path / "templates"
-    setup_templates(template_root)
-    datasets = get_datasets(tmp_path, template_root)
+    datasets = get_datasets(tmp_path)
     assert len(datasets) == 3
-
-
-# def test_filter_template_files_with_matching_files(tmp_path: Path):
-#     dataset_dir = tmp_path / "dataset"
-#     base_dir = dataset_dir / BASE_DIR_NAME
-#     base_dir.mkdir(parents=True)
-
-#     sub_dir = base_dir / "sub_dir"
-#     sub_dir.mkdir()
-
-#     file1 = base_dir / "file1.txt"
-#     file1.write_text("content1", encoding="utf-8")
-
-#     file2 = base_dir / "file2.txt"
-#     file2.write_text("content2", encoding="utf-8")
-
-#     file3 = sub_dir / "file3.txt"
-#     file3.write_text("content3", encoding="utf-8")
-
-#     sample_template = SampleTemplate(
-#         sources={
-#             Path("file1.txt"): "content1",
-#             Path("file2.txt"): "content2",
-#             Path("sub_dir/file3.txt"): "content3",
-#         },
-#         others={},
-#     )
-
-#     dataset = UnpackedDataSetMetadata(
-#         dir=dataset_dir, type=DatasetType.ADA, sample_template=sample_template
-#     )
-
-#     full_paths = [file1, file2, file3]
-#     short_paths = make_files_relative_to(base_dir, full_paths)
-#     result = filter_template_files(zip(short_paths, full_paths), dataset)
-#     assert result == []
-
-
-# def test_filter_template_files_with_different_file_names(tmp_path: Path):
-#     dataset_dir = tmp_path / "dataset"
-#     base_dir = dataset_dir / BASE_DIR_NAME
-#     base_dir.mkdir(parents=True)
-
-#     sub_dir = base_dir / "sub_dir"
-#     sub_dir.mkdir()
-
-#     file1 = base_dir / "file1.txt"
-#     file1.write_text("content1", encoding="utf-8")
-
-#     file2 = base_dir / "file2.txt"
-#     file2.write_text("content2", encoding="utf-8")
-
-#     file3 = sub_dir / "file3.txt"
-#     file3.write_text("content3", encoding="utf-8")
-
-#     sample_template = SampleTemplate(
-#         sources={
-#             Path("file1.txt"): "content1",
-#             Path("file2.txt"): "content2",
-#             Path("sub_dir/file4.txt"): "content3",
-#         },
-#         others={},
-#     )
-
-#     dataset = UnpackedDataSetMetadata(
-#         dir=dataset_dir, type=DatasetType.ADA, sample_template=sample_template
-#     )
-
-#     full_paths = [file1, file2, file3]
-#     short_paths = make_files_relative_to(base_dir, full_paths)
-#     result = filter_template_files(zip(short_paths, full_paths), dataset)
-#     assert result == [file3]
-
-
-# def test_filter_template_files_with_different_contents(tmp_path: Path):
-#     dataset_dir = tmp_path / "dataset"
-#     base_dir = dataset_dir / BASE_DIR_NAME
-#     base_dir.mkdir(parents=True)
-
-#     sub_dir = base_dir / "sub_dir"
-#     sub_dir.mkdir()
-
-#     file1 = base_dir / "file1.txt"
-#     file1.write_text("content1", encoding="utf-8")
-
-#     file2 = base_dir / "file2.txt"
-#     file2.write_text("content2", encoding="utf-8")
-
-#     file3 = sub_dir / "file3.txt"
-#     file3.write_text("content3", encoding="utf-8")
-
-#     sample_template = SampleTemplate(
-#         sources={
-#             Path("file1.txt"): "content1",
-#             Path("file2.txt"): "content2",
-#             Path("sub_dir/file3.txt"): "different content",
-#         },
-#         others={},
-#     )
-
-#     dataset = UnpackedDataSetMetadata(
-#         dir=dataset_dir, type=DatasetType.ADA, sample_template=sample_template
-#     )
-
-#     full_paths = [file1, file2, file3]
-#     short_paths = make_files_relative_to(base_dir, full_paths)
-#     result = filter_template_files(zip(short_paths, full_paths), dataset)
-#     assert result == [file3]
 
 
 def setup_git_repo(tmp_path: Path):
@@ -312,3 +206,125 @@ def test_git_ls_files_modified(tmp_path: Path):
     subprocess.run(["git", "commit", '-m "foo"'], cwd=tmp_path, check=True)
     file1.write_text("modified content", encoding="utf-8")
     assert len(git_ls_files(tmp_path)) == 1
+
+
+def create_datasets(dataset_root: Path):
+    dataset_names = ["ada", "explain", "spark"]
+    for name in dataset_names:
+        dataset_file = dataset_root / f"{name}.jsonl"
+        dataset_file.write_text("")  # TODO improve this to write a valid jsonl dataset
+
+
+def test_valid_datasets(tmp_path: Path):
+    create_datasets(tmp_path)
+    assert is_packed_dataset(tmp_path / "ada.jsonl") is True
+    assert is_collection_of_packed_datasets(tmp_path) is True
+
+
+def test_invalid_datasets(tmp_path: Path):
+    fake_dataset = tmp_path / "ada.json"
+    fake_dataset.write_text("")
+    assert is_packed_dataset(fake_dataset) is False
+    assert is_collection_of_packed_datasets(fake_dataset) is False
+    fake_dataset = tmp_path / "ada.jsonl"
+    assert is_packed_dataset(fake_dataset) is False
+    assert is_collection_of_packed_datasets(fake_dataset) is False
+    assert is_packed_dataset(tmp_path) is False
+    assert is_collection_of_packed_datasets(tmp_path) is False
+    fake_dataset.mkdir()
+    assert is_packed_dataset(fake_dataset) is False
+    assert is_collection_of_packed_datasets(fake_dataset) is False
+
+
+def test_get_dataset_files(tmp_path: Path):
+    assert get_dataset_files(tmp_path) == []
+    assert get_dataset_files(tmp_path / "ada.jsonl") == []
+    create_datasets(tmp_path)
+    assert len(get_dataset_files(tmp_path)) == 3
+    assert len(get_dataset_files(tmp_path / "ada.jsonl")) == 1
+    assert len(get_dataset_files(tmp_path / "ada")) == 0
+
+
+def test_pack_unpack(tmp_path: Path):
+    # Packing then unpacking a datasets should result in the same dataset
+    packed_dir = tmp_path / "packed"
+    unpacked_dir = tmp_path / "unpacked"
+    shutil.copytree(COMPACTED_DATASETS_DIR, packed_dir)
+    shutil.copytree(EXPANDED_DATASETS_DIR, unpacked_dir)
+
+    # Check that the datasets have been copied as expected
+    assert is_collection_of_packed_datasets(packed_dir) is True
+    assert is_collection_of_unpacked_datasets(unpacked_dir) is True
+
+    # Create a git repo and commit the datasets
+    subprocess.run(["git", "init"], cwd=tmp_path, check=True)
+    subprocess.run(["git", "add", "."], cwd=tmp_path, check=True)
+    subprocess.run(
+        ["git", "commit", '-m "Starting state"'],
+        cwd=tmp_path,
+        check=True,
+        encoding="utf-8",
+    )
+
+    # Small check for our is_git_up_to_date function
+    assert is_git_up_to_date(tmp_path) is True
+
+    # Remove the packed dataset
+    shutil.rmtree(packed_dir)
+
+    # Check that the packed datasets has been removed
+    assert is_collection_of_packed_datasets(packed_dir) is False
+    res = subprocess.run(
+        ["git", "status", "--porcelain=1"],
+        cwd=tmp_path,
+        check=True,
+        encoding="utf-8",
+        capture_output=True,
+    )
+    assert res.stdout.strip() != ""
+
+    # Args for packing and unpacking
+    pack_args = PackArgs(src_dir=unpacked_dir, dest_dir=packed_dir)
+    unpack_args = UnpackArgs(src_dir=packed_dir, dest_dir=unpacked_dir, force=True)
+
+    # Pack the dataset
+    pack_main(pack_args)
+
+    # Check that the dataset has been packed and there are no git changes
+    assert is_collection_of_packed_datasets(packed_dir) is True
+    res = subprocess.run(
+        ["git", "status", "--porcelain=1"],
+        cwd=tmp_path,
+        check=True,
+        encoding="utf-8",
+        capture_output=True,
+    )
+    assert res.stdout.strip() == ""
+
+    # Remove the unpacked dataset
+    shutil.rmtree(unpacked_dir)
+
+    # Check that the unpacked datasets has been removed
+    assert is_collection_of_unpacked_datasets(unpacked_dir) is False
+    res = subprocess.run(
+        ["git", "status", "--porcelain=1"],
+        cwd=tmp_path,
+        check=True,
+        encoding="utf-8",
+        capture_output=True,
+    )
+    assert res.stdout.strip() != ""
+
+    # Unpack the dataset
+    unpack_main(unpack_args)
+
+    # Check that the dataset has been unpacked and there are no git changes
+    assert is_collection_of_unpacked_datasets(unpacked_dir) is True
+    res = subprocess.run(
+        ["git", "status", "--porcelain=1"],
+        cwd=tmp_path,
+        check=True,
+        encoding="utf-8",
+        capture_output=True,
+    )
+    assert res.stdout.strip() == ""

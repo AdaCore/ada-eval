@@ -9,10 +9,13 @@ import json
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 from ada_eval.common_types import (
     BASE_DIR_NAME,
     COMMENTS_FILE_NAME,
+    CORRECT_STATEMENTS_KEY,
+    INCORRECT_STATEMENTS_KEY,
     OTHER_JSON_NAME,
     PROMPT_FILE_NAME,
     REFERENCE_ANSWER_FILE_NAME,
@@ -76,7 +79,7 @@ def is_dataset(path: Path) -> bool:
     return path.is_dir() and any(is_sample(d) for d in path.iterdir())
 
 
-def is_collection_of_datasets(path: Path) -> bool:
+def is_collection_of_unpacked_datasets(path: Path) -> bool:
     """Return's true if this is a path to a directory that contains multiple datasets.
     Note that not all directories in this directory need to contain a dataset."""
     return path.is_dir() and any(is_dataset(d) for d in path.iterdir())
@@ -109,8 +112,20 @@ def get_sample_comments(sample_root: Path) -> str:
     return get_file_or_empty(sample_root / COMMENTS_FILE_NAME)
 
 
-def get_explain_solution(sample_root: Path) -> ExplainSolution:
-    return get_file_or_empty(sample_root / REFERENCE_ANSWER_FILE_NAME)
+def get_explain_solution(
+    sample_root: Path, other_data: dict[str, Any]
+) -> ExplainSolution:
+    file = sample_root / REFERENCE_ANSWER_FILE_NAME
+    reference_answer = file.read_text(encoding="utf-8")
+    return ExplainSolution(
+        reference_answer=reference_answer,
+        correct_statements=other_data[CORRECT_STATEMENTS_KEY],
+        incorrect_statements=other_data[INCORRECT_STATEMENTS_KEY],
+    )
+
+
+def get_other_data(sample_root: Path) -> dict:
+    return json.loads((sample_root / OTHER_JSON_NAME).read_text())
 
 
 def git_ls_files(root: Path) -> list[Path]:
@@ -127,8 +142,8 @@ def git_ls_files(root: Path) -> list[Path]:
 
     git_files = [root / line for line in result.stdout.splitlines()]
 
-    # We have to check that a path exists, as git ls-files will return files that
-    # were previously committed but have since been deleted.
+    # We have to check that a path exists, as git ls-files will return files
+    # that were previously committed but have since been deleted.
     return [path for path in git_files if path.is_file()]
 
 
@@ -140,20 +155,15 @@ def get_sample_files(root: Path) -> dict[Path, str]:
     return files
 
 
-def pack_dataset(
-    dataset: UnpackedDataSetMetadata, dest_dir: Path
-) -> list[AdaSample] | list[ExplainSample] | list[SparkSample]:
+def pack_dataset(dataset: UnpackedDataSetMetadata, dest_dir: Path):
     """Packs a dataset into a jsonl file"""
     dest_file = dest_dir / f"{dataset.type.value}.jsonl"
     dest_file.write_text("")
     for sample_dir in dataset.dir.iterdir():
         if not is_sample(sample_dir):
             continue
-        other_json_file = sample_dir / "other.json"
-        other_data = json.loads(other_json_file.read_text())
-
+        other_data = get_other_data(sample_dir)
         base_files = get_sample_files(sample_dir / BASE_DIR_NAME)
-
         prompt = get_sample_prompt(sample_dir)
         comments = get_sample_comments(sample_dir)
 
@@ -167,7 +177,10 @@ def pack_dataset(
                 )
 
                 location_solution = None
-                if "location_solution" in other_data and other_data["location_solution"]:
+                if (
+                    "location_solution" in other_data
+                    and other_data["location_solution"]
+                ):
                     location_solution = Location.from_dict(
                         other_data["location_solution"]
                     )
@@ -188,7 +201,7 @@ def pack_dataset(
                     prompt=prompt,
                     comments=comments,
                     sources=base_files,
-                    canonical_solution=solution,
+                    canonical_solution=get_explain_solution(sample_dir, other_data),
                 )
             case _:
                 raise ValueError(f"Unknown dataset type: {dataset.type}")
@@ -199,13 +212,14 @@ def pack_dataset(
 
 def pack_datasets(datasets: list[UnpackedDataSetMetadata], dest_dir: Path):
     """Packs each datasets into into a jsonl file"""
+    dest_dir.mkdir(exist_ok=True, parents=True)
     for dataset in datasets:
         pack_dataset(dataset, dest_dir)
 
 
 def get_datasets(path: Path) -> list[UnpackedDataSetMetadata]:
     """Returns a list of datasets in the given path"""
-    if not is_collection_of_datasets(path) and not is_dataset(path):
+    if not is_collection_of_unpacked_datasets(path) and not is_dataset(path):
         return []
 
     if is_dataset(path):
@@ -224,7 +238,11 @@ def get_datasets(path: Path) -> list[UnpackedDataSetMetadata]:
     return datasets
 
 
-if __name__ == "__main__":
-    args = parse_args()
+def main(args: Args):
     datasets = get_datasets(args.src_dir)
     pack_datasets(datasets, args.dest_dir)
+
+
+if __name__ == "__main__":
+    args = parse_args()
+    main(args)

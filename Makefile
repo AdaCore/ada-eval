@@ -24,7 +24,7 @@ run-black:
 run-isort:
 	poetry run isort .
 
-check: check-flake8 check-isort check-black check-mypy check pylint
+check: check-flake8 check-isort check-black check-mypy check-pylint
 
 format: run-black run-isort
 
@@ -34,7 +34,7 @@ test:
 # Run the tools
 
 pack-dataset:
-	poetry run python src/ada_eval/scripts/pack_datasets.py
+	poetry run python ada_eval/scripts/pack_datasets.py
 
 unpack-dataset:
-	poetry run python src/ada_eval/scripts/unpack_datasets.py
+	poetry run python ada_eval/scripts/unpack_datasets.py

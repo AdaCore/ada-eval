@@ -4,9 +4,6 @@ version = "0.1.0"
 description = "Simple project for evaluating LLM based tools for Ada"
 authors = ["Rowan Walshe <walshe@adacore.com>"]
 readme = "README.md"
-packages = [
-    { include = "ada_eval", from = "src" }
-]
 
 [tool.poetry.dependencies]
 python = "^3.12"
@@ -24,6 +21,7 @@ flake8-gl-codeclimate = "^0.2.1"
 pylint = "^3.3.1"
 mypy = "^1.13.0"
 pylint-gitlab = "^2.0.1"
+flake8-bugbear = "^24.10.31"
 
 [tool.isort]
 profile = "black"
@@ -34,6 +32,8 @@ addopts = "-ra -q --cov=ada_eval --cov-report=term-missing"
 testpaths = [
     "tests",
 ]
+
+
 
 [build-system]
 requires = ["poetry-core"]

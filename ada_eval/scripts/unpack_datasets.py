@@ -15,6 +15,8 @@ from pathlib import Path
 from ada_eval.common_types import (
     BASE_DIR_NAME,
     COMMENTS_FILE_NAME,
+    CORRECT_STATEMENTS_KEY,
+    INCORRECT_STATEMENTS_KEY,
     OTHER_JSON_NAME,
     PROMPT_FILE_NAME,
     REFERENCE_ANSWER_FILE_NAME,
@@ -24,14 +26,11 @@ from ada_eval.common_types import (
     BaseSample,
     DatasetType,
     ExplainSample,
-    ExplainSolution,
-    Location,
     SparkSample,
 )
 
 # from ada_eval.common_types import DatasetType
 from ada_eval.paths import COMPACTED_DATASETS_DIR, EXPANDED_DATASETS_DIR
-from ada_eval.utils import make_files_relative_to
 
 
 class UnpackException(Exception):
@@ -42,6 +41,7 @@ class UnpackException(Exception):
 class Args:
     src_dir: Path  # Path to dir containing unpacked dataset or datasets
     dest_dir: Path  # Path to dir containing unpacked dataset or datasets
+    force: bool  # Force unpacking even if there are uncommited changes
 
 
 @dataclass
@@ -67,8 +67,14 @@ def parse_args() -> Args:
         help="Destination dir for unpacked datasets",
         default=EXPANDED_DATASETS_DIR,
     )
+    arg_parser.add_argument(
+        "-f",
+        "--force",
+        action="store_true",
+        help="Force unpacking even if there are uncommited changes",
+    )
     args = arg_parser.parse_args()
-    return Args(src_dir=args.src, dest_dir=args.dest)
+    return Args(src_dir=args.src, dest_dir=args.dest, force=args.force)
 
 
 def is_packed_dataset(path: Path) -> bool:
@@ -118,20 +124,21 @@ def is_git_up_to_date(path: Path) -> bool:
     context we mean that no changes have been made to the files in the folder,
     including file creations/deletions/modifications."""
     result = subprocess.run(
-        ["git", "status", "--porcelain", "."],
+        ["git", "status", "--porcelain=1", "."],
         encoding="utf-8",
         capture_output=True,
         cwd=path,
     )
     return result.returncode == 0 and (
-        result.stdout == None or result.stdout.strip() == ""
+        result.stdout is None or result.stdout.strip() == ""
     )
 
 
 def get_and_make_sample_dir(dest_dir: Path, sample: BaseSample) -> Path:
     if not valid_sample_name(sample.name):
         raise UnpackException(
-            f"Invalid sample name: {sample.name}. Please only use alphanumeric characters, hyphens, and underscores."
+            f"Invalid sample name: {sample.name}. Please only use alphanumeric"
+            "characters, hyphens, and underscores."
         )
     sample_dir = dest_dir / sample.name
     sample_dir.mkdir(exist_ok=True)
@@ -158,7 +165,9 @@ def unpack_ada_sample(sample: AdaSample, dest_dir: Path):
     unpack_base_sample(sample, sample_dir)
     other_json = {
         "location": sample.location.to_dict(),
-        "location_solution": sample.location_solution.to_dict() if sample.location_solution else None,
+        "location_solution": (
+            sample.location_solution.to_dict() if sample.location_solution else None
+        ),
     }
     with open(sample_dir / OTHER_JSON_NAME, "w") as f:
         f.write(json.dumps(other_json, indent=4))
@@ -180,17 +189,18 @@ def unpack_explain_sample(sample: AdaSample, dest_dir: Path):
     with open(sample_dir / REFERENCE_ANSWER_FILE_NAME, "w") as f:
         f.write(sample.solution.reference_answer)
     other_json = {
-        "correct_statements": sample.solution.correct_statements,
-        "incorrect_statements": sample.solution.incorrect_statements,
+        CORRECT_STATEMENTS_KEY: sample.solution.correct_statements,
+        INCORRECT_STATEMENTS_KEY: sample.solution.incorrect_statements,
     }
     with open(sample_dir / OTHER_JSON_NAME, "w") as f:
         f.write(json.dumps(other_json, indent=4))
+
 
 def unpack_spark_sample(sample: AdaSample, dest_dir: Path):
     unpack_ada_sample(sample, dest_dir)
 
 
-def unpack_dataset(dataset_file: Path, dest_root_dir: Path):
+def unpack_dataset(dataset_file: Path, dest_root_dir: Path, force: bool = False):
     """Unpacks a dataset.
 
     Args:
@@ -202,31 +212,34 @@ def unpack_dataset(dataset_file: Path, dest_root_dir: Path):
         raise ValueError(f"{dataset_file} is not a packed dataset")
     dataset_name = dataset_file.stem
     dest_dir = dest_root_dir / dataset_name
+    dest_dir.mkdir(exist_ok=True, parents=True)
     if not is_git_up_to_date(dest_dir):
-        print(
-            f"There are uncommited changes in {dest_dir}. Skipping unpack of {dataset_name}"
-        )
-        return
+        print(f"There are uncommited changes in {dest_dir}")
+        if force:
+            print(f"Force switch set, continuing with unpack of {dataset_name}")
+        else:
+            print(f"Skipping unpack of {dataset_name}")
+            return
 
     shutil.rmtree(dest_dir, ignore_errors=True)
-    dest_dir.mkdir(exist_ok=True)
+    dest_dir.mkdir(exist_ok=True, parents=True)
     dataset_type = DatasetType(dataset_name)
     with dataset_file.open() as f:
-        samples = f.readlines()
+        lines = f.readlines()
     match dataset_type:
         case DatasetType.ADA:
-            samples = [AdaSample.from_json(line) for line in samples]
+            samples = [AdaSample.from_json(x) for x in lines]
             unpack_sample_function = unpack_ada_sample
         case DatasetType.EXPLAIN:
-            samples = [ExplainSample.from_json(line) for line in samples]
+            samples = [ExplainSample.from_json(x) for x in lines]
             unpack_sample_function = unpack_explain_sample
         case DatasetType.SPARK:
-            samples = [SparkSample.from_json(line) for line in samples]
+            samples = [SparkSample.from_json(x) for x in lines]
             unpack_sample_function = unpack_spark_sample
         case _:
             raise ValueError(f"Unknown dataset type: {dataset_type}")
 
-    seen_samples = set()
+    seen_samples: set[str] = set()
     for s in samples:
         if s.name in seen_samples:
             raise UnpackException(
@@ -235,8 +248,12 @@ def unpack_dataset(dataset_file: Path, dest_root_dir: Path):
         unpack_sample_function(s, dest_dir)
 
 
-if __name__ == "__main__":
-    args = parse_args()
+def main(args: Args):
     dataset_files = get_dataset_files(args.src_dir)
     for dataset_file in dataset_files:
-        unpack_dataset(dataset_file, args.dest_dir)
+        unpack_dataset(dataset_file, args.dest_dir, args.force)
+
+
+if __name__ == "__main__":
+    args = parse_args()
+    main(args)

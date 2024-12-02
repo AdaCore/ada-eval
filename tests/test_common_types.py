@@ -1,4 +1,3 @@
-import pytest
 from ada_eval.common_types import DatasetType
 
 
