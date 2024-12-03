@@ -25,6 +25,7 @@ ruff:
     - ruff check --output-format=gitlab > code-quality-report.json
 
 mypy:
+  extends: .lint
   script:
     - mypy $(find -type f -name "*.py" ! -path "**/.venv/**") --no-error-summary > mypy-out.txt || true  # "|| true" is used for preventing job failure when mypy find errors
     - mypy-gitlab-code-quality < mypy-out.txt > code-quality-report.json
