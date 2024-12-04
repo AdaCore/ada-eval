@@ -1,5 +1,5 @@
 version = 1
-requires-python = ">=3.12"
+requires-python = ">=3.11"
 
 [[package]]
 name = "ada-eval"
@@ -45,6 +45,16 @@ version = "7.6.8"
 source = { registry = "https://gitlab.adacore-it.com/api/v4/projects/eng%2Fai%2Fada-eval/packages/pypi/simple" }
 sdist = { url = "https://gitlab.adacore-it.com/api/v4/projects/1122/packages/pypi/files/8b2b8503edb06822c86d82fa64a4a5cb0760bb8f31f26e138ec743f422f37cfc/coverage-7.6.8.tar.gz", hash = "sha256:8b2b8503edb06822c86d82fa64a4a5cb0760bb8f31f26e138ec743f422f37cfc" }
 wheels = [
+    { url = "https://gitlab.adacore-it.com/api/v4/projects/1122/packages/pypi/files/86cffe9c6dfcfe22e28027069725c7f57f4b868a3f86e81d1c62462764dc46d4/coverage-7.6.8-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:86cffe9c6dfcfe22e28027069725c7f57f4b868a3f86e81d1c62462764dc46d4" },
+    { url = "https://gitlab.adacore-it.com/api/v4/projects/1122/packages/pypi/files/d82ab6816c3277dc962cfcdc85b1efa0e5f50fb2c449432deaf2398a2928ab94/coverage-7.6.8-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:d82ab6816c3277dc962cfcdc85b1efa0e5f50fb2c449432deaf2398a2928ab94" },
+    { url = "https://gitlab.adacore-it.com/api/v4/projects/1122/packages/pypi/files/13690e923a3932e4fad4c0ebfb9cb5988e03d9dcb4c5150b5fcbf58fd8bddfc4/coverage-7.6.8-cp311-cp311-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:13690e923a3932e4fad4c0ebfb9cb5988e03d9dcb4c5150b5fcbf58fd8bddfc4" },
+    { url = "https://gitlab.adacore-it.com/api/v4/projects/1122/packages/pypi/files/4be32da0c3827ac9132bb488d331cb32e8d9638dd41a0557c5569d57cf22c9c1/coverage-7.6.8-cp311-cp311-manylinux_2_5_i686.manylinux1_i686.manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:4be32da0c3827ac9132bb488d331cb32e8d9638dd41a0557c5569d57cf22c9c1" },
+    { url = "https://gitlab.adacore-it.com/api/v4/projects/1122/packages/pypi/files/44e6c85bbdc809383b509d732b06419fb4544dca29ebe18480379633623baafb/coverage-7.6.8-cp311-cp311-manylinux_2_5_x86_64.manylinux1_x86_64.manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:44e6c85bbdc809383b509d732b06419fb4544dca29ebe18480379633623baafb" },
+    { url = "https://gitlab.adacore-it.com/api/v4/projects/1122/packages/pypi/files/768939f7c4353c0fac2f7c37897e10b1414b571fd85dd9fc49e6a87e37a2e0d8/coverage-7.6.8-cp311-cp311-musllinux_1_2_aarch64.whl", hash = "sha256:768939f7c4353c0fac2f7c37897e10b1414b571fd85dd9fc49e6a87e37a2e0d8" },
+    { url = "https://gitlab.adacore-it.com/api/v4/projects/1122/packages/pypi/files/e44961e36cb13c495806d4cac67640ac2866cb99044e210895b506c26ee63d3a/coverage-7.6.8-cp311-cp311-musllinux_1_2_i686.whl", hash = "sha256:e44961e36cb13c495806d4cac67640ac2866cb99044e210895b506c26ee63d3a" },
+    { url = "https://gitlab.adacore-it.com/api/v4/projects/1122/packages/pypi/files/3ea8bb1ab9558374c0ab591783808511d135a833c3ca64a18ec927f20c4030f0/coverage-7.6.8-cp311-cp311-musllinux_1_2_x86_64.whl", hash = "sha256:3ea8bb1ab9558374c0ab591783808511d135a833c3ca64a18ec927f20c4030f0" },
+    { url = "https://gitlab.adacore-it.com/api/v4/projects/1122/packages/pypi/files/629a1ba2115dce8bf75a5cce9f2486ae483cb89c0145795603d6554bdc83e801/coverage-7.6.8-cp311-cp311-win32.whl", hash = "sha256:629a1ba2115dce8bf75a5cce9f2486ae483cb89c0145795603d6554bdc83e801" },
+    { url = "https://gitlab.adacore-it.com/api/v4/projects/1122/packages/pypi/files/fb9fc32399dca861584d96eccd6c980b69bbcd7c228d06fb74fe53e007aa8ef9/coverage-7.6.8-cp311-cp311-win_amd64.whl", hash = "sha256:fb9fc32399dca861584d96eccd6c980b69bbcd7c228d06fb74fe53e007aa8ef9" },
     { url = "https://gitlab.adacore-it.com/api/v4/projects/1122/packages/pypi/files/e683e6ecc587643f8cde8f5da6768e9d165cd31edf39ee90ed7034f9ca0eefee/coverage-7.6.8-cp312-cp312-macosx_10_13_x86_64.whl", hash = "sha256:e683e6ecc587643f8cde8f5da6768e9d165cd31edf39ee90ed7034f9ca0eefee" },
     { url = "https://gitlab.adacore-it.com/api/v4/projects/1122/packages/pypi/files/1defe91d41ce1bd44b40fabf071e6a01a5aa14de4a31b986aa9dfd1b3e3e414a/coverage-7.6.8-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:1defe91d41ce1bd44b40fabf071e6a01a5aa14de4a31b986aa9dfd1b3e3e414a" },
     { url = "https://gitlab.adacore-it.com/api/v4/projects/1122/packages/pypi/files/d7ad66e8e50225ebf4236368cc43c37f59d5e6728f15f6e258c8639fa0dd8e6d/coverage-7.6.8-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:d7ad66e8e50225ebf4236368cc43c37f59d5e6728f15f6e258c8639fa0dd8e6d" },
@@ -77,6 +87,11 @@ wheels = [
     { url = "https://gitlab.adacore-it.com/api/v4/projects/1122/packages/pypi/files/c79c0685f142ca53256722a384540832420dff4ab15fec1863d7e5bc8691bdcc/coverage-7.6.8-cp313-cp313t-win_amd64.whl", hash = "sha256:c79c0685f142ca53256722a384540832420dff4ab15fec1863d7e5bc8691bdcc" },
 ]
 
+[package.optional-dependencies]
+toml = [
+    { name = "tomli", marker = "python_full_version <= '3.11'" },
+]
+
 [[package]]
 name = "dataclass-wizard"
 version = "0.32.0"
@@ -105,6 +120,11 @@ dependencies = [
 ]
 sdist = { url = "https://gitlab.adacore-it.com/api/v4/projects/1122/packages/pypi/files/0291a61b6fbf3e6673e3405cfcc0e7650bebc7939659fdca2702958038bd835e/mypy-1.13.0.tar.gz", hash = "sha256:0291a61b6fbf3e6673e3405cfcc0e7650bebc7939659fdca2702958038bd835e" }
 wheels = [
+    { url = "https://gitlab.adacore-it.com/api/v4/projects/1122/packages/pypi/files/581665e6f3a8a9078f28d5502f4c334c0c8d802ef55ea0e7276a6e409bc0d82d/mypy-1.13.0-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:581665e6f3a8a9078f28d5502f4c334c0c8d802ef55ea0e7276a6e409bc0d82d" },
+    { url = "https://gitlab.adacore-it.com/api/v4/projects/1122/packages/pypi/files/3ddb5b9bf82e05cc9a627e84707b528e5c7caaa1c55c69e175abb15a761cec2d/mypy-1.13.0-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:3ddb5b9bf82e05cc9a627e84707b528e5c7caaa1c55c69e175abb15a761cec2d" },
+    { url = "https://gitlab.adacore-it.com/api/v4/projects/1122/packages/pypi/files/20c7ee0bc0d5a9595c46f38beb04201f2620065a93755704e141fcac9f59db2b/mypy-1.13.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:20c7ee0bc0d5a9595c46f38beb04201f2620065a93755704e141fcac9f59db2b" },
+    { url = "https://gitlab.adacore-it.com/api/v4/projects/1122/packages/pypi/files/3790ded76f0b34bc9c8ba4def8f919dd6a46db0f5a6610fb994fe8efdd447f73/mypy-1.13.0-cp311-cp311-musllinux_1_1_x86_64.whl", hash = "sha256:3790ded76f0b34bc9c8ba4def8f919dd6a46db0f5a6610fb994fe8efdd447f73" },
+    { url = "https://gitlab.adacore-it.com/api/v4/projects/1122/packages/pypi/files/51f869f4b6b538229c1d1bcc1dd7d119817206e2bc54e8e374b3dfa202defcca/mypy-1.13.0-cp311-cp311-win_amd64.whl", hash = "sha256:51f869f4b6b538229c1d1bcc1dd7d119817206e2bc54e8e374b3dfa202defcca" },
     { url = "https://gitlab.adacore-it.com/api/v4/projects/1122/packages/pypi/files/5c7051a3461ae84dfb5dd15eff5094640c61c5f22257c8b766794e6dd85e72d5/mypy-1.13.0-cp312-cp312-macosx_10_13_x86_64.whl", hash = "sha256:5c7051a3461ae84dfb5dd15eff5094640c61c5f22257c8b766794e6dd85e72d5" },
     { url = "https://gitlab.adacore-it.com/api/v4/projects/1122/packages/pypi/files/39bb21c69a5d6342f4ce526e4584bc5c197fd20a60d14a8624d8743fffb9472e/mypy-1.13.0-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:39bb21c69a5d6342f4ce526e4584bc5c197fd20a60d14a8624d8743fffb9472e" },
     { url = "https://gitlab.adacore-it.com/api/v4/projects/1122/packages/pypi/files/164f28cb9d6367439031f4c81e84d3ccaa1e19232d9d05d37cb0bd880d3f93c2/mypy-1.13.0-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:164f28cb9d6367439031f4c81e84d3ccaa1e19232d9d05d37cb0bd880d3f93c2" },
@@ -174,7 +194,7 @@ name = "pytest-cov"
 version = "6.0.0"
 source = { registry = "https://gitlab.adacore-it.com/api/v4/projects/eng%2Fai%2Fada-eval/packages/pypi/simple" }
 dependencies = [
-    { name = "coverage" },
+    { name = "coverage", extra = ["toml"] },
     { name = "pytest" },
 ]
 sdist = { url = "https://gitlab.adacore-it.com/api/v4/projects/1122/packages/pypi/files/fde0b595ca248bb8e2d76f020b465f3b107c9632e6a1d1705f17834c89dcadc0/pytest-cov-6.0.0.tar.gz", hash = "sha256:fde0b595ca248bb8e2d76f020b465f3b107c9632e6a1d1705f17834c89dcadc0" }
@@ -205,6 +225,45 @@ wheels = [
     { url = "https://gitlab.adacore-it.com/api/v4/projects/1122/packages/pypi/files/93335cd7c0eaedb44882d75a7acb7df4b77cd7cd0d2255c93b28791716e81790/ruff-0.8.1-py3-none-win32.whl", hash = "sha256:93335cd7c0eaedb44882d75a7acb7df4b77cd7cd0d2255c93b28791716e81790" },
     { url = "https://gitlab.adacore-it.com/api/v4/projects/1122/packages/pypi/files/2954cdbe8dfd8ab359d4a30cd971b589d335a44d444b6ca2cb3d1da21b75e4b6/ruff-0.8.1-py3-none-win_amd64.whl", hash = "sha256:2954cdbe8dfd8ab359d4a30cd971b589d335a44d444b6ca2cb3d1da21b75e4b6" },
     { url = "https://gitlab.adacore-it.com/api/v4/projects/1122/packages/pypi/files/55873cc1a473e5ac129d15eccb3c008c096b94809d693fc7053f588b67822737/ruff-0.8.1-py3-none-win_arm64.whl", hash = "sha256:55873cc1a473e5ac129d15eccb3c008c096b94809d693fc7053f588b67822737" },
+]
+
+[[package]]
+name = "tomli"
+version = "2.2.1"
+source = { registry = "https://gitlab.adacore-it.com/api/v4/projects/eng%2Fai%2Fada-eval/packages/pypi/simple" }
+sdist = { url = "https://gitlab.adacore-it.com/api/v4/projects/1122/packages/pypi/files/cd45e1dc79c835ce60f7404ec8119f2eb06d38b1deba146f07ced3bbc44505ff/tomli-2.2.1.tar.gz", hash = "sha256:cd45e1dc79c835ce60f7404ec8119f2eb06d38b1deba146f07ced3bbc44505ff" }
+wheels = [
+    { url = "https://gitlab.adacore-it.com/api/v4/projects/1122/packages/pypi/files/678e4fa69e4575eb77d103de3df8a895e1591b48e740211bd1067378c69e8249/tomli-2.2.1-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:678e4fa69e4575eb77d103de3df8a895e1591b48e740211bd1067378c69e8249" },
+    { url = "https://gitlab.adacore-it.com/api/v4/projects/1122/packages/pypi/files/023aa114dd824ade0100497eb2318602af309e5a55595f76b626d6d9f3b7b0a6/tomli-2.2.1-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:023aa114dd824ade0100497eb2318602af309e5a55595f76b626d6d9f3b7b0a6" },
+    { url = "https://gitlab.adacore-it.com/api/v4/projects/1122/packages/pypi/files/ece47d672db52ac607a3d9599a9d48dcb2f2f735c6c2d1f34130085bb12b112a/tomli-2.2.1-cp311-cp311-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:ece47d672db52ac607a3d9599a9d48dcb2f2f735c6c2d1f34130085bb12b112a" },
+    { url = "https://gitlab.adacore-it.com/api/v4/projects/1122/packages/pypi/files/6972ca9c9cc9f0acaa56a8ca1ff51e7af152a9f87fb64623e31d5c83700080ee/tomli-2.2.1-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:6972ca9c9cc9f0acaa56a8ca1ff51e7af152a9f87fb64623e31d5c83700080ee" },
+    { url = "https://gitlab.adacore-it.com/api/v4/projects/1122/packages/pypi/files/c954d2250168d28797dd4e3ac5cf812a406cd5a92674ee4c8f123c889786aa8e/tomli-2.2.1-cp311-cp311-manylinux_2_5_i686.manylinux1_i686.manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:c954d2250168d28797dd4e3ac5cf812a406cd5a92674ee4c8f123c889786aa8e" },
+    { url = "https://gitlab.adacore-it.com/api/v4/projects/1122/packages/pypi/files/8dd28b3e155b80f4d54beb40a441d366adcfe740969820caf156c019fb5c7ec4/tomli-2.2.1-cp311-cp311-musllinux_1_2_aarch64.whl", hash = "sha256:8dd28b3e155b80f4d54beb40a441d366adcfe740969820caf156c019fb5c7ec4" },
+    { url = "https://gitlab.adacore-it.com/api/v4/projects/1122/packages/pypi/files/e59e304978767a54663af13c07b3d1af22ddee3bb2fb0618ca1593e4f593a106/tomli-2.2.1-cp311-cp311-musllinux_1_2_i686.whl", hash = "sha256:e59e304978767a54663af13c07b3d1af22ddee3bb2fb0618ca1593e4f593a106" },
+    { url = "https://gitlab.adacore-it.com/api/v4/projects/1122/packages/pypi/files/33580bccab0338d00994d7f16f4c4ec25b776af3ffaac1ed74e0b3fc95e885a8/tomli-2.2.1-cp311-cp311-musllinux_1_2_x86_64.whl", hash = "sha256:33580bccab0338d00994d7f16f4c4ec25b776af3ffaac1ed74e0b3fc95e885a8" },
+    { url = "https://gitlab.adacore-it.com/api/v4/projects/1122/packages/pypi/files/465af0e0875402f1d226519c9904f37254b3045fc5084697cefb9bdde1ff99ff/tomli-2.2.1-cp311-cp311-win32.whl", hash = "sha256:465af0e0875402f1d226519c9904f37254b3045fc5084697cefb9bdde1ff99ff" },
+    { url = "https://gitlab.adacore-it.com/api/v4/projects/1122/packages/pypi/files/2d0f2fdd22b02c6d81637a3c95f8cd77f995846af7414c5c4b8d0545afa1bc4b/tomli-2.2.1-cp311-cp311-win_amd64.whl", hash = "sha256:2d0f2fdd22b02c6d81637a3c95f8cd77f995846af7414c5c4b8d0545afa1bc4b" },
+    { url = "https://gitlab.adacore-it.com/api/v4/projects/1122/packages/pypi/files/4a8f6e44de52d5e6c657c9fe83b562f5f4256d8ebbfe4ff922c495620a7f6cea/tomli-2.2.1-cp312-cp312-macosx_10_13_x86_64.whl", hash = "sha256:4a8f6e44de52d5e6c657c9fe83b562f5f4256d8ebbfe4ff922c495620a7f6cea" },
+    { url = "https://gitlab.adacore-it.com/api/v4/projects/1122/packages/pypi/files/8d57ca8095a641b8237d5b079147646153d22552f1c637fd3ba7f4b0b29167a8/tomli-2.2.1-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:8d57ca8095a641b8237d5b079147646153d22552f1c637fd3ba7f4b0b29167a8" },
+    { url = "https://gitlab.adacore-it.com/api/v4/projects/1122/packages/pypi/files/4e340144ad7ae1533cb897d406382b4b6fede8890a03738ff1683af800d54192/tomli-2.2.1-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:4e340144ad7ae1533cb897d406382b4b6fede8890a03738ff1683af800d54192" },
+    { url = "https://gitlab.adacore-it.com/api/v4/projects/1122/packages/pypi/files/db2b95f9de79181805df90bedc5a5ab4c165e6ec3fe99f970d0e302f384ad222/tomli-2.2.1-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:db2b95f9de79181805df90bedc5a5ab4c165e6ec3fe99f970d0e302f384ad222" },
+    { url = "https://gitlab.adacore-it.com/api/v4/projects/1122/packages/pypi/files/40741994320b232529c802f8bc86da4e1aa9f413db394617b9a256ae0f9a7f77/tomli-2.2.1-cp312-cp312-manylinux_2_5_i686.manylinux1_i686.manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:40741994320b232529c802f8bc86da4e1aa9f413db394617b9a256ae0f9a7f77" },
+    { url = "https://gitlab.adacore-it.com/api/v4/projects/1122/packages/pypi/files/400e720fe168c0f8521520190686ef8ef033fb19fc493da09779e592861b78c6/tomli-2.2.1-cp312-cp312-musllinux_1_2_aarch64.whl", hash = "sha256:400e720fe168c0f8521520190686ef8ef033fb19fc493da09779e592861b78c6" },
+    { url = "https://gitlab.adacore-it.com/api/v4/projects/1122/packages/pypi/files/02abe224de6ae62c19f090f68da4e27b10af2b93213d36cf44e6e1c5abd19fdd/tomli-2.2.1-cp312-cp312-musllinux_1_2_i686.whl", hash = "sha256:02abe224de6ae62c19f090f68da4e27b10af2b93213d36cf44e6e1c5abd19fdd" },
+    { url = "https://gitlab.adacore-it.com/api/v4/projects/1122/packages/pypi/files/b82ebccc8c8a36f2094e969560a1b836758481f3dc360ce9a3277c65f374285e/tomli-2.2.1-cp312-cp312-musllinux_1_2_x86_64.whl", hash = "sha256:b82ebccc8c8a36f2094e969560a1b836758481f3dc360ce9a3277c65f374285e" },
+    { url = "https://gitlab.adacore-it.com/api/v4/projects/1122/packages/pypi/files/889f80ef92701b9dbb224e49ec87c645ce5df3fa2cc548664eb8a25e03127a98/tomli-2.2.1-cp312-cp312-win32.whl", hash = "sha256:889f80ef92701b9dbb224e49ec87c645ce5df3fa2cc548664eb8a25e03127a98" },
+    { url = "https://gitlab.adacore-it.com/api/v4/projects/1122/packages/pypi/files/7fc04e92e1d624a4a63c76474610238576942d6b8950a2d7f908a340494e67e4/tomli-2.2.1-cp312-cp312-win_amd64.whl", hash = "sha256:7fc04e92e1d624a4a63c76474610238576942d6b8950a2d7f908a340494e67e4" },
+    { url = "https://gitlab.adacore-it.com/api/v4/projects/1122/packages/pypi/files/f4039b9cbc3048b2416cc57ab3bda989a6fcf9b36cf8937f01a6e731b64f80d7/tomli-2.2.1-cp313-cp313-macosx_10_13_x86_64.whl", hash = "sha256:f4039b9cbc3048b2416cc57ab3bda989a6fcf9b36cf8937f01a6e731b64f80d7" },
+    { url = "https://gitlab.adacore-it.com/api/v4/projects/1122/packages/pypi/files/286f0ca2ffeeb5b9bd4fcc8d6c330534323ec51b2f52da063b11c502da16f30c/tomli-2.2.1-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:286f0ca2ffeeb5b9bd4fcc8d6c330534323ec51b2f52da063b11c502da16f30c" },
+    { url = "https://gitlab.adacore-it.com/api/v4/projects/1122/packages/pypi/files/a92ef1a44547e894e2a17d24e7557a5e85a9e1d0048b0b5e7541f76c5032cb13/tomli-2.2.1-cp313-cp313-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:a92ef1a44547e894e2a17d24e7557a5e85a9e1d0048b0b5e7541f76c5032cb13" },
+    { url = "https://gitlab.adacore-it.com/api/v4/projects/1122/packages/pypi/files/9316dc65bed1684c9a98ee68759ceaed29d229e985297003e494aa825ebb0281/tomli-2.2.1-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:9316dc65bed1684c9a98ee68759ceaed29d229e985297003e494aa825ebb0281" },
+    { url = "https://gitlab.adacore-it.com/api/v4/projects/1122/packages/pypi/files/e85e99945e688e32d5a35c1ff38ed0b3f41f43fad8df0bdf79f72b2ba7bc5272/tomli-2.2.1-cp313-cp313-manylinux_2_5_i686.manylinux1_i686.manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:e85e99945e688e32d5a35c1ff38ed0b3f41f43fad8df0bdf79f72b2ba7bc5272" },
+    { url = "https://gitlab.adacore-it.com/api/v4/projects/1122/packages/pypi/files/ac065718db92ca818f8d6141b5f66369833d4a80a9d74435a268c52bdfa73140/tomli-2.2.1-cp313-cp313-musllinux_1_2_aarch64.whl", hash = "sha256:ac065718db92ca818f8d6141b5f66369833d4a80a9d74435a268c52bdfa73140" },
+    { url = "https://gitlab.adacore-it.com/api/v4/projects/1122/packages/pypi/files/d920f33822747519673ee656a4b6ac33e382eca9d331c87770faa3eef562aeb2/tomli-2.2.1-cp313-cp313-musllinux_1_2_i686.whl", hash = "sha256:d920f33822747519673ee656a4b6ac33e382eca9d331c87770faa3eef562aeb2" },
+    { url = "https://gitlab.adacore-it.com/api/v4/projects/1122/packages/pypi/files/a198f10c4d1b1375d7687bc25294306e551bf1abfa4eace6650070a5c1ae2744/tomli-2.2.1-cp313-cp313-musllinux_1_2_x86_64.whl", hash = "sha256:a198f10c4d1b1375d7687bc25294306e551bf1abfa4eace6650070a5c1ae2744" },
+    { url = "https://gitlab.adacore-it.com/api/v4/projects/1122/packages/pypi/files/d3f5614314d758649ab2ab3a62d4f2004c825922f9e370b29416484086b264ec/tomli-2.2.1-cp313-cp313-win32.whl", hash = "sha256:d3f5614314d758649ab2ab3a62d4f2004c825922f9e370b29416484086b264ec" },
+    { url = "https://gitlab.adacore-it.com/api/v4/projects/1122/packages/pypi/files/a38aa0308e754b0e3c67e344754dff64999ff9b513e691d0e786265c93583c69/tomli-2.2.1-cp313-cp313-win_amd64.whl", hash = "sha256:a38aa0308e754b0e3c67e344754dff64999ff9b513e691d0e786265c93583c69" },
+    { url = "https://gitlab.adacore-it.com/api/v4/projects/1122/packages/pypi/files/cb55c73c5f4408779d0cf3eef9f762b9c9f147a77de7b258bef0a5628adc85cc/tomli-2.2.1-py3-none-any.whl", hash = "sha256:cb55c73c5f4408779d0cf3eef9f762b9c9f147a77de7b258bef0a5628adc85cc" },
 ]
 
 [[package]]
