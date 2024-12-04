@@ -4,23 +4,23 @@
 # Checks and Formatting
 
 check-ruff:
-	poetry run ruff check
+	uvx ruff check
 
 check-mypy:
-	poetry run mypy .
+	uv run mypy .
 
 check: check-ruff check-mypy
 
 format:
-	ruff format
+	uvx ruff format
 
 test:
-	poetry run pytest
+	uv run pytest
 
 # Run the tools
 
 pack-dataset:
-	poetry run python ada_eval/scripts/pack_datasets.py
+	uv run python ada_eval/scripts/pack_datasets.py
 
 unpack-dataset:
-	poetry run python ada_eval/scripts/unpack_datasets.py
+	uv run python ada_eval/scripts/unpack_datasets.py

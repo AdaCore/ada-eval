@@ -4,24 +4,22 @@ from pathlib import Path
 
 from ada_eval.common_types import OTHER_JSON_NAME, DatasetType
 from ada_eval.paths import COMPACTED_DATASETS_DIR, EXPANDED_DATASETS_DIR
-from ada_eval.scripts.pack_datasets import Args as PackArgs
-from ada_eval.scripts.pack_datasets import (
+from ada_eval.pack_datasets import (
     get_dataset_type,
     get_datasets,
     git_ls_files,
     is_collection_of_unpacked_datasets,
     is_dataset,
     is_sample,
+    pack_datasets,
 )
-from ada_eval.scripts.pack_datasets import main as pack_main
-from ada_eval.scripts.unpack_datasets import Args as UnpackArgs
-from ada_eval.scripts.unpack_datasets import (
+from ada_eval.unpack_datasets import (
     get_dataset_files,
     is_collection_of_packed_datasets,
     is_git_up_to_date,
     is_packed_dataset,
+    unpack_datasets,
 )
-from ada_eval.scripts.unpack_datasets import main as unpack_main
 
 
 def setup_dataset(dataset_root: Path):
@@ -283,12 +281,8 @@ def test_pack_unpack(tmp_path: Path):
     )
     assert res.stdout.strip() != ""
 
-    # Args for packing and unpacking
-    pack_args = PackArgs(src_dir=unpacked_dir, dest_dir=packed_dir)
-    unpack_args = UnpackArgs(src_dir=packed_dir, dest_dir=unpacked_dir, force=True)
-
     # Pack the dataset
-    pack_main(pack_args)
+    pack_datasets(src_dir=unpacked_dir, dest_dir=packed_dir)
 
     # Check that the dataset has been packed and there are no git changes
     assert is_collection_of_packed_datasets(packed_dir) is True
@@ -316,7 +310,7 @@ def test_pack_unpack(tmp_path: Path):
     assert res.stdout.strip() != ""
 
     # Unpack the dataset
-    unpack_main(unpack_args)
+    unpack_datasets(src_dir=packed_dir, dest_dir=unpacked_dir, force=True)
 
     # Check that the dataset has been unpacked and there are no git changes
     assert is_collection_of_unpacked_datasets(unpacked_dir) is True

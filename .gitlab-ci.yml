@@ -7,9 +7,8 @@ stages:
     - image:pe-base
   before_script:
     - printf "machine gitlab.adacore-it.com\n	login gitlab-ci-token\n	password ${CI_JOB_TOKEN}\n" > ~/.netrc
-    - pip install poetry -i https://gitlab.adacore-it.com/api/v4/projects/eng%2Fai%2Frag/packages/pypi/simple
-    - poetry config virtualenvs.in-project true
-    - poetry install
+    - pip install uv -i https://gitlab.adacore-it.com/api/v4/projects/eng%2Fai%2Fada-eval/packages/pypi/simple
+    - uv sync
 
 .lint:
   extends: .default
@@ -22,20 +21,20 @@ stages:
 ruff:
   extends: .lint
   script:
-    - ruff check --output-format=gitlab > code-quality-report.json
+    - uvx ruff check --output-format=gitlab > code-quality-report.json
 
 mypy:
   extends: .lint
   script:
-    - mypy $(find -type f -name "*.py" ! -path "**/.venv/**") --no-error-summary > mypy-out.txt || true  # "|| true" is used for preventing job failure when mypy find errors
-    - mypy-gitlab-code-quality < mypy-out.txt > code-quality-report.json
+    - uv run mypy $(find -type f -name "*.py" ! -path "**/.venv/**") --no-error-summary > mypy-out.txt || true  # "|| true" is used for preventing job failure when mypy find errors
+    - uv run mypy-gitlab-code-quality < mypy-out.txt > code-quality-report.json
 
 pytest:
   extends: .default
   stage: test
   needs: []
   script:
-    - poetry run pytest --junitxml=report.xml --cov --cov-report term-missing --cov-report xml:coverage.xml
+    - uv run pytest --junitxml=report.xml --cov --cov-report term-missing --cov-report xml:coverage.xml
   artifacts:
     when: always
     reports:

@@ -1,21 +1,36 @@
-[tool.poetry]
+[project]
 name = "ada-eval"
 version = "0.1.0"
 description = "Simple project for evaluating LLM based tools for Ada"
-authors = ["Rowan Walshe <walshe@adacore.com>"]
 readme = "README.md"
+authors = [{name = "Rowan Walshe", email = "walshe@adacore.com"}]
+requires-python = ">=3.12"
+dependencies = [
+    "dataclass-wizard>=0.32.0",
+]
 
-[tool.poetry.dependencies]
-python = "^3.12"
-dataclass-wizard = "^0.30.1"
+[dependency-groups]
+dev = [
+    "mypy-gitlab-code-quality>=1.1.0",
+    "mypy>=1.13.0",
+    "pytest>=8.3.4",
+    "pytest-cov>=6.0.0",
+    "ruff>=0.8.1",
+]
 
-[tool.poetry.group.dev.dependencies]
-ipykernel = "^6.29.5"
-pytest = "^8.3.3"
-pytest-cov = "^6.0.0"
-ruff = "^0.8.1"
-mypy = "^1.13.0"
-mypy-gitlab-code-quality = "^1.1.0"
+[project.scripts]
+ada-eval = "ada_eval.cli:main"
+
+[tool.uv]
+index-strategy = "unsafe-best-match"
+
+[[tool.uv.index]]
+name = "adacore"
+url = "https://gitlab.adacore-it.com/api/v4/projects/eng%2Fai%2Fada-eval/packages/pypi/simple"
+
+[[tool.uv.index]]
+name = "adacore"
+url = "https://gitlab.adacore-it.com/api/v4/projects/it%2Fpackage-registry/packages/pypi/simple"
 
 [tool.pytest.ini_options]
 addopts = "-ra -q --cov=ada_eval --cov-report=term-missing"
@@ -24,5 +39,5 @@ testpaths = [
 ]
 
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"

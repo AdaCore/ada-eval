@@ -248,12 +248,7 @@ def unpack_dataset(dataset_file: Path, dest_root_dir: Path, force: bool = False)
         unpack_sample_function(s, dest_dir)
 
 
-def main(args: Args):
-    dataset_files = get_dataset_files(args.src_dir)
+def unpack_datasets(src_dir: Path, dest_dir: Path, force: bool = False):
+    dataset_files = get_dataset_files(src_dir)
     for dataset_file in dataset_files:
-        unpack_dataset(dataset_file, args.dest_dir, args.force)
-
-
-if __name__ == "__main__":
-    args = parse_args()
-    main(args)
+        unpack_dataset(dataset_file, dest_dir, force)

@@ -210,13 +210,6 @@ def pack_dataset(dataset: UnpackedDataSetMetadata, dest_dir: Path):
             f.write(sample.to_json() + "\n")
 
 
-def pack_datasets(datasets: list[UnpackedDataSetMetadata], dest_dir: Path):
-    """Packs each datasets into into a jsonl file"""
-    dest_dir.mkdir(exist_ok=True, parents=True)
-    for dataset in datasets:
-        pack_dataset(dataset, dest_dir)
-
-
 def get_datasets(path: Path) -> list[UnpackedDataSetMetadata]:
     """Returns a list of datasets in the given path"""
     if not is_collection_of_unpacked_datasets(path) and not is_dataset(path):
@@ -238,11 +231,8 @@ def get_datasets(path: Path) -> list[UnpackedDataSetMetadata]:
     return datasets
 
 
-def main(args: Args):
-    datasets = get_datasets(args.src_dir)
-    pack_datasets(datasets, args.dest_dir)
-
-
-if __name__ == "__main__":
-    args = parse_args()
-    main(args)
+def pack_datasets(src_dir: Path, dest_dir: Path):
+    datasets = get_datasets(src_dir)
+    dest_dir.mkdir(exist_ok=True, parents=True)
+    for dataset in datasets:
+        pack_dataset(dataset, dest_dir)
