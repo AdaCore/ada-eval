@@ -294,10 +294,13 @@ def test_pack_unpack(tmp_path: Path):
         capture_output=True,
     )
     if res.stdout.strip() != "":
-        subprocess.run(
+        dbg = subprocess.run(
             ["git", "diff"],
             cwd=tmp_path,
+            encoding="utf-8",
+            capture_output=True,
         )
+        print(dbg.stdout)
     assert res.stdout.strip() == ""
 
     # Remove the unpacked dataset
@@ -327,8 +330,11 @@ def test_pack_unpack(tmp_path: Path):
         capture_output=True,
     )
     if res.stdout.strip() != "":
-        subprocess.run(
+        dbg = subprocess.run(
             ["git", "diff"],
             cwd=tmp_path,
+            encoding="utf-8",
+            capture_output=True,
         )
+        print(dbg.stdout)
     assert res.stdout.strip() == ""
