@@ -159,7 +159,7 @@ def pack_dataset(dataset: UnpackedDataSetMetadata, dest_dir: Path):
     """Packs a dataset into a jsonl file"""
     dest_file = dest_dir / f"{dataset.type.value}.jsonl"
     dest_file.write_text("")
-    for sample_dir in dataset.dir.iterdir():
+    for sample_dir in sorted(dataset.dir.iterdir()):
         if not is_sample(sample_dir):
             continue
         other_data = get_other_data(sample_dir)

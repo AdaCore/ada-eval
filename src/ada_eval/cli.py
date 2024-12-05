@@ -6,11 +6,11 @@ from ada_eval.paths import COMPACTED_DATASETS_DIR, EXPANDED_DATASETS_DIR
 
 
 def unpack_datasets(args):
-    unpack(args.src_dir, args.dest_dir, args.force)
+    unpack(args.src, args.dest, args.force)
 
 
 def pack_datasets(args):
-    pack(args.src_dir, args.dest_dir)
+    pack(args.src, args.dest)
 
 
 def main():
@@ -19,6 +19,7 @@ def main():
 
     # Unpack datasets subcommand
     unpack_parser = subparsers.add_parser("unpack", help="Unpack datasets")
+    unpack_parser.set_defaults(func=unpack_datasets)
     unpack_parser.add_argument(
         "--src",
         type=Path,
@@ -37,7 +38,6 @@ def main():
         action="store_true",
         help="Force unpacking even if there are uncommitted changes",
     )
-    unpack_parser.set_defaults(func=unpack_datasets)
 
     # Pack datasets subcommand
     pack_parser = subparsers.add_parser("pack", help="Pack datasets")
@@ -56,7 +56,7 @@ def main():
     )
 
     args = parser.parse_args()
-    print(args)
+    args.func(args)
 
 
 if __name__ == "__main__":
