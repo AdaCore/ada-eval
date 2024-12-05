@@ -182,7 +182,7 @@ def test_git_ls_files_committed(tmp_path: Path):
     file1 = tmp_path / "file1.txt"
     file1.write_text("content1", encoding="utf-8")
     subprocess.run(["git", "add", str(file1)], cwd=tmp_path, check=True)
-    subprocess.run(["git", "commit", "-m", '\"foo\"'], cwd=tmp_path, check=True)
+    subprocess.run(["git", "commit", "-m", '"foo"'], cwd=tmp_path, check=True)
     assert len(git_ls_files(tmp_path)) == 1
 
 
@@ -191,7 +191,7 @@ def test_git_ls_files_deleted(tmp_path: Path):
     file1 = tmp_path / "file1.txt"
     file1.write_text("content1", encoding="utf-8")
     subprocess.run(["git", "add", str(file1)], cwd=tmp_path, check=True)
-    subprocess.run(["git", "commit", "-m", '\"foo\"'], cwd=tmp_path, check=True)
+    subprocess.run(["git", "commit", "-m", '"foo"'], cwd=tmp_path, check=True)
     file1.unlink()
     assert len(git_ls_files(tmp_path)) == 0
 
@@ -201,7 +201,7 @@ def test_git_ls_files_modified(tmp_path: Path):
     file1 = tmp_path / "file1.txt"
     file1.write_text("content1", encoding="utf-8")
     subprocess.run(["git", "add", str(file1)], cwd=tmp_path, check=True)
-    subprocess.run(["git", "commit", "-m", '\"foo\"'], cwd=tmp_path, check=True)
+    subprocess.run(["git", "commit", "-m", '"foo"'], cwd=tmp_path, check=True)
     file1.write_text("modified content", encoding="utf-8")
     assert len(git_ls_files(tmp_path)) == 1
 
@@ -258,7 +258,7 @@ def test_pack_unpack(tmp_path: Path):
     subprocess.run(["git", "init"], cwd=tmp_path, check=True)
     subprocess.run(["git", "add", "."], cwd=tmp_path, check=True)
     subprocess.run(
-        ["git", "commit", "-m", '\"Starting state\"'],
+        ["git", "commit", "-m", '"Starting state"'],
         cwd=tmp_path,
         check=True,
         encoding="utf-8",
