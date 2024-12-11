@@ -3,7 +3,6 @@
 import json
 import re
 from dataclasses import dataclass
-from enum import Enum
 from pathlib import Path
 from typing import Any, Dict
 
@@ -21,16 +20,8 @@ PROMPT_FILE_NAME = "prompt.md"
 REFERENCE_ANSWER_FILE_NAME = "reference_answer.md"
 CORRECT_STATEMENTS_KEY = "correct_statements"
 INCORRECT_STATEMENTS_KEY = "incorrect_statements"
-
-
-# Enum that specifies the type of dataset
-class DatasetType(Enum):
-    ADA = "ada"
-    EXPLAIN = "explain"
-    SPARK = "spark"
-
-    def __str__(self) -> str:
-        return self.name
+LOCATION_KEY = "location"
+LOCATION_SOLUTION_KEY = "location_solution"
 
 
 @dataclass(kw_only=True)
@@ -102,7 +93,7 @@ class BaseSample(JSONWizard):
             src_path.parent.mkdir(parents=True, exist_ok=True)
             with open(src_path, "w") as f:
                 f.write(contents)
-        other_json = {"location": self.location.to_dict()}
+        other_json = {LOCATION_KEY: self.location.to_dict()}
         with open(dest_dir / OTHER_JSON_NAME, "w") as f:
             f.write(json.dumps(other_json, indent=4))
 
@@ -131,8 +122,8 @@ class AdaSample(BaseSample):
         if self.location_solution:
             location_solution = self.location_solution.to_dict()
         other_json = {
-            "location": self.location.to_dict(),
-            "location_solution": location_solution,
+            LOCATION_KEY: self.location.to_dict(),
+            LOCATION_SOLUTION_KEY: location_solution,
         }
         with open(dest_dir / OTHER_JSON_NAME, "w") as f:
             f.write(json.dumps(other_json, indent=4))
@@ -158,8 +149,8 @@ class ExplainSample(BaseSample):
         with open(dest_dir / REFERENCE_ANSWER_FILE_NAME, "w") as f:
             f.write(self.solution.reference_answer)
         other_json = {
-            "correct_statements": self.solution.correct_statements,
-            "incorrect_statements": self.solution.incorrect_statements,
+            CORRECT_STATEMENTS_KEY: self.solution.correct_statements,
+            INCORRECT_STATEMENTS_KEY: self.solution.incorrect_statements,
         }
         with open(dest_dir / OTHER_JSON_NAME, "w") as f:
             f.write(json.dumps(other_json, indent=4))

@@ -20,7 +20,7 @@ test:
 # Run the tools
 
 pack-dataset:
-	uv run ada_eval pack
+	uv run ada-eval pack
 
 unpack-dataset:
-	uv run ada_eval unpack
+	uv run ada-eval unpack

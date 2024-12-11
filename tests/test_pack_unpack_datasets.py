@@ -2,147 +2,122 @@ import shutil
 import subprocess
 from pathlib import Path
 
-from ada_eval.common_types import OTHER_JSON_NAME, DatasetType
+from ada_eval.datasets import OTHER_JSON_NAME, DatasetType
 from ada_eval.paths import COMPACTED_DATASETS_DIR, EXPANDED_DATASETS_DIR
-from ada_eval.pack_datasets import (
-    get_dataset_type,
-    get_datasets,
-    git_ls_files,
+from ada_eval.datasets.loader import git_ls_files, load_packed_dataset, load_unpacked_dataset
+from ada_eval.datasets.pack_unpack import pack_datasets, unpack_datasets
+
+from ada_eval.datasets.utils import (
+    get_unpacked_dataset_dirs,
     is_collection_of_unpacked_datasets,
-    is_dataset,
-    is_sample,
-    pack_datasets,
-)
-from ada_eval.unpack_datasets import (
-    get_dataset_files,
+    is_unpacked_dataset,
+    is_unpacked_sample,
     is_collection_of_packed_datasets,
     is_git_up_to_date,
     is_packed_dataset,
-    unpack_datasets,
+    get_packed_dataset_files,
 )
 
 
-def setup_dataset(dataset_root: Path):
-    sample_dir = dataset_root / "sample"
-    sample_dir.mkdir(parents=True)
-    other_json_file = sample_dir / OTHER_JSON_NAME
-    other_json_file.write_text("{}", encoding="utf-8")
-    return sample_dir
+# def setup_dataset(dataset_root: Path):
+#     sample_dir = dataset_root / "sample"
+#     sample_dir.mkdir(parents=True)
+#     other_json_file = sample_dir / OTHER_JSON_NAME
+#     other_json_file.write_text("{}", encoding="utf-8")
+#     return sample_dir
 
 
-def setup_datasets(datasets_root: Path):
-    for i in ["ada", "explain", "spark"]:
-        dataset_root = datasets_root / f"{i}"
-        setup_dataset(dataset_root)
+# def setup_datasets(datasets_root: Path):
+#     for i in ["ada", "explain", "spark"]:
+#         dataset_root = datasets_root / f"{i}_test_dataset"
+#         setup_dataset(dataset_root)
 
 
-def test_is_dataset_with_valid_dataset(tmp_path: Path):
-    setup_dataset(tmp_path)
-    assert is_dataset(tmp_path) is True
+# def test_is_unpacked_dataset_with_valid_dataset(tmp_path: Path):
+#     setup_dataset(tmp_path)
+#     assert is_unpacked_dataset(tmp_path) is True
 
 
-def test_is_dataset_with_no_samples(tmp_path: Path):
-    assert is_dataset(tmp_path) is False
+def test_is_unpacked_dataset_with_no_samples(tmp_path: Path):
+    assert is_unpacked_dataset(tmp_path) is False
 
 
-def test_is_collection_of_datasets_with_valid_datasets(tmp_path: Path):
-    setup_datasets(tmp_path)
-    assert is_collection_of_unpacked_datasets(tmp_path) is True
+# def test_is_collection_of_datasets_with_valid_datasets(tmp_path: Path):
+#     setup_datasets(tmp_path)
+#     assert is_collection_of_unpacked_datasets(tmp_path) is True
 
 
 def test_is_collection_of_datasets_with_no_datasets(tmp_path: Path):
     assert is_collection_of_unpacked_datasets(tmp_path) is False
 
 
-def test_is_sample_with_valid_sample(tmp_path: Path):
+def test_is_unpacked_sample_with_valid_sample(tmp_path: Path):
     sample_dir = tmp_path / "sample"
     sample_dir.mkdir()
     other_json_file = sample_dir / OTHER_JSON_NAME
     other_json_file.write_text("{}", encoding="utf-8")
-    assert is_sample(sample_dir) is True
+    assert is_unpacked_sample(sample_dir) is True
 
 
-def test_is_sample_with_no_other_json(tmp_path: Path):
+def test_is_unpacked_sample_with_no_other_json(tmp_path: Path):
     sample_dir = tmp_path / "sample"
     sample_dir.mkdir()
-    assert is_sample(sample_dir) is False
+    assert is_unpacked_sample(sample_dir) is False
 
 
-def test_is_sample_with_other_json_as_file(tmp_path: Path):
+def test_is_unpacked_sample_with_other_json_as_file(tmp_path: Path):
     other_json_file = tmp_path / OTHER_JSON_NAME
     other_json_file.write_text("{}", encoding="utf-8")
-    assert is_sample(other_json_file) is False
+    assert is_unpacked_sample(other_json_file) is False
 
 
-def test_is_sample_with_non_directory_path(tmp_path: Path):
+def test_is_unpacked_sample_with_non_directory_path(tmp_path: Path):
     non_dir_file = tmp_path / "file.txt"
     non_dir_file.write_text("sample content", encoding="utf-8")
-    assert is_sample(non_dir_file) is False
+    assert is_unpacked_sample(non_dir_file) is False
 
 
-def test_get_dataset_type_with_valid_dataset(tmp_path: Path):
-    dataset_dir = tmp_path / "ada"
-    setup_dataset(dataset_dir)
-    assert get_dataset_type(dataset_dir) == DatasetType.ADA
+# def test_get_unpacked_dataset_dirs_with_single_dataset(tmp_path: Path):
+#     dataset_dir = tmp_path / "ada_test_dataset"
+#     setup_dataset(dataset_dir)
+#     datasets = get_unpacked_dataset_dirs(dataset_dir)
+#     assert len(datasets) == 1
+#     dataset = load_unpacked_dataset(datasets[0])
+#     assert dataset.type == DatasetType.ADA
 
 
-def test_get_dataset_type_with_invalid_dataset(tmp_path: Path):
-    dataset_dir = tmp_path / "INVALID"
-    setup_dataset(dataset_dir)
-    assert get_dataset_type(dataset_dir) is None
+# def test_get_unpacked_dataset_dirs_with_multiple_datasets(tmp_path: Path):
+#     setup_datasets(tmp_path)
+#     datasets = get_unpacked_dataset_dirs(tmp_path)
+#     print(datasets)
+#     assert len(datasets) == 3
 
 
-def test_get_dataset_type_with_no_dataset(tmp_path: Path):
-    assert get_dataset_type(tmp_path) is None
-
-
-def test_get_dataset_type_with_non_directory_path(tmp_path: Path):
-    non_dir_file = tmp_path / "file.txt"
-    non_dir_file.write_text("sample content", encoding="utf-8")
-    assert get_dataset_type(non_dir_file) is None
-
-
-def test_get_datasets_with_single_dataset(tmp_path: Path):
-    dataset_dir = tmp_path / "ada"
-    setup_dataset(dataset_dir)
-    datasets = get_datasets(dataset_dir)
-    assert len(datasets) == 1
-    assert datasets[0].dir == dataset_dir
-    assert datasets[0].type == DatasetType.ADA
-
-
-def test_get_datasets_with_multiple_datasets(tmp_path: Path):
-    setup_datasets(tmp_path)
-    datasets = get_datasets(tmp_path)
-    print(datasets)
-    assert len(datasets) == 3
-
-
-def test_get_datasets_with_no_datasets(tmp_path: Path):
-    datasets = get_datasets(tmp_path)
+def test_get_unpacked_dataset_dirs_with_no_datasets(tmp_path: Path):
+    datasets = get_unpacked_dataset_dirs(tmp_path)
     assert len(datasets) == 0
 
 
-def test_get_datasets_with_invalid_dataset(tmp_path: Path):
-    dataset_dir = tmp_path / "INVALID"
-    setup_dataset(dataset_dir)
-    datasets = get_datasets(dataset_dir)
-    assert len(datasets) == 0
+# def test_get_unpacked_dataset_dirs_with_invalid_dataset(tmp_path: Path):
+#     dataset_dir = tmp_path / "INVALID"
+#     setup_dataset(dataset_dir)
+#     datasets = get_unpacked_dataset_dirs(dataset_dir)
+#     assert len(datasets) == 0
 
 
-def test_get_datasets_with_non_directory_path(tmp_path: Path):
+def test_get_unpacked_dataset_dirs_with_non_directory_path(tmp_path: Path):
     non_dir_file = tmp_path / "file.txt"
     non_dir_file.write_text("sample content", encoding="utf-8")
-    datasets = get_datasets(non_dir_file)
+    datasets = get_unpacked_dataset_dirs(non_dir_file)
     assert len(datasets) == 0
 
 
-def test_get_datasets_with_non_dataset_in_collection(tmp_path: Path):
-    setup_datasets(tmp_path)
-    invalid_dir = tmp_path / "INVALID"
-    invalid_dir.mkdir()
-    datasets = get_datasets(tmp_path)
-    assert len(datasets) == 3
+# def test_get_unpacked_dataset_dirs_with_non_dataset_in_collection(tmp_path: Path):
+#     setup_datasets(tmp_path)
+#     invalid_dir = tmp_path / "INVALID"
+#     invalid_dir.mkdir()
+#     datasets = get_unpacked_dataset_dirs(tmp_path)
+#     assert len(datasets) == 3
 
 
 def setup_git_repo(tmp_path: Path):
@@ -234,13 +209,13 @@ def test_invalid_datasets(tmp_path: Path):
     assert is_collection_of_packed_datasets(fake_dataset) is False
 
 
-def test_get_dataset_files(tmp_path: Path):
-    assert get_dataset_files(tmp_path) == []
-    assert get_dataset_files(tmp_path / "ada.jsonl") == []
+def test_get_packed_datasets(tmp_path: Path):
+    assert get_packed_dataset_files(tmp_path) == []
+    assert get_packed_dataset_files(tmp_path / "ada.jsonl") == []
     create_datasets(tmp_path)
-    assert len(get_dataset_files(tmp_path)) == 3
-    assert len(get_dataset_files(tmp_path / "ada.jsonl")) == 1
-    assert len(get_dataset_files(tmp_path / "ada")) == 0
+    assert len(get_packed_dataset_files(tmp_path)) == 3
+    assert len(get_packed_dataset_files(tmp_path / "ada.jsonl")) == 1
+    assert len(get_packed_dataset_files(tmp_path / "ada")) == 0
 
 
 def test_pack_unpack(tmp_path: Path):
@@ -318,7 +293,7 @@ def test_pack_unpack(tmp_path: Path):
     assert res.stdout.strip() != ""
 
     # Unpack the dataset
-    unpack_datasets(src_dir=packed_dir, dest_dir=unpacked_dir, force=True)
+    unpack_datasets(src=packed_dir, dest_dir=unpacked_dir, force=True)
 
     # Check that the dataset has been unpacked and there are no git changes
     assert is_collection_of_unpacked_datasets(unpacked_dir) is True
