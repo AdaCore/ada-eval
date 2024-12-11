@@ -38,7 +38,7 @@ class Dataset:
         dest_file = dest_dir / f"{self.type}_{self.name}.jsonl"
         with dest_file.open("w") as f:
             for sample in self.samples:
-                f.write(sample.to_json() + "\n")
+                f.write(sample.model_dump_json() + "\n")
 
 
 class AdaDataset(Dataset):

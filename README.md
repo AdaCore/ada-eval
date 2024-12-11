@@ -3,17 +3,17 @@ Framework for evaluating LLM based tools for Ada/SPARK use cases.
 
 ## Brainstorming
 
-- [ ] Dataset - Each item in the dataset should include
-  - [ ] task_type (string) - text that describes the type of problem. Either "explain", "ada", "spark"
-  - [ ] input_code (string) - text that we can run gnatchop on to get the starting Ada code
-  - [ ] location_of_interest (string) - the line number and (optionaly) the column that the problem is interested in (line number of subprogram specification or )
-  - [ ] prompt (optional string) - optional prompt to provide context for the problem. Imagining for explain tasks, the user may want different things explained for the same piece of code
-  - [ ] canonical_solution
-    - [ ] coding completion tasks (string) - text that we can run gnatchop, that would give a working solution to the problem
-    - [ ] explain task (object)
-      - [ ] explanation written by a domain expert
-      - [ ] list of key points to hit in the explanation
-      - [ ] maybe also a list of points that the explanation should not include, as they would be incorrect
+- [x] Dataset - Each item in the dataset should include
+  - [x] task_type (string) - text that describes the type of problem. Either "explain", "ada", "spark"
+  - [x] input_code (string) - text that we can run gnatchop on to get the starting Ada code
+  - [x] location_of_interest (string) - the line number and (optionaly) the column that the problem is interested in (line number of subprogram specification or )
+  - [x] prompt (optional string) - optional prompt to provide context for the problem. Imagining for explain tasks, the user may want different things explained for the same piece of code
+  - [x] canonical_solution
+    - [x] coding completion tasks (string) - text that we can run gnatchop, that would give a working solution to the problem
+    - [x] explain task (object)
+    - [x] explanation written by a domain expert
+      - [x] list of key points to hit in the explanation
+      - [x] maybe also a list of points that the explanation should not include, as they would be incorrect
 - [ ] Tool config - a json file that specifies any options that should be passed to the tool. This could include things like
   - [ ] timeout and/or iteration limit
   - [ ] thread count

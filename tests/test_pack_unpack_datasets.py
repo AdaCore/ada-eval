@@ -2,9 +2,11 @@ import shutil
 import subprocess
 from pathlib import Path
 
-from ada_eval.datasets import OTHER_JSON_NAME, DatasetType
+from ada_eval.datasets import OTHER_JSON_NAME
 from ada_eval.paths import COMPACTED_DATASETS_DIR, EXPANDED_DATASETS_DIR
-from ada_eval.datasets.loader import git_ls_files, load_packed_dataset, load_unpacked_dataset
+from ada_eval.datasets.loader import (
+    git_ls_files,
+)
 from ada_eval.datasets.pack_unpack import pack_datasets, unpack_datasets
 
 from ada_eval.datasets.utils import (

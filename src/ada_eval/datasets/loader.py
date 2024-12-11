@@ -121,12 +121,12 @@ def load_unpacked_dataset(path: Path) -> Dataset:
                 )
                 location_solution = None
                 if other_data.get(LOCATION_SOLUTION_KEY, None):
-                    location_solution = Location.from_dict(
+                    location_solution = Location.model_validate(
                         other_data[LOCATION_SOLUTION_KEY]
                     )
                 sample = sample_class(
                     name=sample_dir.name,
-                    location=Location.from_dict(other_data[LOCATION_KEY]),
+                    location=Location.model_validate(other_data[LOCATION_KEY]),
                     location_solution=location_solution,
                     prompt=prompt,
                     comments=comments,
@@ -137,7 +137,7 @@ def load_unpacked_dataset(path: Path) -> Dataset:
             case DatasetType.EXPLAIN:
                 sample = ExplainSample(
                     name=sample_dir.name,
-                    location=Location.from_dict(other_data[LOCATION_KEY]),
+                    location=Location.model_validate(other_data[LOCATION_KEY]),
                     prompt=prompt,
                     comments=comments,
                     sources=base_files,
@@ -181,5 +181,5 @@ def load_packed_dataset(path: Path) -> Dataset:
             raise ValueError(f"Unknown dataset type: {dataset_type}")
     with path.open() as f:
         lines = f.readlines()
-    samples = [sample_class.from_json(x) for x in lines]
+    samples = [sample_class.model_validate_json(x, strict=True) for x in lines]
     return dataset_class(name=dataset_name, samples=samples, type=dataset_type)

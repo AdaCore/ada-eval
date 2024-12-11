@@ -2,11 +2,10 @@
 
 import json
 import re
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict
 
-from dataclass_wizard import JSONWizard  # type: ignore
+from pydantic import BaseModel, field_validator, field_serializer
 
 # Unpacked samples should always have at least:
 # - one file: "other.json"
@@ -24,27 +23,35 @@ LOCATION_KEY = "location"
 LOCATION_SOLUTION_KEY = "location_solution"
 
 
-@dataclass(kw_only=True)
-class Sloc:
+class Sloc(BaseModel):
     line: int
     column: int | None
 
 
-@dataclass(kw_only=True)
-class Location(JSONWizard):
+class Location(BaseModel):
     path: Path
     start: Sloc | None
     end: Sloc | None
 
+    @field_validator("path")
+    @classmethod
+    def path_must_be_relative(cls, value):
+        path = Path(value)
+        if path.is_absolute():
+            raise ValueError("Path must be relative")
+        return path
 
-@dataclass(kw_only=True)
-class SampleTemplate:
+    @field_serializer("path", when_used="always")
+    def serlialize_path(self, path):
+        return str(path)
+
+
+class SampleTemplate(BaseModel):
     sources: Dict[Path, str]
     others: Dict[str, Any]
 
 
-@dataclass(kw_only=True)
-class ExplainSolution:
+class ExplainSolution(BaseModel):
     reference_answer: str
     correct_statements: list[str]
     incorrect_statements: list[str]
@@ -53,8 +60,7 @@ class ExplainSolution:
 VALID_SAMPLE_NAME_PATTERN = re.compile(r"^[\w-]+$")
 
 
-@dataclass(kw_only=True)
-class BaseSample(JSONWizard):
+class BaseSample(BaseModel):
     """
     name (str): Name of the sample. Should be unique within the dataset.
     location (Location): Location of the sample. The path should be relative
@@ -74,12 +80,15 @@ class BaseSample(JSONWizard):
     canonical_solution: Any
     comments: str
 
-    def __post_init__(self):
-        if not VALID_SAMPLE_NAME_PATTERN.match(self.name):
+    @field_validator("name")
+    @classmethod
+    def name_must_be_simple(cls, value):
+        if not VALID_SAMPLE_NAME_PATTERN.match(value):
             raise ValueError(
-                f"Invalid sample name: {self.name}. Please only use "
+                f"Invalid sample name: {value}. Please only use "
                 "alphanumeric characters, hyphens, and underscores."
             )
+        return value
 
     def unpack(self, dataset_root: Path):
         dest_dir = dataset_root / self.name
@@ -93,7 +102,7 @@ class BaseSample(JSONWizard):
             src_path.parent.mkdir(parents=True, exist_ok=True)
             with open(src_path, "w") as f:
                 f.write(contents)
-        other_json = {LOCATION_KEY: self.location.to_dict()}
+        other_json = {LOCATION_KEY: self.location.model_dump()}
         with open(dest_dir / OTHER_JSON_NAME, "w") as f:
             f.write(json.dumps(other_json, indent=4))
 
@@ -105,7 +114,6 @@ class BaseSample(JSONWizard):
                 f.write(contents)
 
 
-@dataclass(kw_only=True)
 class AdaSample(BaseSample):
     """
     location_solution (Location | None): The act of writing the solution may
@@ -127,9 +135,9 @@ class AdaSample(BaseSample):
         dest_dir = dataset_root / self.name
         location_solution = None
         if self.location_solution:
-            location_solution = self.location_solution.to_dict()
+            location_solution = self.location_solution.model_dump()
         other_json = {
-            LOCATION_KEY: self.location.to_dict(),
+            LOCATION_KEY: self.location.model_dump(),
             LOCATION_SOLUTION_KEY: location_solution,
         }
         with open(dest_dir / OTHER_JSON_NAME, "w") as f:
@@ -146,7 +154,6 @@ class AdaSample(BaseSample):
                 f.write(contents)
 
 
-@dataclass(kw_only=True)
 class ExplainSample(BaseSample):
     canonical_solution: ExplainSolution
 
@@ -163,6 +170,5 @@ class ExplainSample(BaseSample):
             f.write(json.dumps(other_json, indent=4))
 
 
-@dataclass(kw_only=True)
 class SparkSample(AdaSample):
     pass

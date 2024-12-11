@@ -12,8 +12,10 @@ def call_unpack_datasets(args):
 def call_pack_datasets(args):
     pack_datasets(args.src, args.dest)
 
+
 def call_generate_completions(args):
     generate_completions(args.src)
+
 
 def main():
     parser = argparse.ArgumentParser(description="CLI for Eval Framework")
@@ -65,6 +67,22 @@ def main():
         type=Path,
         help="Path to dataset or dir of datasets",
         default=COMPACTED_DATASETS_DIR,
+    )
+    generate_parser.add_argument(
+        "--threads",
+        type=int,
+        help="Number of samples to generate in parallel",
+        default=1,
+    )
+    generate_parser.add_argument(
+        "--tool",
+        type=str,
+        help="Name of tool to use for generation",
+    )
+    generate_parser.add_argument(
+        "--tool_config_file",
+        type=Path,
+        help="Path to tool configuration file",
     )
 
     args = parser.parse_args()
