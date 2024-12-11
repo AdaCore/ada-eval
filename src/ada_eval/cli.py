@@ -12,6 +12,8 @@ def call_unpack_datasets(args):
 def call_pack_datasets(args):
     pack_datasets(args.src, args.dest)
 
+def call_generate_completions(args):
+    generate_completions(args.src)
 
 def main():
     parser = argparse.ArgumentParser(description="CLI for Eval Framework")
@@ -57,12 +59,12 @@ def main():
 
     # Generate completions for a dataset
     generate_parser = subparsers.add_parser("generate", help="Generate completions")
-    generate_parser.set_defaults(func=generate_completions)
+    generate_parser.set_defaults(func=call_generate_completions)
     generate_parser.add_argument(
         "--src",
         type=Path,
         help="Path to dataset or dir of datasets",
-        default=EXPANDED_DATASETS_DIR,
+        default=COMPACTED_DATASETS_DIR,
     )
 
     args = parser.parse_args()

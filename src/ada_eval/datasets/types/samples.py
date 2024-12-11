@@ -97,6 +97,13 @@ class BaseSample(JSONWizard):
         with open(dest_dir / OTHER_JSON_NAME, "w") as f:
             f.write(json.dumps(other_json, indent=4))
 
+    def unpack_for_generation(self, sample_dir: Path):
+        for file, contents in self.sources.items():
+            src_path = sample_dir / file
+            src_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(src_path, "w") as f:
+                f.write(contents)
+
 
 @dataclass(kw_only=True)
 class AdaSample(BaseSample):

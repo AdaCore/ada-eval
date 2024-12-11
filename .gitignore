@@ -1,5 +1,6 @@
 obj/
 .ruff_cache
+/data/in_progress_generation
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

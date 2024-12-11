@@ -24,3 +24,6 @@ pack-dataset:
 
 unpack-dataset:
 	uv run ada-eval unpack
+
+generate-completions:
+	uv run ada-eval generate
