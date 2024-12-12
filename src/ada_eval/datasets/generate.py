@@ -5,7 +5,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 from ada_eval.datasets.loader import load_packed_dataset
 from ada_eval.datasets.types.datasets import Dataset
-from ada_eval.datasets.types.samples import BaseSample
+from ada_eval.datasets.types.samples import Sample
 from ada_eval.datasets.utils import get_packed_dataset_files
 from ada_eval.paths import GENERATION_WORKING_DIR
 from ada_eval.tools.generic_tool import GenericTool
@@ -15,7 +15,7 @@ def get_dataset_working_dir(dataset: Dataset) -> Path:
     return GENERATION_WORKING_DIR / f"{dataset.type}_{dataset.name}"
 
 
-def get_sample_working_dir(sample: BaseSample, dataset_working_dir: Path) -> Path:
+def get_sample_working_dir(sample: Sample, dataset_working_dir: Path) -> Path:
     return dataset_working_dir / sample.name
 
 
@@ -50,10 +50,22 @@ def generate_completions(packed_dataset_or_dir: Path, threads: int, tool: Generi
         )
         return
 
-    samples: list[tuple[Path, BaseSample]] = []
+    samples: list[tuple[Path, Sample]] = []
     for dataset in datasets:
         unpack_dataset_for_generation(dataset)
         dataset_wd = get_dataset_working_dir(dataset)
         samples.extend(
             [(get_sample_working_dir(x, dataset_wd), x) for x in dataset.samples]
         )
+
+    results = []
+    with ThreadPoolExecutor(max_workers=threads) as executor:
+        futures = [executor.submit(tool.apply, wd, sample) for wd, sample in samples]
+        for future in futures:
+            try:
+                results.append(future.result())
+            except Exception as e:
+                print(f"Error processing sample: {e}")
+
+    # TODO handle results
+    print("Generation Results:", results)

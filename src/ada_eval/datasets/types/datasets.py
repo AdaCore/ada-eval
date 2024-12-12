@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from .samples import (
-    BaseSample,
+    Sample,
     AdaSample,
     ExplainSample,
     SparkSample,
@@ -26,7 +26,7 @@ class DatasetType(Enum):
 class Dataset:
     name: str
     type: DatasetType
-    samples: list[BaseSample]
+    samples: list[Sample]
 
     def save_unpacked(self, unpacked_datasets_root: Path):
         dataset_root = unpacked_datasets_root / f"{self.type}_{self.name}"

@@ -3,6 +3,7 @@ from pathlib import Path
 from ada_eval.datasets.generate import generate_completions
 from ada_eval.datasets.pack_unpack import pack_datasets, unpack_datasets
 from ada_eval.paths import COMPACTED_DATASETS_DIR, EXPANDED_DATASETS_DIR
+from ada_eval.tools.factory import create_tool
 
 
 def call_unpack_datasets(args):
@@ -14,7 +15,12 @@ def call_pack_datasets(args):
 
 
 def call_generate_completions(args):
-    generate_completions(args.src)
+    tool = create_tool(args.tool, args.tool_config_file)
+    generate_completions(
+        packed_dataset_or_dir=args.dataset,
+        threads=args.threads,
+        tool=tool,
+    )
 
 
 def main():
@@ -63,9 +69,9 @@ def main():
     generate_parser = subparsers.add_parser("generate", help="Generate completions")
     generate_parser.set_defaults(func=call_generate_completions)
     generate_parser.add_argument(
-        "--src",
+        "--dataset",
         type=Path,
-        help="Path to dataset or dir of datasets",
+        help="Path to packed dataset or dir of packed datasets",
         default=COMPACTED_DATASETS_DIR,
     )
     generate_parser.add_argument(

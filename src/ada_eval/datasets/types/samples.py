@@ -3,7 +3,7 @@
 import json
 import re
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 from pydantic import BaseModel, field_validator, field_serializer
 
@@ -46,11 +46,6 @@ class Location(BaseModel):
         return str(path)
 
 
-class SampleTemplate(BaseModel):
-    sources: Dict[Path, str]
-    others: Dict[str, Any]
-
-
 class ExplainSolution(BaseModel):
     reference_answer: str
     correct_statements: list[str]
@@ -60,14 +55,22 @@ class ExplainSolution(BaseModel):
 VALID_SAMPLE_NAME_PATTERN = re.compile(r"^[\w-]+$")
 
 
-class BaseSample(BaseModel):
+class SampleResult(BaseModel):
+    exit_code: int
+    stdout: str
+    stderr: str
+    runtime_ms: int
+    # cpu_time  # TODO
+
+
+class Sample(BaseModel):
     """
     name (str): Name of the sample. Should be unique within the dataset.
     location (Location): Location of the sample. The path should be relative
         to to the sample root.
     prompt (str): Prompt for the sample
-    sources (Dict[Path, str]): Source files for the sample, with the path as
-        the key and the contents as the value. Will include any template files.
+    sources (dict[Path, str]): Source files for the sample, with the path as
+        the key and the contents as the value.
     canonical_solution (Any): Canonical solution for the sample. The type
         should be constrained by the subclass.
     comments (str): Any comments about the sample by the author. May be empty.
@@ -76,7 +79,7 @@ class BaseSample(BaseModel):
     name: str
     location: Location
     prompt: str
-    sources: Dict[Path, str]
+    sources: dict[Path, str]
     canonical_solution: Any
     comments: str
 
@@ -114,21 +117,21 @@ class BaseSample(BaseModel):
                 f.write(contents)
 
 
-class AdaSample(BaseSample):
+class AdaSample(Sample):
     """
     location_solution (Location | None): The act of writing the solution may
         move the area of interest. This field should be used to specify the
         updated location if needed.
-    canonical_solution (Dict[Path, str]): Canonical solution for the sample.
+    canonical_solution (dict[Path, str]): Canonical solution for the sample.
         The path should be relative to the sample root. The values should be
         the contents of the files.
-    unit_tests (Dict[Path, str]): Same structure as used for sources or
+    unit_tests (dict[Path, str]): Same structure as used for sources or
         canonical_solution. This should contain the unit tests for the sample.
     """
 
     location_solution: Location | None
-    canonical_solution: Dict[Path, str]
-    unit_tests: Dict[Path, str]
+    canonical_solution: dict[Path, str]
+    unit_tests: dict[Path, str]
 
     def unpack(self, dataset_root: Path):
         super().unpack(dataset_root)
@@ -154,7 +157,7 @@ class AdaSample(BaseSample):
                 f.write(contents)
 
 
-class ExplainSample(BaseSample):
+class ExplainSample(Sample):
     canonical_solution: ExplainSolution
 
     def unpack(self, dataset_root: Path):
