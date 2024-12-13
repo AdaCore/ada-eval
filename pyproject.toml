@@ -7,6 +7,7 @@ authors = [{name = "Rowan Walshe", email = "walshe@adacore.com"}]
 requires-python = ">=3.11"
 dependencies = [
     "pydantic>=2.10.3",
+    "spark-assistant",
 ]
 
 [dependency-groups]
@@ -32,6 +33,9 @@ default = true
 [[tool.uv.index]]
 name = "adacore"
 url = "https://gitlab.adacore-it.com/api/v4/projects/it%2Fpackage-registry/packages/pypi/simple"
+
+[tool.uv.sources]
+spark-assistant = { path = "../spark-assistant" }
 
 [tool.pytest.ini_options]
 addopts = "-ra -q --cov=ada_eval --cov-report=term-missing"

@@ -7,6 +7,7 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "pydantic" },
+    { name = "spark-assistant" },
 ]
 
 [package.dev-dependencies]
@@ -19,7 +20,10 @@ dev = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "pydantic", specifier = ">=2.10.3" }]
+requires-dist = [
+    { name = "pydantic", specifier = ">=2.10.3" },
+    { name = "spark-assistant", directory = "../spark-assistant" },
+]
 
 [package.metadata.requires-dev]
 dev = [
@@ -289,6 +293,27 @@ wheels = [
     { url = "https://gitlab.adacore-it.com/api/v4/projects/1122/packages/pypi/files/93335cd7c0eaedb44882d75a7acb7df4b77cd7cd0d2255c93b28791716e81790/ruff-0.8.1-py3-none-win32.whl", hash = "sha256:93335cd7c0eaedb44882d75a7acb7df4b77cd7cd0d2255c93b28791716e81790" },
     { url = "https://gitlab.adacore-it.com/api/v4/projects/1122/packages/pypi/files/2954cdbe8dfd8ab359d4a30cd971b589d335a44d444b6ca2cb3d1da21b75e4b6/ruff-0.8.1-py3-none-win_amd64.whl", hash = "sha256:2954cdbe8dfd8ab359d4a30cd971b589d335a44d444b6ca2cb3d1da21b75e4b6" },
     { url = "https://gitlab.adacore-it.com/api/v4/projects/1122/packages/pypi/files/55873cc1a473e5ac129d15eccb3c008c096b94809d693fc7053f588b67822737/ruff-0.8.1-py3-none-win_arm64.whl", hash = "sha256:55873cc1a473e5ac129d15eccb3c008c096b94809d693fc7053f588b67822737" },
+]
+
+[[package]]
+name = "spark-assistant"
+version = "0.1.0"
+source = { directory = "../spark-assistant" }
+dependencies = [
+    { name = "pydantic" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "pydantic", specifier = ">=2.10.3" }]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "ipykernel", specifier = ">=6.29.5" },
+    { name = "mypy", specifier = ">=1.13.0" },
+    { name = "mypy-gitlab-code-quality", specifier = ">=1.1.0" },
+    { name = "pytest", specifier = ">=8.3.4" },
+    { name = "pytest-cov", specifier = ">=6.0.0" },
+    { name = "ruff", specifier = ">=0.8.1" },
 ]
 
 [[package]]

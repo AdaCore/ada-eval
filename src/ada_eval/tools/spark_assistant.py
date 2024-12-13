@@ -12,37 +12,18 @@ import subprocess
 from enum import Enum
 from pydantic import BaseModel
 
+from spark_assistant.types import ProveStats
+
+import time
+
 
 class SparkAssistantConfig(BaseConfig):
     threads: int
     iteration_limit: int
 
 
-# TODO get these types from the spark_assistant tool rather than duplicating them here
-class SparkAssistantFinishCondition(Enum):
-    Success = "Success"
-    TimeLimit = "TimeLimit"
-    IterationLimit = "IterationLimit"
-    OtherException = "OtherException"
-
-    def __str__(self) -> str:
-        return self.name
-
-
-class SparkAssistantStats(BaseModel):
-    finish_condition: SparkAssistantFinishCondition
-    timeout: bool
-    generation_time: float
-    gnatprove_time: float
-    iteration_count: int
-    diff_application_count: int
-    valid_syntax_count: int
-    valid_semantic_count: int
-    valid_gnatprove_count: int
-
-
 class SparkAssistantResult(SampleResult):
-    stats: SparkAssistantStats
+    stats: ProveStats
 
 
 class SparkAssistant(GenericTool):
@@ -77,11 +58,12 @@ class SparkAssistant(GenericTool):
     def _apply_spark(self, sample_working_dir: Path, sample: SparkSample):
         print(f"Applying SparkAssistant to {sample.name} in {sample_working_dir}")
 
+        stats_file = sample_working_dir / "stats.json"
         # TODO figure out a way to capture compute usage of the spawned process
         result = subprocess.run(
             [
-                "spark_assistant",
-                "prove"
+                "spark-assistant",
+                "prove",
                 "--timeout",
                 str(self.config.timeout_s),
                 "--threads",
@@ -91,12 +73,18 @@ class SparkAssistant(GenericTool):
                 "--line",
                 str(sample.location.start.line),
                 "--stats_file",
-                str(sample_working_dir / "stats.json"),
+                str(stats_file),
                 "--iteration_limit",
-                str(self.config.iteration_limit)
+                str(self.config.iteration_limit),
             ],
             cwd=sample_working_dir,
             capture_output=True,
             encoding="utf-8",
         )
-        print(result)
+        # result = SparkAssistantResult(
+        #     exit_code=,
+        #     stdout=,
+        #     stderr=,
+        #     runtime_ms=,
+        #     stats=ProveStats.model_validate_json(stats_file.read_text(encoding="utf-8"))
+        # )
