@@ -1,6 +1,7 @@
-from pathlib import Path
-from ada_eval.datasets.types import OTHER_JSON_NAME
 import subprocess
+from pathlib import Path
+
+from ada_eval.datasets.types import OTHER_JSON_NAME
 
 
 def is_packed_dataset(path: Path) -> bool:

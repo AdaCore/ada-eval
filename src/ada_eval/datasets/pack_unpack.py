@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from ada_eval.datasets.loader import load_packed_dataset, load_unpacked_dataset
-from ada_eval.datasets.utils import get_unpacked_dataset_dirs, get_packed_dataset_files
+from ada_eval.datasets.utils import get_packed_dataset_files, get_unpacked_dataset_dirs
 
 
 def unpack_datasets(src: Path, dest_dir: Path, force: bool = False):

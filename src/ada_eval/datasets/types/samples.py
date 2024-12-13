@@ -5,7 +5,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel, field_validator, field_serializer
+from pydantic import BaseModel, field_serializer, field_validator
 
 # Unpacked samples should always have at least:
 # - one file: "other.json"
@@ -164,10 +164,10 @@ class ExplainSample(Sample):
         super().unpack(dataset_root)
         dest_dir = dataset_root / self.name
         with open(dest_dir / REFERENCE_ANSWER_FILE_NAME, "w") as f:
-            f.write(self.solution.reference_answer)
+            f.write(self.canonical_solution.reference_answer)
         other_json = {
-            CORRECT_STATEMENTS_KEY: self.solution.correct_statements,
-            INCORRECT_STATEMENTS_KEY: self.solution.incorrect_statements,
+            CORRECT_STATEMENTS_KEY: self.canonical_solution.correct_statements,
+            INCORRECT_STATEMENTS_KEY: self.canonical_solution.incorrect_statements,
         }
         with open(dest_dir / OTHER_JSON_NAME, "w") as f:
             f.write(json.dumps(other_json, indent=4))

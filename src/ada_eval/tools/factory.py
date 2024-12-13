@@ -1,6 +1,7 @@
+from pathlib import Path
+
 from .generic_tool import GenericTool
 from .spark_assistant import SparkAssistant
-from pathlib import Path
 
 
 def create_tool(tool_name: str, config_file: Path) -> GenericTool:

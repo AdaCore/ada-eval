@@ -37,6 +37,18 @@ url = "https://gitlab.adacore-it.com/api/v4/projects/it%2Fpackage-registry/packa
 [tool.uv.sources]
 spark-assistant = { path = "../spark-assistant" }
 
+[tool.ruff.lint]
+select = [
+    # Pyflakes
+    "F",
+    # Pycodestyle
+    "E",
+    "W",
+    # isort
+    "I001"
+]
+
+
 [tool.pytest.ini_options]
 addopts = "-ra -q --cov=ada_eval --cov-report=term-missing"
 testpaths = [

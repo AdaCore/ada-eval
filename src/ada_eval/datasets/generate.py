@@ -1,7 +1,6 @@
-from pathlib import Path
 import shutil
-
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
 
 from ada_eval.datasets.loader import load_packed_dataset
 from ada_eval.datasets.types.datasets import Dataset
@@ -46,7 +45,8 @@ def generate_completions(packed_dataset_or_dir: Path, threads: int, tool: Generi
     datasets = [x for x in datasets if x.type in tool.supported_dataset_types()]
     if len(datasets) == 0:
         print(
-            f"No datasets supported by {tool.name} could be found at: {packed_dataset_or_dir}"
+            f"No datasets supported by {tool.name} could be found at:",
+            packed_dataset_or_dir,
         )
         return
 

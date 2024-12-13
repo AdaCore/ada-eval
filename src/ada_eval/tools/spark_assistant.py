@@ -1,20 +1,17 @@
-from pathlib import Path
-
-from .generic_tool import BaseConfig, GenericTool
-from ada_eval.datasets.types import (
-    DatasetType,
-    ExplainSample,
-    SparkSample,
-    SampleResult,
-)
-
 import subprocess
-from enum import Enum
-from pydantic import BaseModel
+import time
+from pathlib import Path
 
 from spark_assistant.types import ProveStats
 
-import time
+from ada_eval.datasets.types import (
+    DatasetType,
+    ExplainSample,
+    SampleResult,
+    SparkSample,
+)
+
+from .generic_tool import BaseConfig, GenericTool
 
 
 class SparkAssistantConfig(BaseConfig):
@@ -23,7 +20,7 @@ class SparkAssistantConfig(BaseConfig):
 
 
 class SparkAssistantResult(SampleResult):
-    stats: ProveStats
+    stats: ProveStats | None
 
 
 class SparkAssistant(GenericTool):
@@ -60,6 +57,7 @@ class SparkAssistant(GenericTool):
 
         stats_file = sample_working_dir / "stats.json"
         # TODO figure out a way to capture compute usage of the spawned process
+        start = time.monotonic_ns()
         result = subprocess.run(
             [
                 "spark-assistant",
@@ -81,10 +79,19 @@ class SparkAssistant(GenericTool):
             capture_output=True,
             encoding="utf-8",
         )
-        # result = SparkAssistantResult(
-        #     exit_code=,
-        #     stdout=,
-        #     stderr=,
-        #     runtime_ms=,
-        #     stats=ProveStats.model_validate_json(stats_file.read_text(encoding="utf-8"))
-        # )
+        end = time.monotonic_ns()
+        time_ms = (end - start) // 1_000_000
+
+        stats = None
+        if stats_file.is_file():
+            stats = ProveStats.model_validate_json(
+                stats_file.read_text(encoding="utf-8")
+            )
+
+        return SparkAssistantResult(
+            exit_code=result.returncode,
+            stdout=result.stdout,
+            stderr=result.stderr,
+            runtime_ms=time_ms,
+            stats=stats,
+        )

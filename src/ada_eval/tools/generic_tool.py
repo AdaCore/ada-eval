@@ -1,10 +1,10 @@
 from abc import ABC, abstractmethod
+from enum import Enum
 from pathlib import Path
 
 from pydantic import BaseModel
-from ada_eval.datasets.types.datasets import DatasetType
-from enum import Enum
 
+from ada_eval.datasets.types.datasets import DatasetType
 from ada_eval.datasets.types.samples import Sample
 
 
