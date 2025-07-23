@@ -12,11 +12,11 @@ from ada_eval.tools.factory import Tool, create_tool
 
 
 def call_unpack_datasets(args):
-    unpack_datasets(args.src, args.dest, args.force)
+    unpack_datasets(src=args.src, dest_dir=args.dest, force=args.force)
 
 
 def call_pack_datasets(args):
-    pack_datasets(args.src, args.dest)
+    pack_datasets(src_dir=args.src, dest_dir=args.dest, force=args.force)
 
 
 def call_generate_completions(args):
@@ -81,6 +81,12 @@ def main():
         type=Path,
         help="Destination dir for packed dataset or datasets",
         default=COMPACTED_DATASETS_DIR,
+    )
+    pack_parser.add_argument(
+        "-f",
+        "--force",
+        action="store_true",
+        help="Force packing even if there are uncommitted changes",
     )
 
     # Generate completions for a dataset
