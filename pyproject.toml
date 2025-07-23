@@ -5,7 +5,7 @@ description = "Simple project for evaluating LLM based tools for Ada"
 readme = "README.md"
 authors = [{ name = "Rowan Walshe", email = "walshe@adacore.com" }]
 requires-python = ">=3.11"
-dependencies = ["pydantic>=2.10.3", "spark-assistant"]
+dependencies = ["pydantic>=2.10.3"]
 
 [dependency-groups]
 dev = [
@@ -31,9 +31,6 @@ default = true
 [[tool.uv.index]]
 name = "adacore"
 url = "https://gitlab.adacore-it.com/api/v4/projects/it%2Fpackage-registry/packages/pypi/simple"
-
-[tool.uv.sources]
-spark-assistant = { path = "../spark-assistant", editable = true }
 
 [tool.ruff]
 exclude = ["tests"]

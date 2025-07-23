@@ -1,8 +1,4 @@
 from .generic_tool import GenericTool
-from .spark_assistant import SparkAssistant
+from .shell_script import ShellScript
 
-TOOL_LOOKUP = {
-    "spark": SparkAssistant,
-}
-
-__all__ = ["TOOL_LOOKUP", "GenericTool", "SparkAssistant"]
+__all__ = ["GenericTool", "ShellScript"]

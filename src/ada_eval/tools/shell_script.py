@@ -2,11 +2,8 @@ import subprocess
 import time
 from pathlib import Path
 
-from spark_assistant.types import ProveStats
-
 from ada_eval.datasets.types import (
     DatasetType,
-    ExplainSample,
     SampleResult,
     SparkSample,
 )
