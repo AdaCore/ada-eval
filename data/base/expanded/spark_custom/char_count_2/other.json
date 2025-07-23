@@ -1,0 +1,18 @@
+{
+    "location": {
+        "path": "src/string_utils.ads",
+        "start": {
+            "line": 12,
+            "column": null
+        },
+        "end": null
+    },
+    "location_solution": {
+        "path": "src/string_utils.ads",
+        "start": {
+            "line": 19,
+            "column": null
+        },
+        "end": null
+    }
+}

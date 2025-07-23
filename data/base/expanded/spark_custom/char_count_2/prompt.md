@@ -1,0 +1,1 @@
+Please can you help me prove the count function in `src/string_utils.ads`.

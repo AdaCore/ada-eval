@@ -1,0 +1,11 @@
+{
+    "location": {
+        "path": "src/string_utils.ads",
+        "start": {
+            "line": 3,
+            "column": null
+        },
+        "end": null
+    },
+    "location_solution": null
+}
