@@ -273,7 +273,7 @@ def test_pack_unpack(tmp_path: Path):
     if res.stdout.strip() != "":
         dbg = subprocess.run(
             ["git", "diff"],
-            cwd=tmp_path,
+            check=False, cwd=tmp_path,
             encoding="utf-8",
             capture_output=True,
         )
@@ -309,7 +309,7 @@ def test_pack_unpack(tmp_path: Path):
     if res.stdout.strip() != "":
         dbg = subprocess.run(
             ["git", "diff"],
-            cwd=tmp_path,
+            check=False, cwd=tmp_path,
             encoding="utf-8",
             capture_output=True,
         )

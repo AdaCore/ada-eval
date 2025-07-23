@@ -2,7 +2,6 @@ import subprocess
 import time
 from pathlib import Path
 
-from pydantic import BaseModel
 from spark_assistant.types import ProveStats
 
 from ada_eval.datasets.types import (
@@ -97,7 +96,7 @@ class SparkAssistant(GenericTool):
                 "--max_output_tokens",
                 str(self.config.llm_config.max_output_tokens),
             ],
-            cwd=sample_working_dir,
+            check=False, cwd=sample_working_dir,
             capture_output=True,
             encoding="utf-8",
         )

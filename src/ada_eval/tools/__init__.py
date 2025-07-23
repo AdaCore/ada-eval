@@ -5,4 +5,4 @@ TOOL_LOOKUP = {
     "spark": SparkAssistant,
 }
 
-__all__ = ["GenericTool", "SparkAssistant", "TOOL_LOOKUP"]
+__all__ = ["TOOL_LOOKUP", "GenericTool", "SparkAssistant"]
