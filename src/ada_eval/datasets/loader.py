@@ -17,11 +17,11 @@ from ada_eval.datasets.types import (
     SparkDataset,
     SparkSample,
 )
-from ada_eval.datasets.types.datasets import is_unpacked_dataset
-from ada_eval.datasets.types.samples import is_unpacked_sample
 from ada_eval.datasets.types.datasets import (
     is_packed_dataset,
+    is_unpacked_dataset,
 )
+from ada_eval.datasets.types.samples import is_unpacked_sample
 
 
 def get_explain_solution(

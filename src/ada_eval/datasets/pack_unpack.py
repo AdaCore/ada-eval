@@ -25,6 +25,7 @@ def unpack_datasets(src: Path, dest_dir: Path, *, force: bool = False):
 
 
 def pack_datasets(src_dir: Path, dest_dir: Path, *, force: bool = False):
+    # TODO improve this check to only consider the file of interest, not every file in the destination dir
     if not is_git_up_to_date(dest_dir) and not force:
         print(
             f"Changes to dataset files in {dest_dir} have not been committed. "

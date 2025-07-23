@@ -2,6 +2,7 @@ import subprocess
 import time
 from pathlib import Path
 
+from pydantic import BaseModel
 from spark_assistant.types import ProveStats
 
 from ada_eval.datasets.types import (
@@ -20,16 +21,8 @@ class SparkAssistantConfig(BaseConfig):
     iteration_limit: int
 
 
-class Stats(BaseConfig):
-    exit_code: int
-    stdout: str
-    stderr: str
-    runtime_ms: int
-
-
 class SparkAssistantResult(SampleResult):
     tool_stats: ProveStats | None
-    other_stats: Stats
     generated_solution: dict[Path, str]
 
 
@@ -122,11 +115,9 @@ class SparkAssistant(GenericTool):
             result=SparkAssistantResult(
                 tool_stats=tool_stats,
                 generated_solution=get_sample_files(sample_working_dir),
-                other_stats=Stats(
-                    exit_code=result.returncode,
-                    stdout=result.stdout,
-                    stderr=result.stderr,
-                    runtime_ms=time_ms,
-                ),
+                exit_code=result.returncode,
+                stdout=result.stdout,
+                stderr=result.stderr,
+                runtime_ms=time_ms,
             ),
         )

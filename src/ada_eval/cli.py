@@ -99,14 +99,17 @@ def main():
     generate_parser.add_argument(
         "--dataset",
         type=Path,
-        help="Path to packed dataset or dir of packed datasets",
+        help=(
+            "Path to packed dataset or dir of packed datasets "
+            "to generate completions for"
+        ),
         default=COMPACTED_DATASETS_DIR,
     )
     generate_parser.add_argument(
         "-j",
         "--jobs",
         type=int,
-        help="Number of samples to generate in parallel",
+        help="Number of samples to generate completions for in parallel",
         default=1,
     )
     generate_parser.add_argument(
