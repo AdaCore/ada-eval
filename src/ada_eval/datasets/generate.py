@@ -4,7 +4,7 @@ from pathlib import Path
 
 from ada_eval.datasets.loader import load_packed_dataset
 from ada_eval.datasets.types.datasets import Dataset
-from ada_eval.datasets.types.samples import Sample
+from ada_eval.datasets.types.samples import Sample, SampleResult
 from ada_eval.datasets.utils import get_packed_dataset_files
 from ada_eval.paths import GENERATION_WORKING_DIR
 from ada_eval.tools.generic_tool import GenericTool
@@ -33,7 +33,9 @@ def unpack_dataset_for_generation(dataset: Dataset):
         sample.unpack_for_generation(sample_working_dir)
 
 
-def generate_completions(packed_dataset_or_dir: Path, threads: int, tool: GenericTool):
+def generate_completions(
+    packed_dataset_or_dir: Path, jobs: int, tool: GenericTool, output_dir: Path
+):
     dataset_files = get_packed_dataset_files(packed_dataset_or_dir)
 
     if len(dataset_files) == 0:
@@ -58,14 +60,17 @@ def generate_completions(packed_dataset_or_dir: Path, threads: int, tool: Generi
             [(get_sample_working_dir(x, dataset_wd), x) for x in dataset.samples]
         )
 
-    results = []
-    with ThreadPoolExecutor(max_workers=threads) as executor:
-        futures = [executor.submit(tool.apply, wd, sample) for wd, sample in samples]
-        for future in futures:
-            try:
-                results.append(future.result())
-            except Exception as e:
-                print(f"Error processing sample: {e}")
-
-    # TODO handle results
-    print("Generation Results:", results)
+        results: list[SampleResult] = []
+        with ThreadPoolExecutor(max_workers=jobs) as executor:
+            futures = [
+                executor.submit(tool.apply, wd, sample) for wd, sample in samples
+            ]
+            for future in futures:
+                try:
+                    results.append(future.result())
+                except Exception as e:
+                    print(f"Error processing sample: {e}")
+        output_file = output_dir / f"{dataset.type}_{dataset.name}.jsonl"
+        with output_file.open("w") as f:
+            for result in results:
+                f.write(result.model_dump_json() + "\n")

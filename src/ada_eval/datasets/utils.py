@@ -4,41 +4,85 @@ from pathlib import Path
 from ada_eval.datasets.types import OTHER_JSON_NAME
 
 
+def git_ls_files(root: Path) -> list[Path]:
+    """Get a list of files in a directory using git ls-files."""
+    if not root.exists():
+        return []
+    result = subprocess.run(
+        ["git", "ls-files", "-com", "--exclude-standard", "--deduplicate"],
+        cwd=root,
+        capture_output=True,
+        encoding="utf-8",
+        check=True,
+    )
+
+    git_files = [root / line for line in result.stdout.splitlines()]
+
+    # We have to check that a path exists, as git ls-files will return files
+    # that were previously committed but have since been deleted.
+    return [path for path in git_files if path.is_file()]
+
+
+def get_file_or_empty(path: Path) -> str:
+    """Get the contents of a file, or an empty string if the file does not exist."""
+    if path.is_file():
+        return path.read_text(encoding="utf-8")
+    return ""
+
+
 def is_packed_dataset(path: Path) -> bool:
-    """Returns true if this is the path to a packed dataset. This is the case if
-    it's a path to a jsonl file."""
+    """
+    Check if this is the path to a packed dataset.
+
+    This is the case if it's a path to a jsonl file.
+    """
     return path.is_file() and path.suffix == ".jsonl"
 
 
 def is_collection_of_packed_datasets(path: Path) -> bool:
-    """Returns true if this is the path to a collection of packed datasets. This
-    is the case if the dir contains a jsonl file."""
+    """
+    Check if this is the path to a collection of packed datasets.
+
+    This is the case if the dir contains a jsonl file.
+    """
     return path.is_dir() and any(is_packed_dataset(p) for p in path.iterdir())
 
 
 def is_unpacked_sample(path: Path) -> bool:
-    """Returns true if this is the path to a sample. This is the case if the dir
-    contains an OTHER_JSON_NAME file."""
+    """
+    Check if this is the path to a sample.
+
+    This is the case if the dir contains an OTHER_JSON_NAME file.
+    """
     other_json = path / OTHER_JSON_NAME
     return path.is_dir() and other_json.is_file()
 
 
 def is_unpacked_dataset(path: Path) -> bool:
-    """Returns true if this is a path to a directory that contains an unpacked
-    dataset. For this to be true, at least one child dir must contain a sample."""
+    """
+    Check if this is a path to a directory that contains an unpacked dataset.
+
+    For this to be true, at least one child dir must contain a sample.
+    """
     return path.is_dir() and any(is_unpacked_sample(d) for d in path.iterdir())
 
 
 def is_collection_of_unpacked_datasets(path: Path) -> bool:
-    """Return's true if this is a path to a directory that contains multiple datasets.
-    Note that not all directories in this directory need to contain a dataset."""
+    """
+    Check if this is a path to a directory that contains multiple datasets.
+
+    Note that not all directories in this directory need to contain a dataset.
+    """
     return path.is_dir() and any(is_unpacked_dataset(d) for d in path.iterdir())
 
 
 def is_git_up_to_date(path: Path) -> bool:
-    """Returns true if the contents of a folder are up to date in git. In this
-    context we mean that no changes have been made to the files in the folder,
-    including file creations/deletions/modifications."""
+    """
+    Check if the contents of a folder are up to date in git.
+
+    In this context we mean that no changes have been made to the files in the
+    folder, including file creations/deletions/modifications.
+    """
     result = subprocess.run(
         ["git", "status", "--porcelain=1", "."],
         encoding="utf-8",
@@ -51,7 +95,7 @@ def is_git_up_to_date(path: Path) -> bool:
 
 
 def get_packed_dataset_files(path: Path) -> list[Path]:
-    """Returns a list of paths to the files in the dataset."""
+    """Get the list of paths to the files in the dataset."""
     if is_packed_dataset(path):
         return [path]
     if is_collection_of_packed_datasets(path):
@@ -60,7 +104,7 @@ def get_packed_dataset_files(path: Path) -> list[Path]:
 
 
 def get_unpacked_dataset_dirs(path: Path) -> list[Path]:
-    """Returns a list of paths that contain the unpacked contents of a dataset."""
+    """Get the list of paths that contain the unpacked contents of a dataset."""
     if not is_collection_of_unpacked_datasets(path) and not is_unpacked_dataset(path):
         return []
     if is_unpacked_dataset(path):

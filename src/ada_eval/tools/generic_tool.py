@@ -10,11 +10,10 @@ from ada_eval.datasets.types.samples import Sample
 
 class LlmProvider(Enum):
     Ollama = "Ollama"
-    Anthropic = "Anthropic"
     Bedrock = "Bedrock"
 
     def __str__(self) -> str:
-        return self.name
+        return self.value
 
 
 class LLMConfig(BaseModel):

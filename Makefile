@@ -29,6 +29,6 @@ unpack-dataset:
 generate-spark:
 	uv run ada-eval generate \
 		--dataset data/base/compacted/spark_learn.jsonl \
-		--threads 1 \
+		--jobs 1 \
 		--tool spark_assistant \
 		--tool_config_file configs/tools/spark_assistant.json

@@ -5,6 +5,9 @@
   "iteration_limit": 10,
   "llm_config": {
     "provider": "Ollama",
-    "model": "llama3.1"
+    "model": "llama3.1",
+    "temperature": 0.3,
+    "max_input_tokens": 4096,
+    "max_output_tokens": 4096
   }
 }

@@ -2,10 +2,24 @@
 
 import json
 import re
+from abc import abstractmethod
 from pathlib import Path
 from typing import Any
 
 from pydantic import BaseModel, field_serializer, field_validator
+
+from ada_eval.datasets.utils import get_file_or_empty, git_ls_files
+
+
+class InvalidSampleNameError(ValueError):
+    """Raised when a sample name contains invalid characters."""
+
+    def __init__(self, sample_name: str):
+        super().__init__(
+            f"Invalid sample name: '{sample_name}'. Please only use "
+            "alphanumeric characters, hyphens, and underscores."
+        )
+
 
 # Unpacked samples should always have at least:
 # - one file: "other.json"
@@ -55,25 +69,41 @@ class ExplainSolution(BaseModel):
 VALID_SAMPLE_NAME_PATTERN = re.compile(r"^[\w-]+$")
 
 
-class SampleResult(BaseModel):
-    exit_code: int
-    stdout: str
-    stderr: str
-    runtime_ms: int
-    # cpu_time  # TODO
+def get_sample_files_git_aware(root: Path) -> dict[Path, str]:
+    """
+    Return a list of files in a directory and their contents.
+
+    Will exclude any files that are ignored by git.
+    """
+    if not root.is_dir():
+        return {}
+    full_paths = sorted(git_ls_files(root))
+    return {p.relative_to(root): p.read_text("utf-8") for p in full_paths}
+
+
+def get_sample_files(root: Path) -> dict[Path, str]:
+    """Return a list of files in a directory and their contents."""
+    if not root.is_dir():
+        return {}
+    full_paths = [p for p in sorted(root.rglob("*")) if p.is_file()]
+    return {p.relative_to(root): p.read_text("utf-8") for p in full_paths}
 
 
 class Sample(BaseModel):
     """
-    name (str): Name of the sample. Should be unique within the dataset.
-    location (Location): Location of the sample. The path should be relative
-        to to the sample root.
-    prompt (str): Prompt for the sample
-    sources (dict[Path, str]): Source files for the sample, with the path as
-        the key and the contents as the value.
-    canonical_solution (Any): Canonical solution for the sample. The type
-        should be constrained by the subclass.
-    comments (str): Any comments about the sample by the author. May be empty.
+    Base class for samples in the dataset.
+
+    Attributes:
+        name (str): Name of the sample. Should be unique within the dataset.
+        location (Location): Location of the sample. The path should be relative
+            to to the sample root.
+        prompt (str): Prompt for the sample
+        sources (dict[Path, str]): Source files for the sample, with the path as
+            the key and the contents as the value.
+        canonical_solution (Any): Canonical solution for the sample. The type
+            should be constrained by the subclass.
+        comments (str): Any comments about the sample by the author. May be empty.
+
     """
 
     name: str
@@ -87,10 +117,7 @@ class Sample(BaseModel):
     @classmethod
     def name_must_be_simple(cls, value):
         if not VALID_SAMPLE_NAME_PATTERN.match(value):
-            raise ValueError(
-                f"Invalid sample name: {value}. Please only use "
-                "alphanumeric characters, hyphens, and underscores."
-            )
+            raise InvalidSampleNameError(value)
         return value
 
     def unpack(self, dataset_root: Path):
@@ -116,17 +143,26 @@ class Sample(BaseModel):
             with open(src_path, "w") as f:
                 f.write(contents)
 
+    @classmethod
+    @abstractmethod
+    def load_unpacked_sample(cls, sample_dir: Path):
+        raise NotImplementedError
+
 
 class AdaSample(Sample):
     """
-    location_solution (Location | None): The act of writing the solution may
-        move the area of interest. This field should be used to specify the
-        updated location if needed.
-    canonical_solution (dict[Path, str]): Canonical solution for the sample.
-        The path should be relative to the sample root. The values should be
-        the contents of the files.
-    unit_tests (dict[Path, str]): Same structure as used for sources or
-        canonical_solution. This should contain the unit tests for the sample.
+    Ada-specific sample extending the base Sample class.
+
+    Attributes:
+        location_solution (Location | None): The act of writing the solution may
+            move the area of interest. This field should be used to specify the
+            updated location if needed.
+        canonical_solution (dict[Path, str]): Canonical solution for the sample.
+            The path should be relative to the sample root. The values should be
+            the contents of the files.
+        unit_tests (dict[Path, str]): Same structure as used for sources or
+            canonical_solution. This should contain the unit tests for the sample.
+
     """
 
     location_solution: Location | None
@@ -156,6 +192,30 @@ class AdaSample(Sample):
             with open(src_path, "w") as f:
                 f.write(contents)
 
+    @classmethod
+    def load_unpacked_sample(cls, sample_dir: Path):
+        other_data = json.loads(get_file_or_empty(sample_dir / OTHER_JSON_NAME))
+        base_files = get_sample_files_git_aware(sample_dir / BASE_DIR_NAME)
+        prompt = get_file_or_empty(sample_dir / PROMPT_FILE_NAME)
+        comments = get_file_or_empty(sample_dir / COMMENTS_FILE_NAME)
+        solution_files = get_sample_files_git_aware(sample_dir / SOLUTION_DIR_NAME)
+        unit_test_files = get_sample_files_git_aware(sample_dir / UNIT_TEST_DIR_NAME)
+        location_solution = None
+        if other_data.get(LOCATION_SOLUTION_KEY, None):
+            location_solution = Location.model_validate(
+                other_data[LOCATION_SOLUTION_KEY]
+            )
+        return cls(
+            name=sample_dir.name,
+            location=Location.model_validate(other_data[LOCATION_KEY]),
+            location_solution=location_solution,
+            prompt=prompt,
+            comments=comments,
+            sources=base_files,
+            canonical_solution=solution_files,
+            unit_tests=unit_test_files,
+        )
+
 
 class ExplainSample(Sample):
     canonical_solution: ExplainSolution
@@ -172,6 +232,40 @@ class ExplainSample(Sample):
         with open(dest_dir / OTHER_JSON_NAME, "w") as f:
             f.write(json.dumps(other_json, indent=4))
 
+    @classmethod
+    def load_unpacked_sample(cls, sample_dir: Path):
+        other_data = json.loads(get_file_or_empty(sample_dir / OTHER_JSON_NAME))
+        base_files = get_sample_files_git_aware(sample_dir / BASE_DIR_NAME)
+        prompt = get_file_or_empty(sample_dir / PROMPT_FILE_NAME)
+        comments = get_file_or_empty(sample_dir / COMMENTS_FILE_NAME)
+        reference_answer = get_file_or_empty(sample_dir / REFERENCE_ANSWER_FILE_NAME)
+        return cls(
+            name=sample_dir.name,
+            location=Location.model_validate(other_data[LOCATION_KEY]),
+            prompt=prompt,
+            comments=comments,
+            sources=base_files,
+            canonical_solution=ExplainSolution(
+                reference_answer=reference_answer,
+                correct_statements=other_data[CORRECT_STATEMENTS_KEY],
+                incorrect_statements=other_data[INCORRECT_STATEMENTS_KEY],
+            ),
+        )
+
 
 class SparkSample(AdaSample):
     pass
+
+
+class SampleResult(BaseModel):
+    exit_code: int
+    stdout: str
+    stderr: str
+    runtime_ms: int
+    generated_solution: Any
+    # cpu_time  # TODO
+
+
+class GeneratedSample(BaseModel):
+    sample: Sample
+    result: SampleResult

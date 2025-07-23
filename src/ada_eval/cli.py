@@ -3,8 +3,12 @@ from pathlib import Path
 
 from ada_eval.datasets.generate import generate_completions
 from ada_eval.datasets.pack_unpack import pack_datasets, unpack_datasets
-from ada_eval.paths import COMPACTED_DATASETS_DIR, EXPANDED_DATASETS_DIR
-from ada_eval.tools.factory import create_tool
+from ada_eval.paths import (
+    COMPACTED_DATASETS_DIR,
+    EXPANDED_DATASETS_DIR,
+    GENERATED_DATASETS_DIR,
+)
+from ada_eval.tools.factory import Tool, create_tool
 
 
 def call_unpack_datasets(args):
@@ -19,9 +23,14 @@ def call_generate_completions(args):
     tool = create_tool(args.tool, args.tool_config_file)
     generate_completions(
         packed_dataset_or_dir=args.dataset,
-        threads=args.threads,
+        jobs=args.jobs,
         tool=tool,
+        output_dir=GENERATED_DATASETS_DIR,
     )
+
+
+def call_evaluate_completions(args):
+    pass
 
 
 def main():
@@ -29,7 +38,11 @@ def main():
     subparsers = parser.add_subparsers()
 
     # Unpack datasets subcommand
-    unpack_parser = subparsers.add_parser("unpack", help="Unpack datasets")
+    unpack_parser = subparsers.add_parser(
+        "unpack",
+        help="Unpack datasets",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
     unpack_parser.set_defaults(func=call_unpack_datasets)
     unpack_parser.add_argument(
         "--src",
@@ -51,7 +64,11 @@ def main():
     )
 
     # Pack datasets subcommand
-    pack_parser = subparsers.add_parser("pack", help="Pack datasets")
+    pack_parser = subparsers.add_parser(
+        "pack",
+        help="Pack datasets",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
     pack_parser.set_defaults(func=call_pack_datasets)
     pack_parser.add_argument(
         "--src",
@@ -67,7 +84,11 @@ def main():
     )
 
     # Generate completions for a dataset
-    generate_parser = subparsers.add_parser("generate", help="Generate completions")
+    generate_parser = subparsers.add_parser(
+        "generate",
+        help="Generate completions",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
     generate_parser.set_defaults(func=call_generate_completions)
     generate_parser.add_argument(
         "--dataset",
@@ -76,14 +97,48 @@ def main():
         default=COMPACTED_DATASETS_DIR,
     )
     generate_parser.add_argument(
-        "--threads",
+        "-j",
+        "--jobs",
         type=int,
         help="Number of samples to generate in parallel",
         default=1,
     )
     generate_parser.add_argument(
         "--tool",
-        type=str,
+        type=Tool,
+        choices=list(Tool),
+        help="Name of tool to use for generation",
+    )
+    generate_parser.add_argument(
+        "--tool_config_file",
+        type=Path,
+        help="Path to tool configuration file",
+    )
+
+    # Evaluate completions for a dataset
+    generate_parser = subparsers.add_parser(
+        "evaluate",
+        help="Evaluate completions",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    generate_parser.set_defaults(func=call_evaluate_completions)
+    generate_parser.add_argument(
+        "--dataset",
+        type=Path,
+        help="Path to packed dataset or dir of packed datasets",
+        default=COMPACTED_DATASETS_DIR,
+    )
+    generate_parser.add_argument(
+        "-j",
+        "--jobs",
+        type=int,
+        help="Number of samples to generate in parallel",
+        default=1,
+    )
+    generate_parser.add_argument(
+        "--tool",
+        type=Tool,
+        choices=list(Tool),
         help="Name of tool to use for generation",
     )
     generate_parser.add_argument(
