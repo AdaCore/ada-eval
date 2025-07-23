@@ -19,7 +19,7 @@ from ada_eval.datasets.types.datasets import (
     is_packed_dataset,
     is_unpacked_dataset,
 )
-from ada_eval.datasets.types.samples import is_unpacked_sample
+from ada_eval.datasets.types.samples import Sample, is_unpacked_sample
 
 
 class InvalidDatasetError(Exception):
@@ -62,6 +62,7 @@ def load_unpacked_dataset(path: Path) -> Dataset:
         raise InvalidDatasetNameError(path, "unpacked dataset dir name")
     first_underscore = path.stem.index("_")
     dataset_type = DatasetType(path.stem[:first_underscore])
+    sample_class: type[Sample]
     match dataset_type:
         case DatasetType.ADA:
             sample_class = AdaSample
@@ -96,6 +97,8 @@ def load_packed_dataset(path: Path) -> Dataset:
     first_underscore = path.stem.index("_")
     dataset_type = DatasetType(path.stem[:first_underscore])
     dataset_name = path.stem[first_underscore + 1 :]
+    dataset_class: type[Dataset]
+    sample_class: type[Sample]
     match dataset_type:
         case DatasetType.ADA:
             dataset_class = AdaDataset

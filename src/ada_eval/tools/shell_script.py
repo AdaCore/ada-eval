@@ -7,7 +7,7 @@ from ada_eval.datasets.types import (
     SampleResult,
     SparkSample,
 )
-from ada_eval.datasets.types.samples import GeneratedSample, get_sample_files
+from ada_eval.datasets.types.samples import GeneratedSample, Sample, get_sample_files
 
 from .generic_tool import BaseConfig, GenericTool
 
@@ -30,6 +30,13 @@ class UnsupportedSampleTypeError(Exception):
         super().__init__(f"Unsupported sample type: {sample_type}")
 
 
+class InvalidConfigTypeError(Exception):
+    def __init__(self, expected_type, actual_type):
+        super().__init__(
+            f"Expected {expected_type.__name__}, got {actual_type.__name__}"
+        )
+
+
 class ShellScript(GenericTool):
     config_type = ShellScriptConfig
 
@@ -38,18 +45,18 @@ class ShellScript(GenericTool):
 
     @classmethod
     def from_config_file(cls, config_file: Path):
-        return cls.from_config(
-            config=cls.config_type.model_validate_json(
-                config_file.read_text(encoding="utf-8")
-            ),
-            config_file=config_file,
+        config = ShellScriptConfig.model_validate_json(
+            config_file.read_text(encoding="utf-8")
         )
-
-    @classmethod
-    def from_config(cls, config: ShellScriptConfig, config_file: Path):
         # Resolve the shell script path relative to the config file's directory
         resolved_script_path = (config_file.parent / config.shell_script).resolve()
-        config = config.model_copy(update={"shell_script": resolved_script_path})
+        new_config = config.model_copy(update={"shell_script": resolved_script_path})
+        return cls(new_config)
+
+    @classmethod
+    def from_config(cls, config: BaseConfig):
+        if not isinstance(config, ShellScriptConfig):
+            raise InvalidConfigTypeError(ShellScriptConfig, type(config))
         return ShellScript(config)
 
     @property
@@ -60,7 +67,7 @@ class ShellScript(GenericTool):
         return (DatasetType.SPARK,)
 
     def apply(
-        self, sample_working_dir: Path, sample: SparkSample
+        self, sample_working_dir: Path, sample: Sample
     ) -> GeneratedSparkSample:
         match sample:
             case SparkSample():

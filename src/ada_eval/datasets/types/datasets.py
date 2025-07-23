@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
@@ -28,7 +29,7 @@ class DatasetType(Enum):
 class Dataset:
     name: str
     type: DatasetType
-    samples: list[Sample]
+    samples: Sequence[Sample]
 
     def save_unpacked(self, unpacked_datasets_root: Path):
         dataset_root = unpacked_datasets_root / f"{self.type}_{self.name}"
