@@ -35,6 +35,9 @@ url = "https://gitlab.adacore-it.com/api/v4/projects/it%2Fpackage-registry/packa
 [tool.uv.sources]
 spark-assistant = { path = "../spark-assistant", editable = true }
 
+[tool.ruff]
+exclude = ["tests"]
+
 [tool.ruff.lint]
 select = [
     "F",     # pyflakes
@@ -99,8 +102,16 @@ ignore = [
     "D212",    # multi-line-summary-first-line
     "S607",    # start-process-with-partial-path
     "PLC1901", # compare-to-empty-string,
+    "S603",    # subprocess-without-shell-equals-true
+    "T201",    # use-assert-in-tests
+    "TD002",
+    "TD003",
+    "TD004",
+    "FIX002",
 ]
 
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = ["S101", "T201"]
 
 [tool.pytest.ini_options]
 addopts = "-ra -q --cov=ada_eval --cov-report=term-missing"

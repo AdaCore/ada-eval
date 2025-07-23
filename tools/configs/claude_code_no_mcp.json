@@ -1,0 +1,4 @@
+{
+    "shell_script": "../claude_code_no_mcp.sh",
+    "timeout_s": 300
+}

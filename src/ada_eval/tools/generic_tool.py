@@ -26,7 +26,6 @@ class LLMConfig(BaseModel):
 
 class BaseConfig(BaseModel):
     timeout_s: int
-    llm_config: LLMConfig
 
 
 class GenericTool(ABC):

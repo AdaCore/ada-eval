@@ -12,10 +12,11 @@ from ada_eval.datasets.types import (
 )
 from ada_eval.datasets.types.samples import GeneratedSample, get_sample_files
 
-from .generic_tool import BaseConfig, GenericTool
+from .generic_tool import BaseConfig, GenericTool, LLMConfig
 
 
 class SparkAssistantConfig(BaseConfig):
+    llm_config: LLMConfig
     threads: int
     iteration_limit: int
 
@@ -96,7 +97,8 @@ class SparkAssistant(GenericTool):
                 "--max_output_tokens",
                 str(self.config.llm_config.max_output_tokens),
             ],
-            check=False, cwd=sample_working_dir,
+            check=False,
+            cwd=sample_working_dir,
             capture_output=True,
             encoding="utf-8",
         )

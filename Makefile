@@ -26,9 +26,9 @@ pack-dataset:
 unpack-dataset:
 	uv run ada-eval unpack
 
-generate-spark:
+generate-spark-claude:
 	uv run ada-eval generate \
 		--dataset data/base/compacted/spark_learn.jsonl \
 		--jobs 1 \
-		--tool spark_assistant \
-		--tool_config_file configs/tools/spark_assistant.json
+		--tool shell_script \
+		--tool_config_file tools/configs/claude_code_no_mcp.json
