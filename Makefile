@@ -28,7 +28,6 @@ unpack-dataset:
 
 generate-spark-claude:
 	uv run ada-eval generate \
-		--dataset data/base/compacted/spark_learn.jsonl \
-		--jobs 1 \
+		--jobs 4 \
 		--tool shell_script \
 		--tool_config_file tools/configs/claude_code_no_mcp.json
