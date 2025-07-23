@@ -30,7 +30,8 @@ def is_git_up_to_date(path: Path) -> bool:
     """
     result = subprocess.run(
         ["git", "status", "--porcelain=1", "."],
-        check=False, encoding="utf-8",
+        check=False,
+        encoding="utf-8",
         capture_output=True,
         cwd=path,
     )

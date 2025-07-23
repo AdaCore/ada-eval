@@ -67,7 +67,7 @@ def generate_completions(
         for future in futures:
             try:
                 results.append(future.result())
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001 we want to catch any and all exceptions
                 print(f"Error processing sample: {e}")
     output_file = output_dir / f"{dataset.type}_{dataset.name}.jsonl"
     with output_file.open("w") as f:

@@ -42,6 +42,11 @@ class Sloc(BaseModel):
     column: int | None
 
 
+class PathMustBeRelativeError(Exception):
+    def __init__(self, path: Path):
+        super().__init__(f"Path '{path}' must be relative")
+
+
 class Location(BaseModel):
     path: Path
     start: Sloc | None
@@ -52,7 +57,7 @@ class Location(BaseModel):
     def path_must_be_relative(cls, value):
         path = Path(value)
         if path.is_absolute():
-            raise ValueError("Path must be relative")
+            raise PathMustBeRelativeError(path)
         return path
 
     @field_serializer("path", when_used="always")
@@ -123,24 +128,24 @@ class Sample(BaseModel):
     def unpack(self, dataset_root: Path):
         dest_dir = dataset_root / self.name
         dest_dir.mkdir(exist_ok=True, parents=True)
-        with open(dest_dir / PROMPT_FILE_NAME, "w") as f:
+        with (dest_dir / PROMPT_FILE_NAME).open("w") as f:
             f.write(self.prompt)
-        with open(dest_dir / COMMENTS_FILE_NAME, "w") as f:
+        with (dest_dir / COMMENTS_FILE_NAME).open("w") as f:
             f.write(self.comments)
         for file, contents in self.sources.items():
             src_path = dest_dir / BASE_DIR_NAME / file
             src_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(src_path, "w") as f:
+            with src_path.open("w") as f:
                 f.write(contents)
         other_json = {LOCATION_KEY: self.location.model_dump()}
-        with open(dest_dir / OTHER_JSON_NAME, "w") as f:
+        with (dest_dir / OTHER_JSON_NAME).open("w") as f:
             f.write(json.dumps(other_json, indent=4))
 
     def unpack_for_generation(self, sample_dir: Path):
         for file, contents in self.sources.items():
             src_path = sample_dir / file
             src_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(src_path, "w") as f:
+            with src_path.open("w") as f:
                 f.write(contents)
 
     @classmethod
@@ -179,17 +184,17 @@ class AdaSample(Sample):
             LOCATION_KEY: self.location.model_dump(),
             LOCATION_SOLUTION_KEY: location_solution,
         }
-        with open(dest_dir / OTHER_JSON_NAME, "w") as f:
+        with (dest_dir / OTHER_JSON_NAME).open("w") as f:
             f.write(json.dumps(other_json, indent=4))
         for file, contents in self.canonical_solution.items():
             src_path = dest_dir / SOLUTION_DIR_NAME / file
             src_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(src_path, "w") as f:
+            with src_path.open("w") as f:
                 f.write(contents)
         for file, contents in self.unit_tests.items():
             src_path = dest_dir / UNIT_TEST_DIR_NAME / file
             src_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(src_path, "w") as f:
+            with src_path.open("w") as f:
                 f.write(contents)
 
     @classmethod
@@ -223,13 +228,13 @@ class ExplainSample(Sample):
     def unpack(self, dataset_root: Path):
         super().unpack(dataset_root)
         dest_dir = dataset_root / self.name
-        with open(dest_dir / REFERENCE_ANSWER_FILE_NAME, "w") as f:
+        with (dest_dir / REFERENCE_ANSWER_FILE_NAME).open("w") as f:
             f.write(self.canonical_solution.reference_answer)
         other_json = {
             CORRECT_STATEMENTS_KEY: self.canonical_solution.correct_statements,
             INCORRECT_STATEMENTS_KEY: self.canonical_solution.incorrect_statements,
         }
-        with open(dest_dir / OTHER_JSON_NAME, "w") as f:
+        with (dest_dir / OTHER_JSON_NAME).open("w") as f:
             f.write(json.dumps(other_json, indent=4))
 
     @classmethod
@@ -263,7 +268,7 @@ class SampleResult(BaseModel):
     stderr: str
     runtime_ms: int
     generated_solution: Any
-    # cpu_time  # TODO
+    # cpu_time  # TODO implement this
 
 
 class GeneratedSample(BaseModel):

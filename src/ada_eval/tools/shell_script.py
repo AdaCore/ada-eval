@@ -25,6 +25,11 @@ class GeneratedSparkSample(GeneratedSample):
     result: ShellScriptResult
 
 
+class UnsupportedSampleTypeError(Exception):
+    def __init__(self, sample_type):
+        super().__init__(f"Unsupported sample type: {sample_type}")
+
+
 class ShellScript(GenericTool):
     config_type = ShellScriptConfig
 
@@ -61,7 +66,7 @@ class ShellScript(GenericTool):
             case SparkSample():
                 return self._apply_spark(sample_working_dir, sample)
             case _:
-                raise ValueError(f"Unsupported sample type: {type(sample)}")
+                raise UnsupportedSampleTypeError(type(sample))
 
     def _apply_spark(
         self, sample_working_dir: Path, sample: SparkSample

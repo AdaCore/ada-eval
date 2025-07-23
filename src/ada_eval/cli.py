@@ -144,17 +144,6 @@ def main():
         help="Number of samples to generate in parallel",
         default=1,
     )
-    generate_parser.add_argument(
-        "--tool",
-        type=Tool,
-        choices=list(Tool),
-        help="Name of tool to use for generation",
-    )
-    generate_parser.add_argument(
-        "--tool_config_file",
-        type=Path,
-        help="Path to tool configuration file",
-    )
 
     args = parser.parse_args()
     args.func(args)

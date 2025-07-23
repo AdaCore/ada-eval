@@ -13,9 +13,14 @@ class Tool(Enum):
         return self.value
 
 
+class UnsupportedToolError(Exception):
+    def __init__(self, tool):
+        super().__init__(f"Unsupported tool: {tool}")
+
+
 def create_tool(tool: Tool, config_file: Path) -> GenericTool:
     match tool:
         case Tool.SHELL_SCRIPT:
             return ShellScript.from_config_file(config_file)
         case _:
-            raise ValueError(f"Unsupported tool: {tool}")
+            raise UnsupportedToolError(tool)

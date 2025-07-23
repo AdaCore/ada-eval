@@ -101,10 +101,10 @@ ignore = [
     "PLC1901", # compare-to-empty-string,
     "S603",    # subprocess-without-shell-equals-true
     "T201",    # use-assert-in-tests
-    "TD002",
-    "TD003",
-    "TD004",
-    "FIX002",
+    "TD002",   # Disable TODO warnings for now
+    "TD003",   # Disable TODO warnings for now
+    "TD004",   # Disable TODO warnings for now
+    "FIX002",  # Disable fixme warnings for now
 ]
 
 [tool.ruff.lint.per-file-ignores]
