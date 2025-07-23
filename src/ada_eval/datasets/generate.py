@@ -5,7 +5,7 @@ from pathlib import Path
 from ada_eval.datasets.loader import load_packed_dataset
 from ada_eval.datasets.types.datasets import Dataset
 from ada_eval.datasets.types.samples import Sample, SampleResult
-from ada_eval.datasets.utils import get_packed_dataset_files
+from ada_eval.datasets.types.datasets import get_packed_dataset_files
 from ada_eval.paths import GENERATION_WORKING_DIR
 from ada_eval.tools.generic_tool import GenericTool
 

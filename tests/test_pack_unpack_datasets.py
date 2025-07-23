@@ -7,15 +7,17 @@ from ada_eval.datasets.loader import (
     git_ls_files,
 )
 from ada_eval.datasets.pack_unpack import pack_datasets, unpack_datasets
-from ada_eval.datasets.utils import (
+from ada_eval.datasets.types.datasets import (
     get_packed_dataset_files,
     get_unpacked_dataset_dirs,
     is_collection_of_packed_datasets,
     is_collection_of_unpacked_datasets,
-    is_git_up_to_date,
     is_packed_dataset,
     is_unpacked_dataset,
-    is_unpacked_sample,
+)
+from ada_eval.datasets.types.samples import is_unpacked_sample
+from ada_eval.datasets.utils import (
+    is_git_up_to_date,
 )
 from ada_eval.paths import COMPACTED_DATASETS_DIR, EXPANDED_DATASETS_DIR
 

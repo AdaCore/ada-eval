@@ -1,3 +1,11 @@
+from .types.datasets import (
+    get_packed_dataset_files,
+    is_collection_of_packed_datasets,
+    is_collection_of_unpacked_datasets,
+    is_packed_dataset,
+    is_unpacked_dataset,
+)
+from .types.samples import is_unpacked_sample
 from .types import (
     BASE_DIR_NAME,
     COMMENTS_FILE_NAME,
@@ -18,13 +26,7 @@ from .types import (
     SparkSample,
 )
 from .utils import (
-    get_packed_dataset_files,
-    is_collection_of_packed_datasets,
-    is_collection_of_unpacked_datasets,
     is_git_up_to_date,
-    is_packed_dataset,
-    is_unpacked_dataset,
-    is_unpacked_sample,
 )
 
 __all__ = [
