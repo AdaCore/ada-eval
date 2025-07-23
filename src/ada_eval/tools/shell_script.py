@@ -66,9 +66,7 @@ class ShellScript(GenericTool):
     def supported_dataset_types(self) -> tuple[DatasetType]:
         return (DatasetType.SPARK,)
 
-    def apply(
-        self, sample_working_dir: Path, sample: Sample
-    ) -> GeneratedSparkSample:
+    def apply(self, sample_working_dir: Path, sample: Sample) -> GeneratedSparkSample:
         match sample:
             case SparkSample():
                 return self._apply_spark(sample_working_dir, sample)
