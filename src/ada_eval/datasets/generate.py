@@ -51,6 +51,7 @@ def generate_completions(
         )
         return
 
+    # Unpack all of the samples
     samples: list[tuple[Path, Sample]] = []
     for dataset in datasets:
         unpack_dataset_for_generation(dataset)
@@ -59,17 +60,16 @@ def generate_completions(
             [(get_sample_working_dir(x, dataset_wd), x) for x in dataset.samples]
         )
 
-        results: list[SampleResult] = []
-        with ThreadPoolExecutor(max_workers=jobs) as executor:
-            futures = [
-                executor.submit(tool.apply, wd, sample) for wd, sample in samples
-            ]
-            for future in futures:
-                try:
-                    results.append(future.result())
-                except Exception as e:
-                    print(f"Error processing sample: {e}")
-        output_file = output_dir / f"{dataset.type}_{dataset.name}.jsonl"
-        with output_file.open("w") as f:
-            for result in results:
-                f.write(result.model_dump_json() + "\n")
+    # Generate completions for each sample
+    results: list[SampleResult] = []
+    with ThreadPoolExecutor(max_workers=jobs) as executor:
+        futures = [executor.submit(tool.apply, wd, sample) for wd, sample in samples]
+        for future in futures:
+            try:
+                results.append(future.result())
+            except Exception as e:
+                print(f"Error processing sample: {e}")
+    output_file = output_dir / f"{dataset.type}_{dataset.name}.jsonl"
+    with output_file.open("w") as f:
+        for result in results:
+            f.write(result.model_dump_json() + "\n")
