@@ -26,6 +26,12 @@ pack-dataset:
 unpack-dataset:
 	uv run ada-eval unpack
 
+generate-dummy:
+	uv run ada-eval generate \
+		--jobs 4 \
+		--tool shell_script \
+		--tool_config_file tools/configs/shell_dummy.json
+
 generate-spark-claude:
 	uv run ada-eval generate \
 		--jobs 4 \
