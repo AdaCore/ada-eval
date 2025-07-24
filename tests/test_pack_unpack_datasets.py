@@ -224,6 +224,8 @@ def test_pack_unpack(tmp_path: Path):
     unpacked_dir = tmp_path / "unpacked"
     shutil.copytree(COMPACTED_DATASETS_DIR, packed_dir)
     shutil.copytree(EXPANDED_DATASETS_DIR, unpacked_dir)
+    with (tmp_path / ".gitignore").open("w") as f:
+        f.write("obj/\n")
 
     # Check that the datasets have been copied as expected
     assert is_collection_of_packed_datasets(packed_dir) is True

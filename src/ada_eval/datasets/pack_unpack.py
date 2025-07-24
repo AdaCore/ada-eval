@@ -12,7 +12,7 @@ from ada_eval.datasets.utils import (
 
 
 def unpack_datasets(src: Path, dest_dir: Path, *, force: bool = False):
-    if not is_git_up_to_date(dest_dir) and not force:
+    if dest_dir.exists() and not is_git_up_to_date(dest_dir) and not force:
         print(
             f"Changes to dataset files in {dest_dir} have not been committed. "
             "Either commit them or re-run with --force"
@@ -27,7 +27,7 @@ def unpack_datasets(src: Path, dest_dir: Path, *, force: bool = False):
 def pack_datasets(src_dir: Path, dest_dir: Path, *, force: bool = False):
     # TODO improve this check to only consider the file of interest,
     # instead of every file in the destination dir
-    if not is_git_up_to_date(dest_dir) and not force:
+    if dest_dir.exists() and not is_git_up_to_date(dest_dir) and not force:
         print(
             f"Changes to dataset files in {dest_dir} have not been committed. "
             "Either commit them or re-run with --force"
