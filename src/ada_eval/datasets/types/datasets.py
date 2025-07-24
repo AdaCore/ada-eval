@@ -31,6 +31,16 @@ class Dataset:
     type: DatasetType
     samples: Sequence[Sample]
 
+    def __hash__(self) -> int:
+        """Make Dataset hashable based on name and type only."""
+        return hash((self.name, self.type))
+
+    def __eq__(self, other: object) -> bool:
+        """Compare datasets based on name and type only."""
+        if not isinstance(other, Dataset):
+            return False
+        return self.name == other.name and self.type == other.type
+
     def save_unpacked(self, unpacked_datasets_root: Path):
         dataset_root = unpacked_datasets_root / f"{self.type}_{self.name}"
         dataset_root.mkdir(exist_ok=True, parents=True)

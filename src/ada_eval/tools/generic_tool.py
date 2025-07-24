@@ -5,7 +5,7 @@ from pathlib import Path
 from pydantic import BaseModel
 
 from ada_eval.datasets.types.datasets import DatasetType
-from ada_eval.datasets.types.samples import Sample
+from ada_eval.datasets.types.samples import GeneratedSample, Sample
 
 
 class LlmProvider(Enum):
@@ -52,5 +52,5 @@ class GenericTool(ABC):
         pass
 
     @abstractmethod
-    def apply(self, sample_working_dir: Path, sample: Sample):
+    def apply(self, sample_working_dir: Path, sample: Sample) -> GeneratedSample:
         pass
