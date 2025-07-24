@@ -5,7 +5,10 @@ description = "Simple project for evaluating LLM based tools for Ada"
 readme = "README.md"
 authors = [{ name = "Rowan Walshe", email = "walshe@adacore.com" }]
 requires-python = ">=3.11"
-dependencies = ["pydantic>=2.10.3"]
+dependencies = [
+    "pydantic>=2.10.3",
+    "tqdm>=4.67.1",
+]
 
 [dependency-groups]
 dev = [
@@ -15,6 +18,7 @@ dev = [
     "pytest-cov>=6.0.0",
     "ruff>=0.8.1",
     "ipykernel>=6.29.5",
+    "types-tqdm>=4.67.0.20250516",
 ]
 
 [project.scripts]

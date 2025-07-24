@@ -1,7 +1,9 @@
 import shutil
-from concurrent.futures import Future, ThreadPoolExecutor
+from concurrent.futures import Future, ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from pathlib import Path
+
+from tqdm import tqdm
 
 from ada_eval.datasets.loader import load_packed_dataset
 from ada_eval.datasets.types.datasets import Dataset, get_packed_dataset_files
@@ -70,21 +72,33 @@ def generate_completions(
 
     # Generate completions for each sample
     dataset_results: dict[Dataset, list[GeneratedSample]] = {}
+
+    # Calculate total number of samples for progress tracking
+    total_samples = sum(len(sample_list) for sample_list in samples.values())
+
     with ThreadPoolExecutor(max_workers=jobs) as executor:
-        all_futures: dict[Dataset, list[Future[GeneratedSample]]] = {}
+        # Submit all futures and create a mapping from future to dataset
+        future_to_dataset: dict[Future[GeneratedSample], Dataset] = {}
         for dataset, in_progress_samples in samples.items():
-            all_futures[dataset] = [
-                executor.submit(tool.apply, x.working_dir, x.sample)
-                for x in in_progress_samples
-            ]
-        # futures = [executor.submit(tool.apply, wd, sample) for wd, sample in samples]
-        for dataset, futures in all_futures.items():
             dataset_results[dataset] = []
-            for future in futures:
+            for sample in in_progress_samples:
+                future = executor.submit(tool.apply, sample.working_dir, sample.sample)
+                future_to_dataset[future] = dataset
+
+        # Process futures as they complete with progress tracking
+        with tqdm(
+            total=total_samples,
+            desc="Generating completions",
+        ) as pbar:
+            for future in as_completed(future_to_dataset.keys()):
+                dataset = future_to_dataset[future]
                 try:
-                    dataset_results[dataset].append(future.result())
+                    result = future.result()
+                    dataset_results[dataset].append(result)
                 except Exception as e:  # noqa: BLE001 we want to catch any and all exceptions
                     print(f"Error processing sample: {e}")
+                finally:
+                    pbar.update(1)
 
     # Write the results to file
     for dataset, results in dataset_results.items():

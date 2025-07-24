@@ -1,3 +1,4 @@
+import logging
 import subprocess
 import time
 from pathlib import Path
@@ -10,6 +11,8 @@ from ada_eval.datasets.types import (
 from ada_eval.datasets.types.samples import GeneratedSample, Sample, get_sample_files
 
 from .generic_tool import BaseConfig, GenericTool
+
+logger = logging.getLogger(__name__)
 
 
 class ShellScriptConfig(BaseConfig):
@@ -76,7 +79,9 @@ class ShellScript(GenericTool):
     def _apply_spark(
         self, sample_working_dir: Path, sample: SparkSample
     ) -> GeneratedSparkSample:
-        print(f"Applying ShellScript to {sample.name} in {sample_working_dir}")
+        logger.debug(
+            "Applying ShellScript to %s in %s", sample.name, sample_working_dir
+        )
 
         # TODO figure out a way to capture compute usage of the spawned process
         start = time.monotonic_ns()

@@ -8,6 +8,7 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "pydantic" },
+    { name = "tqdm" },
 ]
 
 [package.dev-dependencies]
@@ -18,10 +19,14 @@ dev = [
     { name = "pytest" },
     { name = "pytest-cov" },
     { name = "ruff" },
+    { name = "types-tqdm" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "pydantic", specifier = ">=2.10.3" }]
+requires-dist = [
+    { name = "pydantic", specifier = ">=2.10.3" },
+    { name = "tqdm", specifier = ">=4.67.1" },
+]
 
 [package.metadata.requires-dev]
 dev = [
@@ -31,6 +36,7 @@ dev = [
     { name = "pytest", specifier = ">=8.3.4" },
     { name = "pytest-cov", specifier = ">=6.0.0" },
     { name = "ruff", specifier = ">=0.8.1" },
+    { name = "types-tqdm", specifier = ">=4.67.0.20250516" },
 ]
 
 [[package]]
@@ -792,6 +798,18 @@ wheels = [
 ]
 
 [[package]]
+name = "tqdm"
+version = "4.67.1"
+source = { registry = "https://gitlab.adacore-it.com/api/v4/projects/it%2Fpackage-registry/packages/pypi/simple" }
+dependencies = [
+    { name = "colorama", marker = "sys_platform == 'win32'" },
+]
+sdist = { url = "https://gitlab.adacore-it.com/api/v4/projects/202/packages/pypi/files/f8aef9c52c08c13a65f30ea34f4e5aac3fd1a34959879d7e59e63027286627f2/tqdm-4.67.1.tar.gz", hash = "sha256:f8aef9c52c08c13a65f30ea34f4e5aac3fd1a34959879d7e59e63027286627f2" }
+wheels = [
+    { url = "https://gitlab.adacore-it.com/api/v4/projects/202/packages/pypi/files/26445eca388f82e72884e0d580d5464cd801a3ea01e63e5601bdff9ba6a48de2/tqdm-4.67.1-py3-none-any.whl", hash = "sha256:26445eca388f82e72884e0d580d5464cd801a3ea01e63e5601bdff9ba6a48de2" },
+]
+
+[[package]]
 name = "traitlets"
 version = "5.14.3"
 source = { registry = "https://gitlab.adacore-it.com/api/v4/projects/it%2Fpackage-registry/packages/pypi/simple" }
@@ -801,12 +819,45 @@ wheels = [
 ]
 
 [[package]]
+name = "types-requests"
+version = "2.32.4.20250611"
+source = { registry = "https://gitlab.adacore-it.com/api/v4/projects/it%2Fpackage-registry/packages/pypi/simple" }
+dependencies = [
+    { name = "urllib3" },
+]
+sdist = { url = "https://gitlab.adacore-it.com/api/v4/projects/202/packages/pypi/files/741c8777ed6425830bf51e54d6abe245f79b4dcb9019f1622b773463946bf826/types_requests-2.32.4.20250611.tar.gz", hash = "sha256:741c8777ed6425830bf51e54d6abe245f79b4dcb9019f1622b773463946bf826" }
+wheels = [
+    { url = "https://gitlab.adacore-it.com/api/v4/projects/202/packages/pypi/files/ad2fe5d3b0cb3c2c902c8815a70e7fb2302c4b8c1f77bdcd738192cdb3878072/types_requests-2.32.4.20250611-py3-none-any.whl", hash = "sha256:ad2fe5d3b0cb3c2c902c8815a70e7fb2302c4b8c1f77bdcd738192cdb3878072" },
+]
+
+[[package]]
+name = "types-tqdm"
+version = "4.67.0.20250516"
+source = { registry = "https://gitlab.adacore-it.com/api/v4/projects/it%2Fpackage-registry/packages/pypi/simple" }
+dependencies = [
+    { name = "types-requests" },
+]
+sdist = { url = "https://gitlab.adacore-it.com/api/v4/projects/202/packages/pypi/files/230ccab8a332d34f193fc007eb132a6ef54b4512452e718bf21ae0a7caeb5a6b/types_tqdm-4.67.0.20250516.tar.gz", hash = "sha256:230ccab8a332d34f193fc007eb132a6ef54b4512452e718bf21ae0a7caeb5a6b" }
+wheels = [
+    { url = "https://gitlab.adacore-it.com/api/v4/projects/202/packages/pypi/files/1dd9b2c65273f2342f37e5179bc6982df86b6669b3376efc12aef0a29e35d36d/types_tqdm-4.67.0.20250516-py3-none-any.whl", hash = "sha256:1dd9b2c65273f2342f37e5179bc6982df86b6669b3376efc12aef0a29e35d36d" },
+]
+
+[[package]]
 name = "typing-extensions"
 version = "4.14.1"
 source = { registry = "https://gitlab.adacore-it.com/api/v4/projects/it%2Fpackage-registry/packages/pypi/simple" }
 sdist = { url = "https://gitlab.adacore-it.com/api/v4/projects/202/packages/pypi/files/38b39f4aeeab64884ce9f74c94263ef78f3c22467c8724005483154c26648d36/typing_extensions-4.14.1.tar.gz", hash = "sha256:38b39f4aeeab64884ce9f74c94263ef78f3c22467c8724005483154c26648d36" }
 wheels = [
     { url = "https://gitlab.adacore-it.com/api/v4/projects/202/packages/pypi/files/d1e1e3b58374dc93031d6eda2420a48ea44a36c2b4766a4fdeb3710755731d76/typing_extensions-4.14.1-py3-none-any.whl", hash = "sha256:d1e1e3b58374dc93031d6eda2420a48ea44a36c2b4766a4fdeb3710755731d76" },
+]
+
+[[package]]
+name = "urllib3"
+version = "2.5.0"
+source = { registry = "https://gitlab.adacore-it.com/api/v4/projects/it%2Fpackage-registry/packages/pypi/simple" }
+sdist = { url = "https://gitlab.adacore-it.com/api/v4/projects/202/packages/pypi/files/3fc47733c7e419d4bc3f6b3dc2b4f890bb743906a30d56ba4a5bfa4bbff92760/urllib3-2.5.0.tar.gz", hash = "sha256:3fc47733c7e419d4bc3f6b3dc2b4f890bb743906a30d56ba4a5bfa4bbff92760" }
+wheels = [
+    { url = "https://gitlab.adacore-it.com/api/v4/projects/202/packages/pypi/files/e6b01673c0fa6a13e374b50871808eb3bf7046c4b125b216f6bf1cc604cff0dc/urllib3-2.5.0-py3-none-any.whl", hash = "sha256:e6b01673c0fa6a13e374b50871808eb3bf7046c4b125b216f6bf1cc604cff0dc" },
 ]
 
 [[package]]
