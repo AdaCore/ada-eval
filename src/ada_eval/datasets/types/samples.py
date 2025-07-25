@@ -306,3 +306,37 @@ def is_unpacked_sample(path: Path) -> bool:
     """
     other_json = path / OTHER_JSON_NAME
     return path.is_dir() and other_json.is_file()
+
+
+class EvaluationStats(BaseModel):
+    pass
+
+
+class EvaluatedSample(GeneratedSample):
+    evaluation_stats: EvaluationStats
+
+
+class EvaluationStatsAda(EvaluationStats):
+    compiled: bool
+    has_pre_format_compile_warnings: bool
+    has_post_format_compile_warnings: bool
+
+
+class EvaluatedAdaSample(EvaluatedSample, GeneratedAdaSample):
+    evaluation_stats: EvaluationStatsAda
+
+
+class EvaluationStatsExplain(EvaluationStats):
+    pass
+
+
+class EvaluatedExplainSample(EvaluatedSample, GeneratedExplainSample):
+    evaluation_stats: EvaluationStatsExplain
+
+
+class EvaluationStatsSpark(EvaluationStatsAda):
+    successfully_proven: bool
+
+
+class EvaluatedSparkSample(EvaluatedSample, GeneratedSparkSample):
+    evaluation_stats: EvaluationStatsSpark
