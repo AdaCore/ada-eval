@@ -11,7 +11,7 @@ stages:
   before_script:
     - printf "machine gitlab.adacore-it.com\n	login gitlab-ci-token\n	password ${CI_JOB_TOKEN}\n" > ~/.netrc
     - pip install uv -i https://gitlab.adacore-it.com/api/v4/projects/eng%2Fai%2Fada-eval/packages/pypi/simple
-    - uv venv  --python 3.11
+    - uv venv  --python 3.12
     - uv sync
     - git config --global user.email "ci@adacore.com"
     - git config --global user.name "CI"
@@ -32,7 +32,7 @@ ruff:
 mypy:
   extends: .lint
   script:
-    - uv run mypy --no-error-summary . > mypy-out.txt || true  # "|| true" is used for preventing job failure when mypy find errors
+    - uv run mypy --no-error-summary . > mypy-out.txt || true # "|| true" is used for preventing job failure when mypy find errors
     - uv run mypy-gitlab-code-quality < mypy-out.txt > code-quality-report.json
 
 pytest:
