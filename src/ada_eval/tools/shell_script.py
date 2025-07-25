@@ -5,10 +5,14 @@ from pathlib import Path
 
 from ada_eval.datasets.types import (
     DatasetType,
-    SampleResult,
+    GenerationStats,
     SparkSample,
 )
-from ada_eval.datasets.types.samples import GeneratedSample, Sample, get_sample_files
+from ada_eval.datasets.types.samples import (
+    GeneratedSparkSample,
+    Sample,
+    get_sample_files,
+)
 
 from .generic_tool import BaseConfig, GenericTool
 
@@ -17,15 +21,6 @@ logger = logging.getLogger(__name__)
 
 class ShellScriptConfig(BaseConfig):
     shell_script: Path  # Should be relative to the config file
-
-
-class ShellScriptResult(SampleResult):
-    generated_solution: dict[Path, str]
-
-
-class GeneratedSparkSample(GeneratedSample):
-    sample: SparkSample
-    result: ShellScriptResult
 
 
 class UnsupportedSampleTypeError(Exception):
@@ -97,10 +92,11 @@ class ShellScript(GenericTool):
             end = time.monotonic_ns()
             time_ms = (end - start) // 1_000_000
 
+            generated_files = get_sample_files(sample_working_dir)
             return GeneratedSparkSample(
-                sample=sample,
-                result=ShellScriptResult(
-                    generated_solution=get_sample_files(sample_working_dir),
+                **sample.model_dump(),  # Copy all fields from the original sample
+                generated_solution=generated_files,
+                generation_stats=GenerationStats(
                     exit_code=result.returncode,
                     stdout=result.stdout,
                     stderr=result.stderr,
@@ -111,10 +107,11 @@ class ShellScript(GenericTool):
             end = time.monotonic_ns()
             time_ms = (end - start) // 1_000_000
 
+            generated_files = get_sample_files(sample_working_dir)
             return GeneratedSparkSample(
-                sample=sample,
-                result=ShellScriptResult(
-                    generated_solution=get_sample_files(sample_working_dir),
+                **sample.model_dump(),  # Copy all fields from the original sample
+                generated_solution=generated_files,
+                generation_stats=GenerationStats(
                     exit_code=124,  # Standard timeout exit code
                     stdout="",
                     stderr=f"Process timed out after {self.config.timeout_s} seconds",

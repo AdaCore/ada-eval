@@ -11,4 +11,4 @@ echo "Dummy script executed with prompt: $1"
 
 sleep_time=$((RANDOM % 3 + 1))
 echo "Sleeping for $sleep_time seconds to simulate processing..."
-sleep 5
+sleep $sleep_time

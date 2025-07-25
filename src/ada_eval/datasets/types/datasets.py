@@ -10,6 +10,7 @@ from ada_eval.datasets.types.samples import is_unpacked_sample
 from .samples import (
     AdaSample,
     ExplainSample,
+    GeneratedSample,
     Sample,
     SparkSample,
 )
@@ -54,6 +55,10 @@ class Dataset:
                 f.write(sample.model_dump_json() + "\n")
 
 
+class PreGenerationDataset(Dataset):
+    samples: Sequence[Sample]
+
+
 class AdaDataset(Dataset):
     type = DatasetType.ADA
     samples: list[AdaSample]
@@ -67,6 +72,14 @@ class ExplainDataset(Dataset):
 class SparkDataset(Dataset):
     type = DatasetType.SPARK
     samples: list[SparkSample]
+
+
+class PostGenerationDataset(Dataset):
+    samples: Sequence[GeneratedSample]
+
+
+class PostEvaluationDataset(PostGenerationDataset):
+    pass
 
 
 def is_unpacked_dataset(path: Path) -> bool:

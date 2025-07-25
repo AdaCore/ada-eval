@@ -262,18 +262,40 @@ class SparkSample(AdaSample):
     pass
 
 
-class SampleResult(BaseModel):
+class GenerationStats(BaseModel):
     exit_code: int
     stdout: str
     stderr: str
     runtime_ms: int
-    generated_solution: Any
     # cpu_time  # TODO implement this
 
 
-class GeneratedSample(BaseModel):
-    sample: Sample
-    result: SampleResult
+class GeneratedSample(Sample):
+    generation_stats: GenerationStats
+    generated_solution: Any
+
+    @abstractmethod
+    def unpack_for_evaluation(self, sample_dir: Path):
+        raise NotImplementedError
+
+
+class GeneratedAdaSample(GeneratedSample, SparkSample):
+    generated_solution: dict[Path, str]
+
+    def unpack_for_evaluation(self, sample_dir: Path):
+        for file, contents in self.generated_solution.items():
+            src_path = sample_dir / file
+            src_path.parent.mkdir(parents=True, exist_ok=True)
+            with src_path.open("w") as f:
+                f.write(contents)
+
+
+class GeneratedExplainSample(GeneratedSample, SparkSample):
+    generated_solution: str
+
+
+class GeneratedSparkSample(GeneratedAdaSample):
+    pass
 
 
 def is_unpacked_sample(path: Path) -> bool:
