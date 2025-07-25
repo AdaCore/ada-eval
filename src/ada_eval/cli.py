@@ -1,10 +1,13 @@
 import argparse
 from pathlib import Path
 
+# from ada_eval.datasets.evaluate import evaluate_completions
+from ada_eval.datasets.evaluate import evaluate_completions
 from ada_eval.datasets.generate import generate_completions
 from ada_eval.datasets.pack_unpack import pack_datasets, unpack_datasets
 from ada_eval.paths import (
     COMPACTED_DATASETS_DIR,
+    EVALUATED_DATASETS_DIR,
     EXPANDED_DATASETS_DIR,
     GENERATED_DATASETS_DIR,
 )
@@ -30,7 +33,11 @@ def call_generate_completions(args):
 
 
 def call_evaluate_completions(args):
-    pass
+    evaluate_completions(
+        packed_dataset_or_dir=args.dataset,
+        jobs=args.jobs,
+        output_dir=EVALUATED_DATASETS_DIR,
+    )
 
 
 def main():
@@ -125,19 +132,19 @@ def main():
     )
 
     # Evaluate completions for a dataset
-    generate_parser = subparsers.add_parser(
+    evaluation_parser = subparsers.add_parser(
         "evaluate",
         help="Evaluate completions",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    generate_parser.set_defaults(func=call_evaluate_completions)
-    generate_parser.add_argument(
+    evaluation_parser.set_defaults(func=call_evaluate_completions)
+    evaluation_parser.add_argument(
         "--dataset",
         type=Path,
         help="Path to packed dataset or dir of packed datasets",
-        default=COMPACTED_DATASETS_DIR,
+        default=GENERATED_DATASETS_DIR,
     )
-    generate_parser.add_argument(
+    evaluation_parser.add_argument(
         "-j",
         "--jobs",
         type=int,
