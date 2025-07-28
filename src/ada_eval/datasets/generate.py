@@ -31,8 +31,7 @@ def unpack_dataset_for_generation(dataset: Dataset):
     # Unpack each sample
     for sample in dataset.samples:
         sample_working_dir = get_sample_working_dir(sample, dataset_working_dir)
-        sample_working_dir.mkdir()
-        sample.unpack_for_generation(sample_working_dir)
+        sample.sources.unpack_to(sample_working_dir)
 
 
 @dataclass

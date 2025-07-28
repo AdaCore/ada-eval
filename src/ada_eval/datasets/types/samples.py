@@ -74,24 +74,48 @@ class ExplainSolution(BaseModel):
 VALID_SAMPLE_NAME_PATTERN = re.compile(r"^[\w-]+$")
 
 
-def get_sample_files_git_aware(root: Path) -> dict[Path, str]:
+class DirectoryContents(BaseModel):
     """
-    Return a list of files in a directory and their contents.
+    The contents of a directory.
+
+    Attributes:
+        files (dict[Path, str]): A mapping of the files' relative paths to their
+            contents.
+
+    """
+
+    files: dict[Path, str]
+
+    def unpack_to(self, dest_dir: Path):
+        """Unpack the contents into the specified directory."""
+        dest_dir.mkdir(parents=True, exist_ok=True)  # Should exist even if empty
+        for rel_path, contents in self.files.items():
+            full_path = dest_dir / rel_path
+            full_path.parent.mkdir(parents=True, exist_ok=True)
+            with full_path.open("w") as f:
+                f.write(contents)
+
+
+def get_sample_files_git_aware(root: Path) -> DirectoryContents:
+    """
+    Return the contents of a directory.
 
     Will exclude any files that are ignored by git.
     """
     if not root.is_dir():
-        return {}
+        return DirectoryContents(files={})
     full_paths = sorted(git_ls_files(root))
-    return {p.relative_to(root): p.read_text("utf-8") for p in full_paths}
+    files = {p.relative_to(root): p.read_text("utf-8") for p in full_paths}
+    return DirectoryContents(files=files)
 
 
-def get_sample_files(root: Path) -> dict[Path, str]:
-    """Return a list of files in a directory and their contents."""
+def get_sample_files(root: Path) -> DirectoryContents:
+    """Return the contents of a directory."""
     if not root.is_dir():
-        return {}
+        return DirectoryContents(files={})
     full_paths = [p for p in sorted(root.rglob("*")) if p.is_file()]
-    return {p.relative_to(root): p.read_text("utf-8") for p in full_paths}
+    files = {p.relative_to(root): p.read_text("utf-8") for p in full_paths}
+    return DirectoryContents(files=files)
 
 
 class Sample(BaseModel):
@@ -103,8 +127,7 @@ class Sample(BaseModel):
         location (Location): Location of the sample. The path should be relative
             to to the sample root.
         prompt (str): Prompt for the sample
-        sources (dict[Path, str]): Source files for the sample, with the path as
-            the key and the contents as the value.
+        sources (DirectoryContents): Source files for the sample.
         canonical_solution (Any): Canonical solution for the sample. The type
             should be constrained by the subclass.
         comments (str): Any comments about the sample by the author. May be empty.
@@ -114,7 +137,7 @@ class Sample(BaseModel):
     name: str
     location: Location
     prompt: str
-    sources: dict[Path, str]
+    sources: DirectoryContents
     canonical_solution: Any
     comments: str
 
@@ -128,25 +151,11 @@ class Sample(BaseModel):
     def unpack(self, dataset_root: Path):
         dest_dir = dataset_root / self.name
         dest_dir.mkdir(exist_ok=True, parents=True)
-        with (dest_dir / PROMPT_FILE_NAME).open("w") as f:
-            f.write(self.prompt)
-        with (dest_dir / COMMENTS_FILE_NAME).open("w") as f:
-            f.write(self.comments)
-        for file, contents in self.sources.items():
-            src_path = dest_dir / BASE_DIR_NAME / file
-            src_path.parent.mkdir(parents=True, exist_ok=True)
-            with src_path.open("w") as f:
-                f.write(contents)
+        (dest_dir / PROMPT_FILE_NAME).write_text(self.prompt)
+        (dest_dir / COMMENTS_FILE_NAME).write_text(self.comments)
+        self.sources.unpack_to(dest_dir / BASE_DIR_NAME)
         other_json = {LOCATION_KEY: self.location.model_dump()}
-        with (dest_dir / OTHER_JSON_NAME).open("w") as f:
-            f.write(json.dumps(other_json, indent=4))
-
-    def unpack_for_generation(self, sample_dir: Path):
-        for file, contents in self.sources.items():
-            src_path = sample_dir / file
-            src_path.parent.mkdir(parents=True, exist_ok=True)
-            with src_path.open("w") as f:
-                f.write(contents)
+        (dest_dir / OTHER_JSON_NAME).write_text(json.dumps(other_json, indent=4))
 
     @classmethod
     @abstractmethod
@@ -162,17 +171,14 @@ class AdaSample(Sample):
         location_solution (Location | None): The act of writing the solution may
             move the area of interest. This field should be used to specify the
             updated location if needed.
-        canonical_solution (dict[Path, str]): Canonical solution for the sample.
-            The path should be relative to the sample root. The values should be
-            the contents of the files.
-        unit_tests (dict[Path, str]): Same structure as used for sources or
-            canonical_solution. This should contain the unit tests for the sample.
+        canonical_solution (DirectoryContents): Canonical solution for the sample.
+        unit_tests (DirectoryContents): The unit tests for the sample.
 
     """
 
     location_solution: Location | None
-    canonical_solution: dict[Path, str]
-    unit_tests: dict[Path, str]
+    canonical_solution: DirectoryContents
+    unit_tests: DirectoryContents
 
     def unpack(self, dataset_root: Path):
         super().unpack(dataset_root)
@@ -184,18 +190,9 @@ class AdaSample(Sample):
             LOCATION_KEY: self.location.model_dump(),
             LOCATION_SOLUTION_KEY: location_solution,
         }
-        with (dest_dir / OTHER_JSON_NAME).open("w") as f:
-            f.write(json.dumps(other_json, indent=4))
-        for file, contents in self.canonical_solution.items():
-            src_path = dest_dir / SOLUTION_DIR_NAME / file
-            src_path.parent.mkdir(parents=True, exist_ok=True)
-            with src_path.open("w") as f:
-                f.write(contents)
-        for file, contents in self.unit_tests.items():
-            src_path = dest_dir / UNIT_TEST_DIR_NAME / file
-            src_path.parent.mkdir(parents=True, exist_ok=True)
-            with src_path.open("w") as f:
-                f.write(contents)
+        (dest_dir / OTHER_JSON_NAME).write_text(json.dumps(other_json, indent=4))
+        self.canonical_solution.unpack_to(dest_dir / SOLUTION_DIR_NAME)
+        self.unit_tests.unpack_to(dest_dir / UNIT_TEST_DIR_NAME)
 
     @classmethod
     def load_unpacked_sample(cls, sample_dir: Path):
@@ -272,7 +269,7 @@ class GenerationStats(BaseModel):
 
 class GeneratedSample(Sample):
     generation_stats: GenerationStats
-    generated_solution: Any
+    generated_solution: object
 
     @abstractmethod
     def unpack_for_evaluation(self, sample_dir: Path):
@@ -280,14 +277,10 @@ class GeneratedSample(Sample):
 
 
 class GeneratedAdaSample(GeneratedSample, SparkSample):
-    generated_solution: dict[Path, str]
+    generated_solution: DirectoryContents
 
     def unpack_for_evaluation(self, sample_dir: Path):
-        for file, contents in self.generated_solution.items():
-            src_path = sample_dir / file
-            src_path.parent.mkdir(parents=True, exist_ok=True)
-            with src_path.open("w") as f:
-                f.write(contents)
+        self.generated_solution.unpack_to(sample_dir)
 
 
 class GeneratedExplainSample(GeneratedSample, SparkSample):
