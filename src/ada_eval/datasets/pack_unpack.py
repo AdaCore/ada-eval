@@ -6,9 +6,7 @@ from ada_eval.datasets.types.datasets import (
     get_packed_dataset_files,
     get_unpacked_dataset_dirs,
 )
-from ada_eval.datasets.utils import (
-    is_git_up_to_date,
-)
+from ada_eval.datasets.utils import is_git_up_to_date
 
 
 def unpack_datasets(src: Path, dest_dir: Path, *, force: bool = False):

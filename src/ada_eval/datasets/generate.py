@@ -13,11 +13,7 @@ from ada_eval.tools.generic_tool import GenericTool
 
 
 def get_dataset_working_dir(dataset: Dataset) -> Path:
-    return GENERATION_WORKING_DIR / f"{dataset.type}_{dataset.name}"
-
-
-def get_sample_working_dir(sample: Sample, dataset_working_dir: Path) -> Path:
-    return dataset_working_dir / sample.name
+    return GENERATION_WORKING_DIR / dataset.dirname()
 
 
 def unpack_dataset_for_generation(dataset: Dataset):
@@ -30,7 +26,7 @@ def unpack_dataset_for_generation(dataset: Dataset):
 
     # Unpack each sample
     for sample in dataset.samples:
-        sample_working_dir = get_sample_working_dir(sample, dataset_working_dir)
+        sample_working_dir = sample.working_dir_in(dataset_working_dir)
         sample.sources.unpack_to(sample_working_dir)
 
 
@@ -65,7 +61,7 @@ def generate_completions(
         unpack_dataset_for_generation(dataset)
         dataset_wd = get_dataset_working_dir(dataset)
         samples[dataset] = [
-            InProgressSample(sample, get_sample_working_dir(sample, dataset_wd))
+            InProgressSample(sample, sample.working_dir_in(dataset_wd))
             for sample in dataset.samples
         ]
 
@@ -101,7 +97,7 @@ def generate_completions(
 
     # Write the results to file
     for dataset, results in dataset_results.items():
-        output_file = output_dir / f"{dataset.type}_{dataset.name}.jsonl"
+        output_file = output_dir / f"{dataset.dirname()}.jsonl"
         with output_file.open("w") as f:
             for result in results:
                 f.write(result.model_dump_json() + "\n")

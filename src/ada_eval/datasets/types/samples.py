@@ -148,6 +148,10 @@ class Sample(BaseModel):
             raise InvalidSampleNameError(value)
         return value
 
+    def working_dir_in(self, dataset_working_dir: Path) -> Path:
+        """Get the working dir for this sample, given that of the parent dataset."""
+        return dataset_working_dir / self.name
+
     def unpack(self, dataset_root: Path):
         dest_dir = dataset_root / self.name
         dest_dir.mkdir(exist_ok=True, parents=True)

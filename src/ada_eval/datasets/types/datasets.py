@@ -42,14 +42,18 @@ class Dataset:
             return False
         return self.name == other.name and self.type == other.type
 
+    def dirname(self) -> str:
+        """Get the stem of this dataset's file or directory name."""
+        return f"{self.type}_{self.name}"
+
     def save_unpacked(self, unpacked_datasets_root: Path):
-        dataset_root = unpacked_datasets_root / f"{self.type}_{self.name}"
+        dataset_root = unpacked_datasets_root / self.dirname()
         dataset_root.mkdir(exist_ok=True, parents=True)
         for sample in self.samples:
             sample.unpack(dataset_root)
 
     def save_packed(self, dest_dir: Path):
-        dest_file = dest_dir / f"{self.type}_{self.name}.jsonl"
+        dest_file = dest_dir / f"{self.dirname()}.jsonl"
         with dest_file.open("w") as f:
             for sample in self.samples:
                 f.write(sample.model_dump_json() + "\n")
