@@ -13,7 +13,7 @@ from ada_eval.datasets.types.samples import (
 )
 from ada_eval.utils import run_cmd_with_timeout
 
-from .generic_tool import BaseConfig, GenericTool
+from .generic_tool import BaseConfig, GenerationTool
 
 logger = logging.getLogger(__name__)
 
@@ -34,8 +34,9 @@ class InvalidConfigTypeError(Exception):
         )
 
 
-class ShellScript(GenericTool):
+class ShellScript(GenerationTool):
     config_type = ShellScriptConfig
+    config: ShellScriptConfig
 
     def __init__(self, config: ShellScriptConfig):
         self.config = config
@@ -63,14 +64,16 @@ class ShellScript(GenericTool):
     def supported_dataset_types(self) -> tuple[DatasetType]:
         return (DatasetType.SPARK,)
 
-    def apply(self, sample_working_dir: Path, sample: Sample) -> GeneratedSparkSample:
+    def generate(
+        self, sample_working_dir: Path, sample: Sample
+    ) -> GeneratedSparkSample:
         match sample:
             case SparkSample():
-                return self._apply_spark(sample_working_dir, sample)
+                return self._generate_spark(sample_working_dir, sample)
             case _:
                 raise UnsupportedSampleTypeError(type(sample))
 
-    def _apply_spark(
+    def _generate_spark(
         self, sample_working_dir: Path, sample: SparkSample
     ) -> GeneratedSparkSample:
         logger.debug(

@@ -5,7 +5,7 @@ from pathlib import Path
 from pydantic import BaseModel
 
 from ada_eval.datasets.types.datasets import DatasetType
-from ada_eval.datasets.types.samples import GeneratedSample, Sample
+from ada_eval.datasets.types.samples import EvaluatedSample, GeneratedSample, Sample
 
 
 class LlmProvider(Enum):
@@ -51,6 +51,16 @@ class GenericTool(ABC):
     def supported_dataset_types(self) -> tuple[DatasetType]:
         pass
 
+
+class GenerationTool(GenericTool):
     @abstractmethod
-    def apply(self, sample_working_dir: Path, sample: Sample) -> GeneratedSample:
-        pass
+    def generate(self, sample_working_dir: Path, sample: Sample) -> GeneratedSample:
+        """Generate a completion for a sample."""
+
+
+class EvaluationTool(GenericTool):
+    @abstractmethod
+    def evaluate(
+        self, sample_working_dir: Path, sample: GeneratedSample
+    ) -> EvaluatedSample:
+        """Evaluate a sample completion."""

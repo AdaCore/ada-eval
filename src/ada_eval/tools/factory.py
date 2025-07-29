@@ -6,7 +6,7 @@ from ada_eval.tools.shell_script import ShellScript
 from .generic_tool import GenericTool
 
 
-class Tool(Enum):
+class GenerationToolName(Enum):
     SHELL_SCRIPT = "shell_script"
 
     def __str__(self):
@@ -18,9 +18,9 @@ class UnsupportedToolError(Exception):
         super().__init__(f"Unsupported tool: {tool}")
 
 
-def create_tool(tool: Tool, config_file: Path) -> GenericTool:
+def create_tool(tool: GenerationToolName, config_file: Path) -> GenericTool:
     match tool:
-        case Tool.SHELL_SCRIPT:
+        case GenerationToolName.SHELL_SCRIPT:
             return ShellScript.from_config_file(config_file)
         case _:
             raise UnsupportedToolError(tool)

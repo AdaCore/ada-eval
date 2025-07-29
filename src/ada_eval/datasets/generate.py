@@ -9,7 +9,7 @@ from ada_eval.datasets.loader import load_packed_dataset
 from ada_eval.datasets.types.datasets import Dataset, get_packed_dataset_files
 from ada_eval.datasets.types.samples import GeneratedSample, Sample
 from ada_eval.paths import GENERATION_WORKING_DIR
-from ada_eval.tools.generic_tool import GenericTool
+from ada_eval.tools.generic_tool import GenerationTool
 
 
 def get_dataset_working_dir(dataset: Dataset) -> Path:
@@ -37,7 +37,7 @@ class InProgressSample:
 
 
 def generate_completions(
-    packed_dataset_or_dir: Path, jobs: int, tool: GenericTool, output_dir: Path
+    packed_dataset_or_dir: Path, jobs: int, tool: GenerationTool, output_dir: Path
 ):
     dataset_files = get_packed_dataset_files(packed_dataset_or_dir)
 
@@ -77,7 +77,9 @@ def generate_completions(
         for dataset, in_progress_samples in samples.items():
             dataset_results[dataset] = []
             for sample in in_progress_samples:
-                future = executor.submit(tool.apply, sample.working_dir, sample.sample)
+                future = executor.submit(
+                    tool.generate, sample.working_dir, sample.sample
+                )
                 future_to_dataset[future] = dataset
 
         # Process futures as they complete with progress tracking

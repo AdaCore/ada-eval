@@ -8,7 +8,7 @@ from ada_eval.paths import (
     EXPANDED_DATASETS_DIR,
     GENERATED_DATASETS_DIR,
 )
-from ada_eval.tools.factory import Tool, create_tool
+from ada_eval.tools.factory import GenerationToolName, create_tool
 
 
 def call_unpack_datasets(args):
@@ -114,8 +114,8 @@ def main():
     )
     generate_parser.add_argument(
         "--tool",
-        type=Tool,
-        choices=list(Tool),
+        type=GenerationToolName,
+        choices=list(GenerationToolName),
         help="Name of tool to use for generation",
     )
     generate_parser.add_argument(
