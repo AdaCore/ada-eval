@@ -35,7 +35,7 @@ def call_evaluate_completions(args):
 
 def main():
     parser = argparse.ArgumentParser(description="CLI for Eval Framework")
-    subparsers = parser.add_subparsers()
+    subparsers = parser.add_subparsers(required=True)
 
     # Unpack datasets subcommand
     unpack_parser = subparsers.add_parser(
@@ -117,11 +117,13 @@ def main():
         type=GenerationToolName,
         choices=list(GenerationToolName),
         help="Name of tool to use for generation",
+        required=True,
     )
     generate_parser.add_argument(
         "--tool_config_file",
         type=Path,
         help="Path to tool configuration file",
+        required=True,
     )
 
     # Evaluate completions for a dataset
