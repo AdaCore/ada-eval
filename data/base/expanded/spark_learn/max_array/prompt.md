@@ -1,0 +1,1 @@
+I'm trying to prove the correctness of Max_Array. With that in mind I've added a postcondition that states that the result is greater than or equal to all elements in the array, however gnatprove isn't able to prove this. Please can you help me make this provable, without removing the postcondition?

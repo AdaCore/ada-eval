@@ -1,0 +1,1 @@
+When I run gnatprove against Cyclic_Permutation, I get a warning that "A" is not initialized. Please can you identify and fix the issue.

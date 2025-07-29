@@ -1,0 +1,1 @@
+The init procedure initializes an array, but the parameter is incorrectly marked as in out, instead of just out.

@@ -14,7 +14,6 @@ from .types import (
     ExplainSolution,
     Location,
     Sample,
-    Sloc,
     SparkSample,
 )
 from .types.datasets import (
@@ -45,7 +44,6 @@ __all__ = [
     "ExplainSolution",
     "Location",
     "Sample",
-    "Sloc",
     "SparkSample",
     "get_packed_dataset_files",
     "is_collection_of_packed_datasets",
