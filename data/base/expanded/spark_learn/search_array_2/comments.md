@@ -1,0 +1,1 @@
+This is basically the same as search_array_1, however if you try to prove Contains, gnatprove will output a bunch of warnings that might misdirect the user away from the actual issue.

@@ -34,12 +34,6 @@ REFERENCE_ANSWER_FILE_NAME = "reference_answer.md"
 CORRECT_STATEMENTS_KEY = "correct_statements"
 INCORRECT_STATEMENTS_KEY = "incorrect_statements"
 LOCATION_KEY = "location"
-LOCATION_SOLUTION_KEY = "location_solution"
-
-
-class Sloc(BaseModel):
-    line: int
-    column: int | None
 
 
 class PathMustBeRelativeError(Exception):
@@ -47,10 +41,45 @@ class PathMustBeRelativeError(Exception):
         super().__init__(f"Path '{path}' must be relative")
 
 
+class SubprogramNotFoundError(ValueError):
+    """Raised when a subprogram is not found in a file."""
+
+    def __init__(self, subprogram_name: str, file_path: Path):
+        super().__init__(f"Subprogram '{subprogram_name}' not found in {file_path}")
+
+
+def find_subprogram_line(file_path: Path, subprogram_name: str) -> int:
+    """
+    Find the line number where a subprogram is first defined in an Ada file.
+
+    Args:
+        file_path: Path to the Ada file
+        subprogram_name: Name of the subprogram to find
+
+    Returns:
+        Line number (1-based) where the subprogram is first found
+
+    Raises:
+        ValueError: If the subprogram is not found in the file
+
+    """
+    content = file_path.read_text("utf-8")
+    lines = content.splitlines()
+
+    # Compile the regex pattern once for efficiency
+    pattern = re.compile(rf"\b{re.escape(subprogram_name)}\b")
+
+    # Look for the first line that contains subprogram name
+    for i, line in enumerate(lines, 1):
+        if pattern.search(line):
+            return i
+
+    raise SubprogramNotFoundError(subprogram_name, file_path)
+
+
 class Location(BaseModel):
     path: Path
-    start: Sloc | None
-    end: Sloc | None
+    subprogram_name: str
 
     @field_validator("path")
     @classmethod
@@ -61,8 +90,22 @@ class Location(BaseModel):
         return path
 
     @field_serializer("path", when_used="always")
-    def serlialize_path(self, path):
+    def serialize_path(self, path):
         return str(path)
+
+    def find_line_number(self, base_path: Path) -> int:
+        """
+        Find the line number where this location's subprogram is defined.
+
+        Args:
+            base_path: Base path to resolve the relative path against
+
+        Returns:
+            Line number (1-based) where the subprogram is found
+
+        """
+        full_path = base_path / self.path
+        return find_subprogram_line(full_path, self.subprogram_name)
 
 
 class ExplainSolution(BaseModel):
@@ -159,9 +202,6 @@ class AdaSample(Sample):
     Ada-specific sample extending the base Sample class.
 
     Attributes:
-        location_solution (Location | None): The act of writing the solution may
-            move the area of interest. This field should be used to specify the
-            updated location if needed.
         canonical_solution (dict[Path, str]): Canonical solution for the sample.
             The path should be relative to the sample root. The values should be
             the contents of the files.
@@ -170,19 +210,14 @@ class AdaSample(Sample):
 
     """
 
-    location_solution: Location | None
     canonical_solution: dict[Path, str]
     unit_tests: dict[Path, str]
 
     def unpack(self, dataset_root: Path):
         super().unpack(dataset_root)
         dest_dir = dataset_root / self.name
-        location_solution = None
-        if self.location_solution:
-            location_solution = self.location_solution.model_dump()
         other_json = {
             LOCATION_KEY: self.location.model_dump(),
-            LOCATION_SOLUTION_KEY: location_solution,
         }
         with (dest_dir / OTHER_JSON_NAME).open("w") as f:
             f.write(json.dumps(other_json, indent=4))
@@ -205,15 +240,9 @@ class AdaSample(Sample):
         comments = get_file_or_empty(sample_dir / COMMENTS_FILE_NAME)
         solution_files = get_sample_files_git_aware(sample_dir / SOLUTION_DIR_NAME)
         unit_test_files = get_sample_files_git_aware(sample_dir / UNIT_TEST_DIR_NAME)
-        location_solution = None
-        if other_data.get(LOCATION_SOLUTION_KEY, None):
-            location_solution = Location.model_validate(
-                other_data[LOCATION_SOLUTION_KEY]
-            )
         return cls(
             name=sample_dir.name,
             location=Location.model_validate(other_data[LOCATION_KEY]),
-            location_solution=location_solution,
             prompt=prompt,
             comments=comments,
             sources=base_files,

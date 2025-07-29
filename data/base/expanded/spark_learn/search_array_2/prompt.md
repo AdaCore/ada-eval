@@ -1,0 +1,1 @@
+When I try to prove Contains, I get a lot of warnings. While the implementation isn't the most efficient, I'm not allowed to change it at this point. Can you help me figure out how to make gnatprove without changing the actual implementation. (You can add any contracts/pragma's that would help though).

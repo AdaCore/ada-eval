@@ -1,0 +1,1 @@
+GNATprove complains about the Depends clause on the Identity procedure. Please can you help me make this provable, without removing the Depends clause?
