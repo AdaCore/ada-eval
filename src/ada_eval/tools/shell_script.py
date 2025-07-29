@@ -1,6 +1,4 @@
 import logging
-import subprocess
-import time
 from pathlib import Path
 
 from ada_eval.datasets.types import (
@@ -13,6 +11,7 @@ from ada_eval.datasets.types.samples import (
     Sample,
     get_sample_files,
 )
+from ada_eval.utils import run_cmd_with_timeout
 
 from .generic_tool import BaseConfig, GenericTool
 
@@ -77,44 +76,31 @@ class ShellScript(GenericTool):
         logger.debug(
             "Applying ShellScript to %s in %s", sample.name, sample_working_dir
         )
-
-        # TODO figure out a way to capture compute usage of the spawned process
-        start = time.monotonic_ns()
-        try:
-            result = subprocess.run(
-                [str(self.config.shell_script), sample.prompt],
-                check=False,
-                cwd=sample_working_dir,
-                capture_output=True,
-                encoding="utf-8",
-                timeout=self.config.timeout_s,
+        # Run the shell script with the prompt as its argument
+        result, time_ms = run_cmd_with_timeout(
+            [str(self.config.shell_script), sample.prompt],
+            sample_working_dir,
+            self.config.timeout_s,
+        )
+        # Pack up the resulting files and return a GeneratedSparkSample
+        generated_files = get_sample_files(sample_working_dir)
+        if result is None:
+            # Timed out
+            generation_stats = GenerationStats(
+                exit_code=124,  # Standard timeout exit code
+                stdout="",
+                stderr=f"Process timed out after {self.config.timeout_s} seconds",
+                runtime_ms=time_ms,
             )
-            end = time.monotonic_ns()
-            time_ms = (end - start) // 1_000_000
-
-            generated_files = get_sample_files(sample_working_dir)
-            return GeneratedSparkSample(
-                **sample.model_dump(),  # Copy all fields from the original sample
-                generated_solution=generated_files,
-                generation_stats=GenerationStats(
-                    exit_code=result.returncode,
-                    stdout=result.stdout,
-                    stderr=result.stderr,
-                    runtime_ms=time_ms,
-                ),
+        else:
+            generation_stats = GenerationStats(
+                exit_code=result.returncode,
+                stdout=result.stdout,
+                stderr=result.stderr,
+                runtime_ms=time_ms,
             )
-        except subprocess.TimeoutExpired:
-            end = time.monotonic_ns()
-            time_ms = (end - start) // 1_000_000
-
-            generated_files = get_sample_files(sample_working_dir)
-            return GeneratedSparkSample(
-                **sample.model_dump(),  # Copy all fields from the original sample
-                generated_solution=generated_files,
-                generation_stats=GenerationStats(
-                    exit_code=124,  # Standard timeout exit code
-                    stdout="",
-                    stderr=f"Process timed out after {self.config.timeout_s} seconds",
-                    runtime_ms=time_ms,
-                ),
-            )
+        return GeneratedSparkSample(
+            **sample.model_dump(),  # Copy all fields from the original sample
+            generated_solution=generated_files,
+            generation_stats=generation_stats,
+        )
