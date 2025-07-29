@@ -1,6 +1,8 @@
 from pathlib import Path
 from typing import Any
 
+from pydantic import ValidationError
+
 from ada_eval.datasets.types import (
     CORRECT_STATEMENTS_KEY,
     INCORRECT_STATEMENTS_KEY,
@@ -12,6 +14,10 @@ from ada_eval.datasets.types import (
     ExplainDataset,
     ExplainSample,
     ExplainSolution,
+    GeneratedAdaSample,
+    GeneratedExplainSample,
+    GeneratedSample,
+    GeneratedSparkSample,
     SparkDataset,
     SparkSample,
 )
@@ -90,6 +96,7 @@ def load_unpacked_dataset(path: Path) -> Dataset:
 
 
 def load_packed_dataset(path: Path) -> Dataset:
+    """Load a packed dataset from its `.jsonl` file."""
     if not is_packed_dataset(path):
         raise InvalidDatasetError(path, "packed")
     if "_" not in path.stem:
@@ -99,19 +106,30 @@ def load_packed_dataset(path: Path) -> Dataset:
     dataset_name = path.stem[first_underscore + 1 :]
     dataset_class: type[Dataset]
     sample_class: type[Sample]
+    generated_sample_class: type[GeneratedSample]
     match dataset_type:
         case DatasetType.ADA:
             dataset_class = AdaDataset
             sample_class = AdaSample
+            generated_sample_class = GeneratedAdaSample
         case DatasetType.EXPLAIN:
             dataset_class = ExplainDataset
             sample_class = ExplainSample
+            generated_sample_class = GeneratedExplainSample
         case DatasetType.SPARK:
             dataset_class = SparkDataset
             sample_class = SparkSample
+            generated_sample_class = GeneratedSparkSample
         case _:
             raise UnknownDatasetTypeError(dataset_type)
     with path.open() as f:
         lines = f.readlines()
-    samples = [sample_class.model_validate_json(x, strict=True) for x in lines]
+    # Try to load as `GeneratedSample`s first, but fall back to `Sample`s if that fails
+    samples: list[Sample]
+    try:
+        samples = [
+            generated_sample_class.model_validate_json(x, strict=True) for x in lines
+        ]
+    except ValidationError:
+        samples = [sample_class.model_validate_json(x, strict=True) for x in lines]
     return dataset_class(name=dataset_name, samples=samples, type=dataset_type)

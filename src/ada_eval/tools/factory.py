@@ -3,7 +3,7 @@ from pathlib import Path
 
 from ada_eval.tools.shell_script import ShellScript
 
-from .generic_tool import GenericTool
+from .generic_tool import GenerationTool
 
 
 class GenerationToolName(Enum):
@@ -18,7 +18,9 @@ class UnsupportedToolError(Exception):
         super().__init__(f"Unsupported tool: {tool}")
 
 
-def create_tool(tool: GenerationToolName, config_file: Path) -> GenericTool:
+def create_generation_tool(
+    tool: GenerationToolName, config_file: Path
+) -> GenerationTool:
     match tool:
         case GenerationToolName.SHELL_SCRIPT:
             return ShellScript.from_config_file(config_file)

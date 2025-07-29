@@ -13,18 +13,13 @@ from ada_eval.datasets.types.samples import (
 )
 from ada_eval.utils import run_cmd_with_timeout
 
-from .generic_tool import BaseConfig, GenerationTool
+from .generic_tool import BaseConfig, GenerationTool, UnsupportedSampleTypeError
 
 logger = logging.getLogger(__name__)
 
 
 class ShellScriptConfig(BaseConfig):
     shell_script: Path  # Should be relative to the config file
-
-
-class UnsupportedSampleTypeError(Exception):
-    def __init__(self, sample_type):
-        super().__init__(f"Unsupported sample type: {sample_type}")
 
 
 class InvalidConfigTypeError(Exception):
@@ -64,46 +59,43 @@ class ShellScript(GenerationTool):
     def supported_dataset_types(self) -> tuple[DatasetType]:
         return (DatasetType.SPARK,)
 
-    def generate(
-        self, sample_working_dir: Path, sample: Sample
-    ) -> GeneratedSparkSample:
+    def generate(self, sample: Sample) -> GeneratedSparkSample:
         match sample:
             case SparkSample():
-                return self._generate_spark(sample_working_dir, sample)
+                return self._generate_spark(sample)
             case _:
-                raise UnsupportedSampleTypeError(type(sample))
+                raise UnsupportedSampleTypeError(type(sample), SparkSample)
 
-    def _generate_spark(
-        self, sample_working_dir: Path, sample: SparkSample
-    ) -> GeneratedSparkSample:
-        logger.debug(
-            "Applying ShellScript to %s in %s", sample.name, sample_working_dir
-        )
-        # Run the shell script with the prompt as its argument
-        result, time_ms = run_cmd_with_timeout(
-            [str(self.config.shell_script), sample.prompt],
-            sample_working_dir,
-            self.config.timeout_s,
-        )
-        # Pack up the resulting files and return a GeneratedSparkSample
-        generated_files = get_sample_files(sample_working_dir)
-        if result is None:
-            # Timed out
-            generation_stats = GenerationStats(
-                exit_code=124,  # Standard timeout exit code
-                stdout="",
-                stderr=f"Process timed out after {self.config.timeout_s} seconds",
-                runtime_ms=time_ms,
+    def _generate_spark(self, sample: SparkSample) -> GeneratedSparkSample:
+        with sample.sources.unpacked() as sample_working_dir:
+            logger.debug(
+                "Applying ShellScript to %s in %s", sample.name, sample_working_dir
             )
-        else:
-            generation_stats = GenerationStats(
-                exit_code=result.returncode,
-                stdout=result.stdout,
-                stderr=result.stderr,
-                runtime_ms=time_ms,
+            # Run the shell script with the prompt as its argument
+            result, time_ms = run_cmd_with_timeout(
+                [str(self.config.shell_script), sample.prompt],
+                sample_working_dir,
+                self.config.timeout_s,
             )
-        return GeneratedSparkSample(
-            **sample.model_dump(),  # Copy all fields from the original sample
-            generated_solution=generated_files,
-            generation_stats=generation_stats,
-        )
+            # Pack up the resulting files and return a GeneratedSparkSample
+            generated_files = get_sample_files(sample_working_dir)
+            if result is None:
+                # Timed out
+                generation_stats = GenerationStats(
+                    exit_code=124,  # Standard timeout exit code
+                    stdout="",
+                    stderr=f"Process timed out after {self.config.timeout_s} seconds",
+                    runtime_ms=time_ms,
+                )
+            else:
+                generation_stats = GenerationStats(
+                    exit_code=result.returncode,
+                    stdout=result.stdout,
+                    stderr=result.stderr,
+                    runtime_ms=time_ms,
+                )
+            return GeneratedSparkSample(
+                **sample.model_dump(),  # Copy all fields from the original sample
+                generated_solution=generated_files,
+                generation_stats=generation_stats,
+            )

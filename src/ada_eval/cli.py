@@ -1,14 +1,13 @@
 import argparse
 from pathlib import Path
 
-from ada_eval.datasets.generate import generate_completions
 from ada_eval.datasets.pack_unpack import pack_datasets, unpack_datasets
 from ada_eval.paths import (
     COMPACTED_DATASETS_DIR,
     EXPANDED_DATASETS_DIR,
     GENERATED_DATASETS_DIR,
 )
-from ada_eval.tools.factory import GenerationToolName, create_tool
+from ada_eval.tools.factory import GenerationToolName, create_generation_tool
 
 
 def call_unpack_datasets(args):
@@ -20,12 +19,11 @@ def call_pack_datasets(args):
 
 
 def call_generate_completions(args):
-    tool = create_tool(args.tool, args.tool_config_file)
-    generate_completions(
+    tool = create_generation_tool(args.tool, args.tool_config_file)
+    tool.generate_dir(
         packed_dataset_or_dir=args.dataset,
-        jobs=args.jobs,
-        tool=tool,
         output_dir=GENERATED_DATASETS_DIR,
+        jobs=args.jobs,
     )
 
 

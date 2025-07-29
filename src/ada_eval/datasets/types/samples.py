@@ -4,6 +4,7 @@ import json
 import re
 from abc import abstractmethod
 from pathlib import Path
+from tempfile import TemporaryDirectory
 from typing import Any
 
 from pydantic import BaseModel, field_serializer, field_validator
@@ -74,6 +75,32 @@ class ExplainSolution(BaseModel):
 VALID_SAMPLE_NAME_PATTERN = re.compile(r"^[\w-]+$")
 
 
+class UnpackedDirectoryContextManager:
+    """
+    Context manager for unpacking a `DirectoryContents` to a temp directory.
+
+    Returns the `Path` to the temp directory on entry, and cleans it up on exit.
+    """
+
+    contents: "DirectoryContents"
+    temp_dir: TemporaryDirectory | None = None
+
+    def __init__(self, contents: "DirectoryContents"):
+        self.contents = contents
+        self.temp_dir = None
+
+    def __enter__(self) -> Path:
+        self.temp_dir = TemporaryDirectory()
+        temp_dir_path = Path(self.temp_dir.__enter__())
+        self.contents.unpack_to(temp_dir_path)
+        return temp_dir_path
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        if self.temp_dir is not None:
+            self.temp_dir.__exit__(exc_type, exc_value, traceback)
+            self.temp_dir = None
+
+
 class DirectoryContents(BaseModel):
     """
     The contents of a directory.
@@ -94,6 +121,10 @@ class DirectoryContents(BaseModel):
             full_path.parent.mkdir(parents=True, exist_ok=True)
             with full_path.open("w") as f:
                 f.write(contents)
+
+    def unpacked(self) -> UnpackedDirectoryContextManager:
+        """Return a context manager that unpacks the contents to a temp directory."""
+        return UnpackedDirectoryContextManager(self)
 
 
 def get_sample_files_git_aware(root: Path) -> DirectoryContents:
@@ -276,19 +307,22 @@ class GeneratedSample(Sample):
     generated_solution: object
 
     @abstractmethod
-    def unpack_for_evaluation(self, sample_dir: Path):
+    def unpacked_for_evaluation(self) -> UnpackedDirectoryContextManager:
         raise NotImplementedError
 
 
 class GeneratedAdaSample(GeneratedSample, SparkSample):
     generated_solution: DirectoryContents
 
-    def unpack_for_evaluation(self, sample_dir: Path):
-        self.generated_solution.unpack_to(sample_dir)
+    def unpacked_for_evaluation(self) -> UnpackedDirectoryContextManager:
+        return self.generated_solution.unpacked()
 
 
-class GeneratedExplainSample(GeneratedSample, SparkSample):
+class GeneratedExplainSample(GeneratedSample, ExplainSample):
     generated_solution: str
+
+    def unpacked_for_evaluation(self) -> UnpackedDirectoryContextManager:
+        return self.sources.unpacked()
 
 
 class GeneratedSparkSample(GeneratedAdaSample):
