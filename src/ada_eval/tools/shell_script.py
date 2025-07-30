@@ -2,7 +2,7 @@ import logging
 from pathlib import Path
 
 from ada_eval.datasets.types import (
-    DatasetType,
+    DatasetKind,
     GenerationStats,
     SparkSample,
 )
@@ -59,8 +59,8 @@ class ShellScript(GenerationTool):
     def name(self) -> str:
         return SHELL_SCRIPT_TOOL_NAME
 
-    def supported_dataset_types(self) -> tuple[DatasetType]:
-        return (DatasetType.SPARK,)
+    def supported_dataset_types(self) -> tuple[DatasetKind]:
+        return (DatasetKind.SPARK,)
 
     def generate(self, sample: Sample) -> GeneratedSparkSample:
         match sample:

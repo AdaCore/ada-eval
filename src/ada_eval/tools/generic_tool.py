@@ -10,7 +10,7 @@ from tqdm import tqdm
 from ada_eval.datasets.loader import load_packed_dataset
 from ada_eval.datasets.types.datasets import (
     Dataset,
-    DatasetType,
+    DatasetKind,
     get_packed_dataset_files,
 )
 from ada_eval.datasets.types.samples import EvaluatedSample, GeneratedSample, Sample
@@ -64,7 +64,7 @@ class GenericTool(ABC):
         pass
 
     @abstractmethod
-    def supported_dataset_types(self) -> tuple[DatasetType]:
+    def supported_dataset_kinds(self) -> tuple[DatasetKind]:
         pass
 
     def _apply_to_directory(
@@ -96,7 +96,7 @@ class GenericTool(ABC):
             print(f"No datasets could be found at: {packed_dataset_or_dir}")
             return
         datasets = [load_packed_dataset(path) for path in dataset_files]
-        datasets = [x for x in datasets if x.type in self.supported_dataset_types()]
+        datasets = [x for x in datasets if x.type in self.supported_dataset_kinds()]
         if len(datasets) == 0:
             print(
                 f"No datasets supported by {self.name} could be found at:",

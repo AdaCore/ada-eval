@@ -101,6 +101,7 @@ ignore = [
     "D202",    # no-blank-line-after-function
     "D203",    # one-blank-line-before-class
     "D212",    # multi-line-summary-first-line
+    "RET505",  # Unnecessary {branch} after return statement
     "S607",    # start-process-with-partial-path
     "PLC1901", # compare-to-empty-string,
     "S603",    # subprocess-without-shell-equals-true

@@ -7,18 +7,15 @@ from ada_eval.datasets.types import (
     CORRECT_STATEMENTS_KEY,
     INCORRECT_STATEMENTS_KEY,
     REFERENCE_ANSWER_FILE_NAME,
-    AdaDataset,
     AdaSample,
     Dataset,
-    DatasetType,
-    ExplainDataset,
+    DatasetKind,
     ExplainSample,
     ExplainSolution,
     GeneratedAdaSample,
     GeneratedExplainSample,
     GeneratedSample,
     GeneratedSparkSample,
-    SparkDataset,
     SparkSample,
 )
 from ada_eval.datasets.types.datasets import (
@@ -42,7 +39,7 @@ class InvalidDatasetNameError(Exception):
         super().__init__(f"Expected {expected_format} to contain an underscore: {path}")
 
 
-class UnknownDatasetTypeError(Exception):
+class UnknownDatasetKindError(Exception):
     """Raised when an unknown dataset type is encountered."""
 
     def __init__(self, dataset_type):
@@ -66,33 +63,32 @@ def load_unpacked_dataset(path: Path) -> Dataset:
         raise InvalidDatasetError(path, "unpacked")
     if "_" not in path.stem:
         raise InvalidDatasetNameError(path, "unpacked dataset dir name")
-    first_underscore = path.stem.index("_")
-    dataset_type = DatasetType(path.stem[:first_underscore])
+    dataset_type_str, _, dataset_name = path.stem.partition("_")
+    dataset_type = DatasetKind(dataset_type_str)
     sample_class: type[Sample]
     match dataset_type:
-        case DatasetType.ADA:
+        case DatasetKind.ADA:
             sample_class = AdaSample
-        case DatasetType.SPARK:
+        case DatasetKind.SPARK:
             sample_class = SparkSample
-        case DatasetType.EXPLAIN:
+        case DatasetKind.EXPLAIN:
             sample_class = ExplainSample
         case _:
-            raise UnknownDatasetTypeError(dataset_type)
-    dataset_name = path.stem[first_underscore + 1 :]
+            raise UnknownDatasetKindError(dataset_type)
     samples = []
     for sample_dir in sorted(path.iterdir()):
         if not is_unpacked_sample(sample_dir):
             continue
         samples.append(sample_class.load_unpacked_sample(sample_dir))
     match dataset_type:
-        case DatasetType.ADA:
-            return AdaDataset(name=dataset_name, samples=samples, type=dataset_type)
-        case DatasetType.EXPLAIN:
-            return ExplainDataset(name=dataset_name, samples=samples, type=dataset_type)
-        case DatasetType.SPARK:
-            return SparkDataset(name=dataset_name, samples=samples, type=dataset_type)
+        case DatasetKind.ADA:
+            return Dataset(name=dataset_name, samples=samples, type=sample_class)
+        case DatasetKind.EXPLAIN:
+            return Dataset(name=dataset_name, samples=samples, type=sample_class)
+        case DatasetKind.SPARK:
+            return Dataset(name=dataset_name, samples=samples, type=sample_class)
         case _:
-            raise UnknownDatasetTypeError(dataset_type)
+            raise UnknownDatasetKindError(dataset_type)
 
 
 def load_packed_dataset(path: Path) -> Dataset:
@@ -101,27 +97,22 @@ def load_packed_dataset(path: Path) -> Dataset:
         raise InvalidDatasetError(path, "packed")
     if "_" not in path.stem:
         raise InvalidDatasetNameError(path, "packed dataset filename")
-    first_underscore = path.stem.index("_")
-    dataset_type = DatasetType(path.stem[:first_underscore])
-    dataset_name = path.stem[first_underscore + 1 :]
-    dataset_class: type[Dataset]
+    dataset_type_str, _, dataset_name = path.stem.partition("_")
+    dataset_type = DatasetKind(dataset_type_str)
     sample_class: type[Sample]
     generated_sample_class: type[GeneratedSample]
     match dataset_type:
-        case DatasetType.ADA:
-            dataset_class = AdaDataset
+        case DatasetKind.ADA:
             sample_class = AdaSample
             generated_sample_class = GeneratedAdaSample
-        case DatasetType.EXPLAIN:
-            dataset_class = ExplainDataset
+        case DatasetKind.EXPLAIN:
             sample_class = ExplainSample
             generated_sample_class = GeneratedExplainSample
-        case DatasetType.SPARK:
-            dataset_class = SparkDataset
+        case DatasetKind.SPARK:
             sample_class = SparkSample
             generated_sample_class = GeneratedSparkSample
         case _:
-            raise UnknownDatasetTypeError(dataset_type)
+            raise UnknownDatasetKindError(dataset_type)
     with path.open() as f:
         lines = f.readlines()
     # Try to load as `GeneratedSample`s first, but fall back to `Sample`s if that fails
@@ -130,6 +121,7 @@ def load_packed_dataset(path: Path) -> Dataset:
         samples = [
             generated_sample_class.model_validate_json(x, strict=True) for x in lines
         ]
+        return Dataset(name=dataset_name, samples=samples, type=generated_sample_class)
     except ValidationError:
         samples = [sample_class.model_validate_json(x, strict=True) for x in lines]
-    return dataset_class(name=dataset_name, samples=samples, type=dataset_type)
+        return Dataset(name=dataset_name, samples=samples, type=sample_class)

@@ -42,3 +42,12 @@ def run_cmd_with_timeout(
         result = None
         end = time.monotonic_ns()
     return result, (end - start) // 1_000_000
+
+
+class UnexpectedTypeError(TypeError):
+    """Raised when an unexpected type is encountered."""
+
+    def __init__(self, expected_type: type, actual_type: type):
+        super().__init__(
+            f"Expected type {expected_type.__name__}, but got {actual_type.__name__}."
+        )

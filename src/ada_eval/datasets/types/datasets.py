@@ -4,20 +4,22 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
+from typing import Generic, TypeVar
 
 from ada_eval.datasets.types.samples import is_unpacked_sample
+from ada_eval.utils import UnexpectedTypeError
 
 from .samples import (
     AdaSample,
     ExplainSample,
-    GeneratedSample,
     Sample,
     SparkSample,
 )
 
 
-# Enum that specifies the type of dataset
-class DatasetType(Enum):
+# Enum that specifies the kind of dataset (in terms of the base sample type,
+# making no distinction between base, generated, or evaluated samples).
+class DatasetKind(Enum):
     ADA = "ada"
     EXPLAIN = "explain"
     SPARK = "spark"
@@ -25,12 +27,27 @@ class DatasetType(Enum):
     def __str__(self) -> str:
         return self.name.lower()
 
+    @classmethod
+    def from_type(cls, sample_type: type[Sample]) -> DatasetKind:
+        """Get the DatasetType from a sample type."""
+        if issubclass(sample_type, SparkSample):
+            return DatasetKind.SPARK
+        elif issubclass(sample_type, AdaSample):
+            return DatasetKind.ADA
+        elif issubclass(sample_type, ExplainSample):
+            return DatasetKind.EXPLAIN
+        else:
+            raise UnexpectedTypeError(expected_type=Sample, actual_type=sample_type)
+
+
+SampleType = TypeVar("SampleType", bound=Sample)
+
 
 @dataclass(kw_only=True)
-class Dataset:
+class Dataset(Generic[SampleType]):
     name: str
-    type: DatasetType
-    samples: Sequence[Sample]
+    type: type[SampleType]
+    samples: Sequence[SampleType]
 
     def __hash__(self) -> int:
         """Make Dataset hashable based on name and type only."""
@@ -40,11 +57,11 @@ class Dataset:
         """Compare datasets based on name and type only."""
         if not isinstance(other, Dataset):
             return False
-        return self.name == other.name and self.type == other.type
+        return self.name == other.name and self.type is other.type
 
     def dirname(self) -> str:
         """Get the stem of this dataset's file or directory name."""
-        return f"{self.type}_{self.name}"
+        return f"{DatasetKind.from_type(self.type)}_{self.name}"
 
     def save_unpacked(self, unpacked_datasets_root: Path):
         dataset_root = unpacked_datasets_root / self.dirname()
@@ -57,33 +74,6 @@ class Dataset:
         with dest_file.open("w") as f:
             for sample in self.samples:
                 f.write(sample.model_dump_json() + "\n")
-
-
-class PreGenerationDataset(Dataset):
-    samples: Sequence[Sample]
-
-
-class AdaDataset(Dataset):
-    type = DatasetType.ADA
-    samples: list[AdaSample]
-
-
-class ExplainDataset(Dataset):
-    type = DatasetType.EXPLAIN
-    samples: list[ExplainSample]
-
-
-class SparkDataset(Dataset):
-    type = DatasetType.SPARK
-    samples: list[SparkSample]
-
-
-class PostGenerationDataset(Dataset):
-    samples: Sequence[GeneratedSample]
-
-
-class PostEvaluationDataset(PostGenerationDataset):
-    pass
 
 
 def is_unpacked_dataset(path: Path) -> bool:

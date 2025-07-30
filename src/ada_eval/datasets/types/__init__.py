@@ -1,9 +1,6 @@
 from .datasets import (
-    AdaDataset,
     Dataset,
-    DatasetType,
-    ExplainDataset,
-    SparkDataset,
+    DatasetKind,
 )
 from .samples import (
     BASE_DIR_NAME,
@@ -48,10 +45,9 @@ __all__ = [
     "AdaDataset",
     "AdaSample",
     "Dataset",
-    "DatasetType",
+    "DatasetKind",
     "EvaluatedSparkSample",
     "EvaluationStatsSpark",
-    "ExplainDataset",
     "ExplainSample",
     "ExplainSolution",
     "GeneratedAdaSample",
@@ -62,6 +58,5 @@ __all__ = [
     "Location",
     "Sample",
     "Sloc",
-    "SparkDataset",
     "SparkSample",
 ]

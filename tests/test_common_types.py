@@ -1,7 +1,7 @@
-from ada_eval.datasets import DatasetType
+from ada_eval.datasets import DatasetKind
 
 
 def test_dataset_type_str():
-    assert str(DatasetType.ADA) == "ada"
-    assert str(DatasetType.EXPLAIN) == "explain"
-    assert str(DatasetType.SPARK) == "spark"
+    assert str(DatasetKind.ADA) == "ada"
+    assert str(DatasetKind.EXPLAIN) == "explain"
+    assert str(DatasetKind.SPARK) == "spark"

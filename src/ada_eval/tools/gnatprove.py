@@ -2,7 +2,7 @@ import logging
 from pathlib import Path
 
 from ada_eval.datasets.types import (
-    DatasetType,
+    DatasetKind,
     EvaluatedSparkSample,
     EvaluationStatsSpark,
     GeneratedSample,
@@ -38,8 +38,8 @@ class GnatProve(EvaluationTool):
     def name(self) -> str:
         return GNATPROVE_TOOL_NAME
 
-    def supported_dataset_types(self) -> tuple[DatasetType]:
-        return (DatasetType.SPARK,)
+    def supported_dataset_types(self) -> tuple[DatasetKind]:
+        return (DatasetKind.SPARK,)
 
     def evaluate(self, sample: GeneratedSample) -> EvaluatedSparkSample:
         if not isinstance(sample, GeneratedSparkSample):
