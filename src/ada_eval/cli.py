@@ -4,10 +4,16 @@ from pathlib import Path
 from ada_eval.datasets.pack_unpack import pack_datasets, unpack_datasets
 from ada_eval.paths import (
     COMPACTED_DATASETS_DIR,
+    EVALUATED_DATASETS_DIR,
     EXPANDED_DATASETS_DIR,
     GENERATED_DATASETS_DIR,
 )
-from ada_eval.tools.factory import GenerationToolName, create_generation_tool
+from ada_eval.tools.factory import (
+    EvaluationToolName,
+    GenerationToolName,
+    create_evaluation_tool,
+    create_generation_tool,
+)
 
 
 def call_unpack_datasets(args):
@@ -28,7 +34,12 @@ def call_generate_completions(args):
 
 
 def call_evaluate_completions(args):
-    pass
+    tool = create_evaluation_tool(args.tool, args.tool_config_file)
+    tool.evaluate_dir(
+        packed_dataset_or_dir=args.dataset,
+        output_dir=EVALUATED_DATASETS_DIR,
+        jobs=args.jobs,
+    )
 
 
 def main():
@@ -118,7 +129,7 @@ def main():
         required=True,
     )
     generate_parser.add_argument(
-        "--tool_config_file",
+        "--tool-config-file",
         type=Path,
         help="Path to tool configuration file",
         required=True,
@@ -135,7 +146,7 @@ def main():
         "--dataset",
         type=Path,
         help="Path to packed dataset or dir of packed datasets",
-        default=COMPACTED_DATASETS_DIR,
+        default=GENERATED_DATASETS_DIR,
     )
     generate_parser.add_argument(
         "-j",
@@ -143,6 +154,19 @@ def main():
         type=int,
         help="Number of samples to generate in parallel",
         default=1,
+    )
+    generate_parser.add_argument(
+        "--tool",
+        type=EvaluationToolName,
+        choices=list(EvaluationToolName),
+        help="Name of tool to use for generation",
+        required=True,
+    )
+    generate_parser.add_argument(
+        "--tool-config-file",
+        type=Path,
+        help="Path to tool configuration file",
+        required=True,
     )
 
     args = parser.parse_args()

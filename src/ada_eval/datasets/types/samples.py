@@ -5,7 +5,6 @@ import re
 from abc import abstractmethod
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Any
 
 from pydantic import BaseModel, field_serializer, field_validator
 
@@ -169,7 +168,7 @@ class Sample(BaseModel):
     location: Location
     prompt: str
     sources: DirectoryContents
-    canonical_solution: Any
+    canonical_solution: object
     comments: str
 
     @field_validator("name")
@@ -306,26 +305,20 @@ class GeneratedSample(Sample):
     generation_stats: GenerationStats
     generated_solution: object
 
-    @abstractmethod
-    def unpacked_for_evaluation(self) -> UnpackedDirectoryContextManager:
-        raise NotImplementedError
 
-
-class GeneratedAdaSample(GeneratedSample, SparkSample):
+class GeneratedAdaSample(AdaSample, GeneratedSample):
+    # Note that `AdaSample` must be before `GeneratedSample`, so that the
+    # `canonical_solution` field has type `DirectoryContents`, not `object`.
     generated_solution: DirectoryContents
 
-    def unpacked_for_evaluation(self) -> UnpackedDirectoryContextManager:
-        return self.generated_solution.unpacked()
 
-
-class GeneratedExplainSample(GeneratedSample, ExplainSample):
+class GeneratedExplainSample(ExplainSample, GeneratedSample):
+    # Note that `ExplainSample` must be before `GeneratedSample`, so that the
+    # `canonical_solution` field has type `ExplainSolution`, not `object`.
     generated_solution: str
 
-    def unpacked_for_evaluation(self) -> UnpackedDirectoryContextManager:
-        return self.sources.unpacked()
 
-
-class GeneratedSparkSample(GeneratedAdaSample):
+class GeneratedSparkSample(SparkSample, GeneratedAdaSample):
     pass
 
 
@@ -365,8 +358,9 @@ class EvaluatedExplainSample(EvaluatedSample, GeneratedExplainSample):
     evaluation_stats: EvaluationStatsExplain
 
 
-class EvaluationStatsSpark(EvaluationStatsAda):
+class EvaluationStatsSpark(EvaluationStats):
     successfully_proven: bool
+    runtime_ms: int
 
 
 class EvaluatedSparkSample(EvaluatedSample, GeneratedSparkSample):

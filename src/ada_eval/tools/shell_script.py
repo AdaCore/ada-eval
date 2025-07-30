@@ -18,6 +18,9 @@ from .generic_tool import BaseConfig, GenerationTool, UnsupportedSampleTypeError
 logger = logging.getLogger(__name__)
 
 
+SHELL_SCRIPT_TOOL_NAME = "shell_script"
+
+
 class ShellScriptConfig(BaseConfig):
     shell_script: Path  # Should be relative to the config file
 
@@ -50,11 +53,11 @@ class ShellScript(GenerationTool):
     def from_config(cls, config: BaseConfig):
         if not isinstance(config, ShellScriptConfig):
             raise InvalidConfigTypeError(ShellScriptConfig, type(config))
-        return ShellScript(config)
+        return cls(config)
 
     @property
     def name(self) -> str:
-        return "shell_script"
+        return SHELL_SCRIPT_TOOL_NAME
 
     def supported_dataset_types(self) -> tuple[DatasetType]:
         return (DatasetType.SPARK,)

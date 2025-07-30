@@ -19,7 +19,8 @@ from ada_eval.datasets.types.samples import EvaluatedSample, GeneratedSample, Sa
 class UnsupportedSampleTypeError(TypeError):
     def __init__(self, sample_type, expected_type):
         super().__init__(
-            f"Unsupported sample type: got {sample_type}, expected {expected_type}"
+            f"Unsupported sample type: got {sample_type.__name__}, "
+            f"expected {expected_type.__name__}"
         )
 
 
@@ -134,6 +135,7 @@ class GenericTool(ABC):
                         pbar.update(1)
 
         # Write the results to file
+        output_dir.mkdir(exist_ok=True, parents=True)
         for dataset, results in dataset_results.items():
             output_file = output_dir / f"{dataset.dirname()}.jsonl"
             with output_file.open("w") as f:
