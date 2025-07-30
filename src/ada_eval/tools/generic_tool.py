@@ -1,19 +1,18 @@
-from abc import ABC, abstractmethod
-from collections.abc import Callable
-from concurrent.futures import Future, ThreadPoolExecutor, as_completed
+from abc import abstractmethod
 from enum import Enum
 from pathlib import Path
 
 from pydantic import BaseModel
-from tqdm import tqdm
 
 from ada_eval.datasets.loader import load_packed_dataset
-from ada_eval.datasets.types.datasets import (
-    Dataset,
+from ada_eval.datasets.types import (
     DatasetKind,
+    EvaluatedSample,
+    GeneratedSample,
+    Sample,
+    SampleOperation,
     get_packed_dataset_files,
 )
-from ada_eval.datasets.types.samples import EvaluatedSample, GeneratedSample, Sample
 
 
 class UnsupportedSampleTypeError(TypeError):
@@ -44,7 +43,7 @@ class BaseConfig(BaseModel):
     timeout_s: int
 
 
-class GenericTool(ABC):
+class GenericTool(SampleOperation):
     config_type: type[BaseConfig]
 
     @classmethod
@@ -58,18 +57,12 @@ class GenericTool(ABC):
     def from_config(cls, config: BaseConfig):
         pass
 
-    @property
-    @abstractmethod
-    def name(self) -> str:
-        pass
-
     @abstractmethod
     def supported_dataset_kinds(self) -> tuple[DatasetKind]:
         pass
 
     def _apply_to_directory(
         self,
-        func: Callable[[Sample], Sample],
         packed_dataset_or_dir: Path,
         output_dir: Path,
         jobs: int,
@@ -96,7 +89,11 @@ class GenericTool(ABC):
             print(f"No datasets could be found at: {packed_dataset_or_dir}")
             return
         datasets = [load_packed_dataset(path) for path in dataset_files]
-        datasets = [x for x in datasets if x.type in self.supported_dataset_kinds()]
+        datasets = [
+            x
+            for x in datasets
+            if DatasetKind.from_type(x.type) in self.supported_dataset_kinds()
+        ]
         if len(datasets) == 0:
             print(
                 f"No datasets supported by {self.name} could be found at:",
@@ -104,48 +101,16 @@ class GenericTool(ABC):
             )
             return
 
-        # Calculate total number of samples for progress tracking
-        total_samples = sum(len(dataset.samples) for dataset in datasets)
+        results = self.apply_to_datasets(datasets, desc=desc, jobs=jobs)
 
-        # Apply to each sample
-        dataset_results: dict[Dataset, list[Sample]] = {
-            dataset: [] for dataset in datasets
-        }
-        with ThreadPoolExecutor(max_workers=jobs) as executor:
-            # Submit all futures and create a mapping from future to dataset
-            future_to_dataset: dict[Future[Sample], Dataset] = {}
-            for dataset in datasets:
-                for sample in dataset.samples:
-                    future = executor.submit(func, sample)
-                    future_to_dataset[future] = dataset
-
-            # Process futures as they complete with progress tracking
-            with tqdm(
-                total=total_samples,
-                desc=desc,
-            ) as pbar:
-                for future in as_completed(future_to_dataset.keys()):
-                    dataset = future_to_dataset[future]
-                    try:
-                        result = future.result()
-                        dataset_results[dataset].append(result)
-                    except Exception as e:  # noqa: BLE001 we want to catch any and all exceptions
-                        print(f"Error processing sample: {e}")
-                    finally:
-                        pbar.update(1)
-
-        # Write the results to file
         output_dir.mkdir(exist_ok=True, parents=True)
-        for dataset, results in dataset_results.items():
-            output_file = output_dir / f"{dataset.dirname()}.jsonl"
-            with output_file.open("w") as f:
-                for result in results:
-                    f.write(result.model_dump_json() + "\n")
+        for dataset in results:
+            dataset.save_packed(output_dir)
 
 
 class GenerationTool(GenericTool):
     @abstractmethod
-    def generate(self, sample: Sample) -> GeneratedSample:
+    def apply(self, sample: Sample) -> GeneratedSample:
         """Generate a completion for a sample."""
 
     def generate_dir(
@@ -167,7 +132,6 @@ class GenerationTool(GenericTool):
 
         """
         self._apply_to_directory(
-            func=self.generate,
             packed_dataset_or_dir=packed_dataset_or_dir,
             output_dir=output_dir,
             jobs=jobs,
@@ -177,13 +141,8 @@ class GenerationTool(GenericTool):
 
 class EvaluationTool(GenericTool):
     @abstractmethod
-    def evaluate(self, sample: GeneratedSample) -> EvaluatedSample:
+    def apply(self, sample: GeneratedSample) -> EvaluatedSample:
         """Evaluate a sample completion."""
-
-    def _evaluate_with_type_check(self, sample: Sample) -> EvaluatedSample:
-        if not isinstance(sample, GeneratedSample):
-            raise UnsupportedSampleTypeError(type(sample), GeneratedSample)
-        return self.evaluate(sample)
 
     def evaluate_dir(
         self,
@@ -207,7 +166,6 @@ class EvaluationTool(GenericTool):
 
         """
         self._apply_to_directory(
-            func=self._evaluate_with_type_check,
             packed_dataset_or_dir=packed_dataset_or_dir,
             output_dir=output_dir,
             jobs=jobs,

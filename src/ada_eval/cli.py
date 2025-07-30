@@ -1,4 +1,5 @@
 import argparse
+import logging
 from pathlib import Path
 
 from ada_eval.datasets.pack_unpack import pack_datasets, unpack_datasets
@@ -43,6 +44,7 @@ def call_evaluate_completions(args):
 
 
 def main():
+    logging.basicConfig(level=logging.INFO)
     parser = argparse.ArgumentParser(description="CLI for Eval Framework")
     subparsers = parser.add_subparsers(required=True)
 

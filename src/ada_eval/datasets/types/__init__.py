@@ -1,7 +1,9 @@
 from .datasets import (
     Dataset,
     DatasetKind,
+    get_packed_dataset_files,
 )
+from .sample_operation import SampleOperation
 from .samples import (
     BASE_DIR_NAME,
     COMMENTS_FILE_NAME,
@@ -15,6 +17,7 @@ from .samples import (
     SOLUTION_DIR_NAME,
     UNIT_TEST_DIR_NAME,
     AdaSample,
+    EvaluatedSample,
     EvaluatedSparkSample,
     EvaluationStatsSpark,
     ExplainSample,
@@ -46,6 +49,7 @@ __all__ = [
     "AdaSample",
     "Dataset",
     "DatasetKind",
+    "EvaluatedSample",
     "EvaluatedSparkSample",
     "EvaluationStatsSpark",
     "ExplainSample",
@@ -57,6 +61,8 @@ __all__ = [
     "GenerationStats",
     "Location",
     "Sample",
+    "SampleOperation",
     "Sloc",
     "SparkSample",
+    "get_packed_dataset_files",
 ]

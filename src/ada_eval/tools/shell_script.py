@@ -37,6 +37,7 @@ class ShellScript(GenerationTool):
     config: ShellScriptConfig
 
     def __init__(self, config: ShellScriptConfig):
+        super().__init__(input_type=SparkSample, output_type=GeneratedSparkSample)
         self.config = config
 
     @classmethod
@@ -59,17 +60,17 @@ class ShellScript(GenerationTool):
     def name(self) -> str:
         return SHELL_SCRIPT_TOOL_NAME
 
-    def supported_dataset_types(self) -> tuple[DatasetKind]:
+    def supported_dataset_kinds(self) -> tuple[DatasetKind]:
         return (DatasetKind.SPARK,)
 
-    def generate(self, sample: Sample) -> GeneratedSparkSample:
+    def apply(self, sample: Sample) -> GeneratedSparkSample:
         match sample:
             case SparkSample():
-                return self._generate_spark(sample)
+                return self._apply_spark(sample)
             case _:
                 raise UnsupportedSampleTypeError(type(sample), SparkSample)
 
-    def _generate_spark(self, sample: SparkSample) -> GeneratedSparkSample:
+    def _apply_spark(self, sample: SparkSample) -> GeneratedSparkSample:
         with sample.sources.unpacked() as sample_working_dir:
             logger.debug(
                 "Applying ShellScript to %s in %s", sample.name, sample_working_dir

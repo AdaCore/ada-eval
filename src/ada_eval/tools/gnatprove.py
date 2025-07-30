@@ -23,6 +23,9 @@ class GnatProve(EvaluationTool):
     config: BaseConfig
 
     def __init__(self, config: BaseConfig):
+        super().__init__(
+            input_type=GeneratedSparkSample, output_type=EvaluatedSparkSample
+        )
         self.config = config
 
     @classmethod
@@ -38,10 +41,10 @@ class GnatProve(EvaluationTool):
     def name(self) -> str:
         return GNATPROVE_TOOL_NAME
 
-    def supported_dataset_types(self) -> tuple[DatasetKind]:
+    def supported_dataset_kinds(self) -> tuple[DatasetKind]:
         return (DatasetKind.SPARK,)
 
-    def evaluate(self, sample: GeneratedSample) -> EvaluatedSparkSample:
+    def apply(self, sample: GeneratedSample) -> EvaluatedSparkSample:
         if not isinstance(sample, GeneratedSparkSample):
             raise UnsupportedSampleTypeError(type(sample), GeneratedSparkSample)
         with sample.generated_solution.unpacked() as working_dir:
