@@ -51,3 +51,10 @@ class UnexpectedTypeError(TypeError):
         super().__init__(
             f"Expected type {expected_type.__name__}, but got {actual_type.__name__}."
         )
+
+
+class ExecutableNotFoundError(RuntimeError):
+    """Raised when a required executable is not found in the PATH."""
+
+    def __init__(self, executable_name: str):
+        super().__init__(f"'{executable_name}' is not available in the PATH.")
