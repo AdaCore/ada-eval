@@ -30,7 +30,6 @@ from .samples import (
     Sample,
     Sloc,
     SparkSample,
-    UnsupportedSampleTypeError,
 )
 
 __all__ = [
@@ -64,6 +63,5 @@ __all__ = [
     "SampleOperation",
     "Sloc",
     "SparkSample",
-    "UnsupportedSampleTypeError",
     "get_packed_dataset_files",
 ]

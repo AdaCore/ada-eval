@@ -8,9 +8,19 @@ from typing import Generic, TypeVar, cast
 from tqdm import tqdm
 
 from .loader import load_packed_dataset
-from .types import Dataset, Sample, UnsupportedSampleTypeError, get_packed_dataset_files
+from .types import Dataset, Sample, get_packed_dataset_files
 
 logger = logging.getLogger(__name__)
+
+
+class UnsupportedSampleTypeError(TypeError):
+    """Raised when a sample type is not supported by a `SampleOperation`."""
+
+    def __init__(self, sample_type, expected_type) -> None:
+        super().__init__(
+            f"Unsupported sample type: got {sample_type.__name__}, "
+            f"expected {expected_type.__name__}"
+        )
 
 
 InputType = TypeVar("InputType", bound=Sample)
