@@ -1,19 +1,11 @@
 import logging
 from pathlib import Path
 
-from ada_eval.datasets.types import (
-    DatasetKind,
-    GenerationStats,
-    SparkSample,
-)
-from ada_eval.datasets.types.samples import (
-    GeneratedSparkSample,
-    Sample,
-    get_sample_files,
-)
+from ada_eval.datasets.types import GenerationStats, SparkSample
+from ada_eval.datasets.types.samples import GeneratedSparkSample, get_sample_files
 from ada_eval.utils import run_cmd_with_timeout
 
-from .generic_tool import BaseConfig, GenerationTool, UnsupportedSampleTypeError
+from .generic_tool import BaseConfig, GenericTool
 
 logger = logging.getLogger(__name__)
 
@@ -26,13 +18,13 @@ class ShellScriptConfig(BaseConfig):
 
 
 class InvalidConfigTypeError(Exception):
-    def __init__(self, expected_type, actual_type):
+    def __init__(self, expected_type, actual_type) -> None:
         super().__init__(
             f"Expected {expected_type.__name__}, got {actual_type.__name__}"
         )
 
 
-class ShellScript(GenerationTool):
+class ShellScript(GenericTool[SparkSample, GeneratedSparkSample]):
     config_type = ShellScriptConfig
     config: ShellScriptConfig
 
@@ -41,7 +33,7 @@ class ShellScript(GenerationTool):
         self.config = config
 
     @classmethod
-    def from_config_file(cls, config_file: Path):
+    def from_config_file(cls, config_file: Path) -> "ShellScript":
         config = ShellScriptConfig.model_validate_json(
             config_file.read_text(encoding="utf-8")
         )
@@ -60,17 +52,7 @@ class ShellScript(GenerationTool):
     def name(self) -> str:
         return SHELL_SCRIPT_TOOL_NAME
 
-    def supported_dataset_kinds(self) -> tuple[DatasetKind]:
-        return (DatasetKind.SPARK,)
-
-    def apply(self, sample: Sample) -> GeneratedSparkSample:
-        match sample:
-            case SparkSample():
-                return self._apply_spark(sample)
-            case _:
-                raise UnsupportedSampleTypeError(type(sample), SparkSample)
-
-    def _apply_spark(self, sample: SparkSample) -> GeneratedSparkSample:
+    def apply(self, sample: SparkSample) -> GeneratedSparkSample:
         with sample.sources.unpacked() as sample_working_dir:
             logger.debug(
                 "Applying ShellScript to %s in %s", sample.name, sample_working_dir

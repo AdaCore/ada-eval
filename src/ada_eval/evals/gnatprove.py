@@ -1,52 +1,34 @@
 import logging
-from pathlib import Path
 
 from ada_eval.datasets.types import (
-    DatasetKind,
     EvaluatedSparkSample,
     EvaluationStatsSpark,
-    GeneratedSample,
     GeneratedSparkSample,
 )
 from ada_eval.utils import run_cmd_with_timeout
 
-from .generic_tool import BaseConfig, EvaluationTool, UnsupportedSampleTypeError
+from .generic_eval import GenericEval
 
 logger = logging.getLogger(__name__)
 
 
 GNATPROVE_TOOL_NAME = "GNATprove"
 
+# TODO (#2): Make this an attribute of each `SparkSample` or a command-line arg
+PROVE_TIMEOUT_S = 60
 
-class GnatProve(EvaluationTool):
-    config_type = BaseConfig
-    config: BaseConfig
 
-    def __init__(self, config: BaseConfig):
+class GnatProve(GenericEval[GeneratedSparkSample, EvaluatedSparkSample]):
+    def __init__(self) -> None:
         super().__init__(
             input_type=GeneratedSparkSample, output_type=EvaluatedSparkSample
         )
-        self.config = config
-
-    @classmethod
-    def from_config_file(cls, config_file: Path):
-        config = BaseConfig.model_validate_json(config_file.read_text(encoding="utf-8"))
-        return cls(config)
-
-    @classmethod
-    def from_config(cls, config: BaseConfig):
-        return cls(config)
 
     @property
     def name(self) -> str:
         return GNATPROVE_TOOL_NAME
 
-    def supported_dataset_kinds(self) -> tuple[DatasetKind]:
-        return (DatasetKind.SPARK,)
-
-    def apply(self, sample: GeneratedSample) -> EvaluatedSparkSample:
-        if not isinstance(sample, GeneratedSparkSample):
-            raise UnsupportedSampleTypeError(type(sample), GeneratedSparkSample)
+    def apply(self, sample: GeneratedSparkSample) -> EvaluatedSparkSample:
         with sample.generated_solution.unpacked() as working_dir:
             logger.debug("Evaluating %s with GNATprove in %s", sample.name, working_dir)
             # Run `gnatprove` with no arguments (except those required to get
@@ -57,7 +39,7 @@ class GnatProve(EvaluationTool):
             result, time_ms = run_cmd_with_timeout(
                 ["gnatprove", "--checks-as-errors=on", "--warnings=error", "-k"],
                 working_dir,
-                self.config.timeout_s,
+                PROVE_TIMEOUT_S,
             )
             # Return a GeneratedSparkSample
             successfully_proven = False if result is None else (result.returncode == 0)

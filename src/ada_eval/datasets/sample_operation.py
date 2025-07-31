@@ -2,12 +2,13 @@ import logging
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from concurrent.futures import Future, ThreadPoolExecutor, as_completed
+from pathlib import Path
 from typing import Generic, TypeVar, cast
 
 from tqdm import tqdm
 
-from .datasets import Dataset
-from .samples import Sample
+from .loader import load_packed_dataset
+from .types import Dataset, Sample, UnsupportedSampleTypeError, get_packed_dataset_files
 
 logger = logging.getLogger(__name__)
 
@@ -72,6 +73,9 @@ class SampleOperation(ABC, Generic[InputType, OutputType]):
             future_to_dataset: dict[Future[OutputType], Dataset] = {}
             for dataset in compatible_datasets:
                 for sample in dataset.samples:
+                    if not isinstance(sample, self.input_type):
+                        # Sanity check for `cast()` above
+                        raise UnsupportedSampleTypeError(type(sample), self.input_type)
                     future = executor.submit(self.apply, sample)
                     future_to_dataset[future] = dataset
 
@@ -98,3 +102,38 @@ class SampleOperation(ABC, Generic[InputType, OutputType]):
                 )
                 new_datasets.append(new_dataset)
         return new_datasets
+
+    def apply_to_directory(
+        self,
+        packed_dataset_or_dir: Path,
+        output_dir: Path,
+        jobs: int,
+        desc: str,
+    ) -> None:
+        """
+        Apply to all samples in a file/directory and write the results to another.
+
+        Args:
+            packed_dataset_or_dir: Path to a packed dataset file, or a directory
+                containing packed datasets.
+            output_dir: Directory where the results will be saved.
+            jobs: Number of parallel jobs to run.
+            desc: Description for the progress bar.
+
+        """
+        # Load from `packed_dataset_or_dir`
+        dataset_files = get_packed_dataset_files(packed_dataset_or_dir)
+        if len(dataset_files) == 0:
+            logger.warning("No datasets could be found at: %s", packed_dataset_or_dir)
+        datasets = [load_packed_dataset(path) for path in dataset_files]
+        # Apply to all datasets
+        results = self.apply_to_datasets(datasets, desc=desc, jobs=jobs)
+        if len(results) == 0:
+            logger.warning(
+                "%s failed to evaluate anything at %s", self.name, packed_dataset_or_dir
+            )
+            return
+        # Save results to `output_dir`
+        output_dir.mkdir(exist_ok=True, parents=True)
+        for dataset in results:
+            dataset.save_packed(output_dir)

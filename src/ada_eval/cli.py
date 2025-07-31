@@ -3,18 +3,14 @@ import logging
 from pathlib import Path
 
 from ada_eval.datasets.pack_unpack import pack_datasets, unpack_datasets
+from ada_eval.evals import Eval, create_eval
 from ada_eval.paths import (
     COMPACTED_DATASETS_DIR,
     EVALUATED_DATASETS_DIR,
     EXPANDED_DATASETS_DIR,
     GENERATED_DATASETS_DIR,
 )
-from ada_eval.tools.factory import (
-    EvaluationToolName,
-    GenerationToolName,
-    create_evaluation_tool,
-    create_generation_tool,
-)
+from ada_eval.tools import Tool, create_tool
 
 
 def call_unpack_datasets(args):
@@ -26,24 +22,26 @@ def call_pack_datasets(args):
 
 
 def call_generate_completions(args):
-    tool = create_generation_tool(args.tool, args.tool_config_file)
-    tool.generate_dir(
+    tool = create_tool(args.tool, args.tool_config_file)
+    tool.apply_to_directory(
         packed_dataset_or_dir=args.dataset,
         output_dir=GENERATED_DATASETS_DIR,
         jobs=args.jobs,
+        desc="Generating completions",
     )
 
 
 def call_evaluate_completions(args):
-    tool = create_evaluation_tool(args.tool, args.tool_config_file)
-    tool.evaluate_dir(
+    tool = create_eval(args.tool)
+    tool.apply_to_directory(
         packed_dataset_or_dir=args.dataset,
         output_dir=EVALUATED_DATASETS_DIR,
         jobs=args.jobs,
+        desc="Evaluating completions",
     )
 
 
-def main():
+def main() -> None:
     logging.basicConfig(level=logging.INFO)
     parser = argparse.ArgumentParser(description="CLI for Eval Framework")
     subparsers = parser.add_subparsers(required=True)
@@ -125,8 +123,8 @@ def main():
     )
     generate_parser.add_argument(
         "--tool",
-        type=GenerationToolName,
-        choices=list(GenerationToolName),
+        type=Tool,
+        choices=list(Tool),
         help="Name of tool to use for generation",
         required=True,
     )
@@ -159,8 +157,8 @@ def main():
     )
     generate_parser.add_argument(
         "--tool",
-        type=EvaluationToolName,
-        choices=list(EvaluationToolName),
+        type=Eval,
+        choices=list(Eval),
         help="Name of tool to use for generation",
         required=True,
     )

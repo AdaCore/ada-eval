@@ -47,6 +47,16 @@ class PathMustBeRelativeError(Exception):
         super().__init__(f"Path '{path}' must be relative")
 
 
+class UnsupportedSampleTypeError(TypeError):
+    """Raised when a sample type is not supported by a tool or eval."""
+
+    def __init__(self, sample_type, expected_type) -> None:
+        super().__init__(
+            f"Unsupported sample type: got {sample_type.__name__}, "
+            f"expected {expected_type.__name__}"
+        )
+
+
 class Location(BaseModel):
     path: Path
     start: Sloc | None

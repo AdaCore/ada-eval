@@ -3,7 +3,6 @@ from .datasets import (
     DatasetKind,
     get_packed_dataset_files,
 )
-from .sample_operation import SampleOperation
 from .samples import (
     BASE_DIR_NAME,
     COMMENTS_FILE_NAME,
@@ -31,6 +30,7 @@ from .samples import (
     Sample,
     Sloc,
     SparkSample,
+    UnsupportedSampleTypeError,
 )
 
 __all__ = [
@@ -64,5 +64,6 @@ __all__ = [
     "SampleOperation",
     "Sloc",
     "SparkSample",
+    "UnsupportedSampleTypeError",
     "get_packed_dataset_files",
 ]
