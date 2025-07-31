@@ -1,5 +1,6 @@
 import argparse
 import logging
+from multiprocessing import cpu_count
 from pathlib import Path
 
 from ada_eval.datasets.pack_unpack import pack_datasets, unpack_datasets
@@ -32,8 +33,8 @@ def call_generate_completions(args):
 
 
 def call_evaluate_completions(args):
-    tool = create_eval(args.tool)
-    tool.apply_to_directory(
+    evaluation = create_eval(args.eval)
+    evaluation.apply_to_directory(
         packed_dataset_or_dir=args.dataset,
         output_dir=EVALUATED_DATASETS_DIR,
         jobs=args.jobs,
@@ -153,19 +154,13 @@ def main() -> None:
         "--jobs",
         type=int,
         help="Number of samples to generate in parallel",
-        default=1,
+        default=cpu_count() or 1,
     )
     generate_parser.add_argument(
-        "--tool",
+        "--eval",
         type=Eval,
         choices=list(Eval),
-        help="Name of tool to use for generation",
-        required=True,
-    )
-    generate_parser.add_argument(
-        "--tool-config-file",
-        type=Path,
-        help="Path to tool configuration file",
+        help="Name of the eval to use for evaluation",
         required=True,
     )
 
