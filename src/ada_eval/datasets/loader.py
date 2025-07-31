@@ -58,7 +58,7 @@ def get_explain_solution(
     )
 
 
-def load_unpacked_dataset(path: Path) -> Dataset:
+def load_unpacked_dataset(path: Path) -> Dataset[Sample]:
     if not is_unpacked_dataset(path):
         raise InvalidDatasetError(path, "unpacked")
     if "_" not in path.stem:
@@ -91,7 +91,7 @@ def load_unpacked_dataset(path: Path) -> Dataset:
             raise UnknownDatasetKindError(dataset_type)
 
 
-def load_packed_dataset(path: Path) -> Dataset:
+def load_packed_dataset(path: Path) -> Dataset[Sample]:
     """Load a packed dataset from its `.jsonl` file."""
     if not is_packed_dataset(path):
         raise InvalidDatasetError(path, "packed")

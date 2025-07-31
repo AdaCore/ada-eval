@@ -32,6 +32,6 @@ def test_make_files_relative_to_with_non_relative_files():
 
 def test_make_files_relative_to_with_empty_list():
     base_path = Path("/home/user/project")
-    files = []
-    expected = []
+    files: list[Path] = []
+    expected: list[Path] = []
     assert make_files_relative_to(base_path, files) == expected

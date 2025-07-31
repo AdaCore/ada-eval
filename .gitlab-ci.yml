@@ -32,7 +32,7 @@ ruff:
 mypy:
   extends: .lint
   script:
-    - uv run mypy --no-error-summary . > mypy-out.txt || true # "|| true" is used for preventing job failure when mypy find errors
+    - uv run mypy --no-error-summary > mypy-out.txt || true # "|| true" is used for preventing job failure when mypy find errors
     - uv run mypy-gitlab-code-quality < mypy-out.txt > code-quality-report.json
 
 pytest:

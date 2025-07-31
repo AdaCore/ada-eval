@@ -7,7 +7,7 @@ check-ruff:
 	uvx ruff check
 
 check-mypy:
-	uv run mypy .
+	uv run mypy
 
 check: check-ruff check-mypy
 

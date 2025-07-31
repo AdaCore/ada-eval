@@ -10,7 +10,7 @@ def make_files_relative_to(path: Path, files: list[Path]) -> list[Path]:
 
 def run_cmd_with_timeout(
     cmd: list[str], working_dir: Path, timeout: int
-) -> tuple[subprocess.CompletedProcess | None, int]:
+) -> tuple[subprocess.CompletedProcess[str] | None, int]:
     """
     Run a command with a timeout and return the result.
 

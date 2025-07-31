@@ -92,7 +92,7 @@ class UnpackedDirectoryContextManager:
     """
 
     contents: "DirectoryContents"
-    temp_dir: TemporaryDirectory | None = None
+    temp_dir: TemporaryDirectory[str] | None = None
 
     def __init__(self, contents: "DirectoryContents"):
         self.contents = contents

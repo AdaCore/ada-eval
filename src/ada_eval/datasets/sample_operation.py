@@ -37,7 +37,7 @@ class SampleOperation(ABC, Generic[InputType, OutputType]):
         """Apply the operation to a sample."""
 
     def apply_to_datasets(
-        self, datasets: Iterable[Dataset], desc: str, jobs: int
+        self, datasets: Iterable[Dataset[Sample]], desc: str, jobs: int
     ) -> list[Dataset[OutputType]]:
         """
         Apply the operation to all samples in a collection of datasets.
@@ -65,12 +65,12 @@ class SampleOperation(ABC, Generic[InputType, OutputType]):
         total_samples = sum(len(dataset.samples) for dataset in compatible_datasets)
 
         # Apply to each sample
-        dataset_results: dict[Dataset, list[OutputType]] = {
+        dataset_results: dict[Dataset[InputType], list[OutputType]] = {
             dataset: [] for dataset in compatible_datasets
         }
         with ThreadPoolExecutor(max_workers=jobs) as executor:
             # Submit all futures and create a mapping from future to dataset
-            future_to_dataset: dict[Future[OutputType], Dataset] = {}
+            future_to_dataset: dict[Future[OutputType], Dataset[InputType]] = {}
             for dataset in compatible_datasets:
                 for sample in dataset.samples:
                     if not isinstance(sample, self.input_type):
