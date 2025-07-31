@@ -2,7 +2,7 @@ import logging
 from pathlib import Path
 
 from ada_eval.datasets.types import GenerationStats, SparkSample
-from ada_eval.datasets.types.samples import GeneratedSparkSample, get_sample_files
+from ada_eval.datasets.types.samples import GeneratedSparkSample, get_contents
 from ada_eval.utils import run_cmd_with_timeout
 
 from .generic_tool import BaseConfig, GenericTool
@@ -64,7 +64,7 @@ class ShellScript(GenericTool[SparkSample, GeneratedSparkSample]):
                 self.config.timeout_s,
             )
             # Pack up the resulting files and return a GeneratedSparkSample
-            generated_files = get_sample_files(sample_working_dir)
+            generated_files = get_contents(sample_working_dir)
             if result is None:
                 # Timed out
                 generation_stats = GenerationStats(

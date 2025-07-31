@@ -126,7 +126,7 @@ class DirectoryContents(BaseModel):
         return UnpackedDirectoryContextManager(self)
 
 
-def get_sample_files_git_aware(root: Path) -> DirectoryContents:
+def get_contents_git_aware(root: Path) -> DirectoryContents:
     """
     Return the contents of a directory.
 
@@ -139,7 +139,7 @@ def get_sample_files_git_aware(root: Path) -> DirectoryContents:
     return DirectoryContents(files=files)
 
 
-def get_sample_files(root: Path) -> DirectoryContents:
+def get_contents(root: Path) -> DirectoryContents:
     """Return the contents of a directory."""
     if not root.is_dir():
         return DirectoryContents(files={})
@@ -231,11 +231,11 @@ class AdaSample(Sample):
     @classmethod
     def load_unpacked_sample(cls, sample_dir: Path):
         other_data = json.loads(get_file_or_empty(sample_dir / OTHER_JSON_NAME))
-        base_files = get_sample_files_git_aware(sample_dir / BASE_DIR_NAME)
+        base_files = get_contents_git_aware(sample_dir / BASE_DIR_NAME)
         prompt = get_file_or_empty(sample_dir / PROMPT_FILE_NAME)
         comments = get_file_or_empty(sample_dir / COMMENTS_FILE_NAME)
-        solution_files = get_sample_files_git_aware(sample_dir / SOLUTION_DIR_NAME)
-        unit_test_files = get_sample_files_git_aware(sample_dir / UNIT_TEST_DIR_NAME)
+        solution_files = get_contents_git_aware(sample_dir / SOLUTION_DIR_NAME)
+        unit_test_files = get_contents_git_aware(sample_dir / UNIT_TEST_DIR_NAME)
         location_solution = None
         if other_data.get(LOCATION_SOLUTION_KEY, None):
             location_solution = Location.model_validate(
@@ -271,7 +271,7 @@ class ExplainSample(Sample):
     @classmethod
     def load_unpacked_sample(cls, sample_dir: Path):
         other_data = json.loads(get_file_or_empty(sample_dir / OTHER_JSON_NAME))
-        base_files = get_sample_files_git_aware(sample_dir / BASE_DIR_NAME)
+        base_files = get_contents_git_aware(sample_dir / BASE_DIR_NAME)
         prompt = get_file_or_empty(sample_dir / PROMPT_FILE_NAME)
         comments = get_file_or_empty(sample_dir / COMMENTS_FILE_NAME)
         reference_answer = get_file_or_empty(sample_dir / REFERENCE_ANSWER_FILE_NAME)
