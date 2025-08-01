@@ -1,10 +1,12 @@
 from enum import Enum
 
-from .gnatprove import GNATPROVE_TOOL_NAME, GnatProve
+from .dummy_compiler import DUMMY_COMPILER_EVAL_NAME, DummyCompiler
+from .gnatprove import GNATPROVE_EVAL_NAME, GnatProve
 
 
 class Eval(Enum):
-    GNATPROVE = GNATPROVE_TOOL_NAME
+    GNATPROVE = GNATPROVE_EVAL_NAME
+    DUMMY_COMPILER = DUMMY_COMPILER_EVAL_NAME
 
     def __str__(self):
         return self.value
@@ -15,13 +17,11 @@ class UnsupportedEvalError(Exception):
         super().__init__(f"Unsupported eval: {evaluation}")
 
 
-_EVALS = {
-    Eval.GNATPROVE: GnatProve,
-}
-
-
-def create_eval(evaluation: Eval) -> GnatProve:
-    if evaluation not in _EVALS:
-        raise UnsupportedEvalError(evaluation)
-    else:
-        return _EVALS[evaluation]()
+def create_eval(evaluation: Eval) -> GnatProve | DummyCompiler:
+    match evaluation:
+        case Eval.GNATPROVE:
+            return GnatProve()
+        case Eval.DUMMY_COMPILER:
+            return DummyCompiler()
+        case _:
+            raise UnsupportedEvalError(evaluation)

@@ -4,7 +4,8 @@ from multiprocessing import cpu_count
 from pathlib import Path
 
 from ada_eval.datasets.pack_unpack import pack_datasets, unpack_datasets
-from ada_eval.evals import Eval, create_eval
+from ada_eval.evals import Eval
+from ada_eval.evaluate import run_evals
 from ada_eval.paths import (
     COMPACTED_DATASETS_DIR,
     EVALUATED_DATASETS_DIR,
@@ -33,12 +34,13 @@ def call_generate_completions(args):
 
 
 def call_evaluate_completions(args):
-    evaluation = create_eval(args.eval)
-    evaluation.apply_to_directory(
+    if args.evals is None:
+        args.evals = list(Eval)
+    run_evals(
+        evals=args.evals,
         packed_dataset_or_dir=args.dataset,
         output_dir=EVALUATED_DATASETS_DIR,
         jobs=args.jobs,
-        desc="Evaluating completions",
     )
 
 
@@ -157,11 +159,11 @@ def main() -> None:
         default=cpu_count() or 1,
     )
     generate_parser.add_argument(
-        "--eval",
+        "--evals",
         type=Eval,
         choices=list(Eval),
-        help="Name of the eval to use for evaluation",
-        required=True,
+        nargs="*",
+        help="Name of the evals to run. If unspecified, all evals will be run.",
     )
 
     args = parser.parse_args()

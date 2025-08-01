@@ -1,9 +1,10 @@
 import logging
 import subprocess
+from typing import Literal
 
 from ada_eval.datasets.types import (
     EvaluatedSparkSample,
-    EvaluationStatsSpark,
+    EvaluationStatsGnatProve,
     GeneratedSparkSample,
 )
 from ada_eval.utils import ExecutableNotFoundError, run_cmd_with_timeout
@@ -13,17 +14,19 @@ from .generic_eval import GenericEval
 logger = logging.getLogger(__name__)
 
 
-GNATPROVE_TOOL_NAME = "GNATprove"
+GNATPROVE_EVAL_NAME: Literal["GNATprove"] = "GNATprove"
 
 # TODO (#2): Make this an attribute of each `SparkSample` or a command-line arg
 PROVE_TIMEOUT_S = 60
 
 
-class GnatProve(GenericEval[GeneratedSparkSample, EvaluatedSparkSample]):
+class GnatProve(
+    GenericEval[GeneratedSparkSample, EvaluatedSparkSample, EvaluationStatsGnatProve]
+):
+    """An evaluation that runs GNATprove and checks for any proof failures."""
+
     def __init__(self) -> None:
-        super().__init__(
-            input_type=GeneratedSparkSample, output_type=EvaluatedSparkSample
-        )
+        super().__init__(type_mapping={GeneratedSparkSample: EvaluatedSparkSample})
         # Check `gnatprove` is available in the PATH
         try:
             subprocess.run(["gnatprove", "--version"], capture_output=True)  # noqa: PLW1510  # `check` is irrelevant here
@@ -32,9 +35,9 @@ class GnatProve(GenericEval[GeneratedSparkSample, EvaluatedSparkSample]):
 
     @property
     def name(self) -> str:
-        return GNATPROVE_TOOL_NAME
+        return GNATPROVE_EVAL_NAME
 
-    def apply(self, sample: GeneratedSparkSample) -> EvaluatedSparkSample:
+    def evaluate(self, sample: GeneratedSparkSample) -> EvaluationStatsGnatProve:
         with sample.generated_solution.unpacked() as working_dir:
             logger.debug("Evaluating %s with GNATprove in %s", sample.name, working_dir)
             # Run `gnatprove` with no arguments (except those required to get
@@ -49,10 +52,6 @@ class GnatProve(GenericEval[GeneratedSparkSample, EvaluatedSparkSample]):
             )
             # Return a GeneratedSparkSample
             successfully_proven = False if result is None else (result.returncode == 0)
-            return EvaluatedSparkSample(
-                **sample.model_dump(),  # Copy all fields from the original sample
-                evaluation_stats=EvaluationStatsSpark(
-                    successfully_proven=successfully_proven,
-                    runtime_ms=time_ms,
-                ),
+            return EvaluationStatsGnatProve(
+                successfully_proven=successfully_proven, runtime_ms=time_ms
             )

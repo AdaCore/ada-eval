@@ -5,8 +5,9 @@ import re
 from abc import abstractmethod
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from typing import Literal
 
-from pydantic import BaseModel, field_serializer, field_validator
+from pydantic import BaseModel, SerializeAsAny, field_serializer, field_validator
 
 from ada_eval.datasets.utils import get_file_or_empty, git_ls_files
 
@@ -305,6 +306,21 @@ class GeneratedSample(Sample):
     generation_stats: GenerationStats
     generated_solution: object
 
+    def to_evaluated_sample(self) -> "EvaluatedSample":
+        """
+        Return this sample as an evaluated sample.
+
+        Returns this sample promoted to an `EvaluatedSample` if necessary, or
+        unmodified if it is already an `EvaluatedSample`.
+        """
+        if isinstance(self, EvaluatedSample):
+            return self
+        else:
+            return GENERATED_EVALUATED_TYPE_MAP[type(self)](
+                **self.model_dump(),  # Copy all fields from the original sample
+                evaluation_results=[],
+            )
+
 
 class GeneratedAdaSample(AdaSample, GeneratedSample):
     # Note that `AdaSample` must be before `GeneratedSample`, so that the
@@ -333,35 +349,41 @@ def is_unpacked_sample(path: Path) -> bool:
 
 
 class EvaluationStats(BaseModel):
-    pass
+    eval_name: str
 
 
-class EvaluatedSample(GeneratedSample):
-    evaluation_stats: EvaluationStats
-
-
-class EvaluationStatsAda(EvaluationStats):
+class EvaluationStatsCompiler(EvaluationStats):
+    eval_name: Literal["compiler"] = "compiler"
     compiled: bool
     has_pre_format_compile_warnings: bool
     has_post_format_compile_warnings: bool
 
 
-class EvaluatedAdaSample(EvaluatedSample, GeneratedAdaSample):
-    evaluation_stats: EvaluationStatsAda
-
-
-class EvaluationStatsExplain(EvaluationStats):
-    pass
-
-
-class EvaluatedExplainSample(EvaluatedSample, GeneratedExplainSample):
-    evaluation_stats: EvaluationStatsExplain
-
-
-class EvaluationStatsSpark(EvaluationStats):
+class EvaluationStatsGnatProve(EvaluationStats):
+    eval_name: Literal["GNATprove"] = "GNATprove"
     successfully_proven: bool
     runtime_ms: int
 
 
-class EvaluatedSparkSample(EvaluatedSample, GeneratedSparkSample):
-    evaluation_stats: EvaluationStatsSpark
+class EvaluatedSample(GeneratedSample):
+    # `SerializeAsAny` to allow for additional fields in subclasses of `EvaluationStats`
+    evaluation_results: list[SerializeAsAny[EvaluationStats]]
+
+
+class EvaluatedAdaSample(GeneratedAdaSample, EvaluatedSample):
+    pass
+
+
+class EvaluatedExplainSample(GeneratedExplainSample, EvaluatedSample):
+    pass
+
+
+class EvaluatedSparkSample(GeneratedSparkSample, EvaluatedAdaSample):
+    pass
+
+
+GENERATED_EVALUATED_TYPE_MAP: dict[type[GeneratedSample], type[EvaluatedSample]] = {
+    GeneratedAdaSample: EvaluatedAdaSample,
+    GeneratedExplainSample: EvaluatedExplainSample,
+    GeneratedSparkSample: EvaluatedSparkSample,
+}

@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 from typing import Any
 
@@ -17,12 +18,15 @@ from ada_eval.datasets.types import (
     GeneratedSample,
     GeneratedSparkSample,
     SparkSample,
+    get_packed_dataset_files,
 )
 from ada_eval.datasets.types.datasets import (
     is_packed_dataset,
     is_unpacked_dataset,
 )
 from ada_eval.datasets.types.samples import Sample, is_unpacked_sample
+
+logger = logging.getLogger(__name__)
 
 
 class InvalidDatasetError(Exception):
@@ -125,3 +129,21 @@ def load_packed_dataset(path: Path) -> Dataset[Sample]:
     except ValidationError:
         samples = [sample_class.model_validate_json(x, strict=True) for x in lines]
         return Dataset(name=dataset_name, samples=samples, type=sample_class)
+
+
+def load_dir(packed_dataset_or_dir: Path) -> list[Dataset[Sample]]:
+    """
+    Load all datasets in a file/directory.
+
+    Args:
+        packed_dataset_or_dir: Path to a packed dataset file, or a directory
+            containing packed datasets.
+
+    Returns:
+        A list of loaded datasets.
+
+    """
+    dataset_files = get_packed_dataset_files(packed_dataset_or_dir)
+    if len(dataset_files) == 0:
+        logger.warning("No datasets could be found at: %s", packed_dataset_or_dir)
+    return [load_packed_dataset(path) for path in dataset_files]

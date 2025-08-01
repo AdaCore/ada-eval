@@ -7,8 +7,8 @@ from typing import Generic, TypeVar, cast
 
 from tqdm import tqdm
 
-from .loader import load_packed_dataset
-from .types import Dataset, Sample, get_packed_dataset_files
+from .loader import load_dir
+from .types import Dataset, Sample
 
 logger = logging.getLogger(__name__)
 
@@ -16,10 +16,14 @@ logger = logging.getLogger(__name__)
 class UnsupportedSampleTypeError(TypeError):
     """Raised when a sample type is not supported by a `SampleOperation`."""
 
-    def __init__(self, sample_type, expected_type) -> None:
+    def __init__(self, sample_type, expected_types: tuple[type[Sample], ...]) -> None:
+        if len(expected_types) == 1:
+            expected_types_str = expected_types[0].__name__
+        else:
+            expected_types_str = f"one of {[t.__name__ for t in expected_types]}"
         super().__init__(
             f"Unsupported sample type: got {sample_type.__name__}, "
-            f"expected {expected_type.__name__}"
+            "expected " + expected_types_str
         )
 
 
@@ -28,14 +32,20 @@ OutputType = TypeVar("OutputType", bound=Sample)
 
 
 class SampleOperation(ABC, Generic[InputType, OutputType]):
-    """An operation that converts one type of `Sample` to another."""
+    """
+    An operation that converts one type of `Sample` to another.
 
-    input_type: type[InputType]
-    output_type: type[OutputType]
+    Args:
+        type_mapping: A mapping from input `Sample` types to the corresponding
+            output `Sample` types they will be converted into. Types not present
+            in this mapping are considered unsupported by the operation.
 
-    def __init__(self, input_type: type[InputType], output_type: type[OutputType]):
-        self.input_type = input_type
-        self.output_type = output_type
+    """
+
+    _type_mapping: dict[type[InputType], type[OutputType]]
+
+    def __init__(self, type_mapping: dict[type[InputType], type[OutputType]]):
+        self._type_mapping = type_mapping
 
     @property
     @abstractmethod
@@ -48,28 +58,31 @@ class SampleOperation(ABC, Generic[InputType, OutputType]):
 
     def apply_to_datasets(
         self, datasets: Iterable[Dataset[Sample]], desc: str, jobs: int
-    ) -> list[Dataset[OutputType]]:
+    ) -> tuple[list[Dataset[OutputType]], list[Dataset[Sample]]]:
         """
         Apply the operation to all samples in a collection of datasets.
-
-        Returns a list of new datasets with samples transformed by the operation,
-        omitting any datasets that are not of a type compatible with the operation.
 
         Args:
             datasets: Iterable of datasets to apply the operation to.
             desc: Description for progress tracking.
             jobs: Number of parallel jobs to run.
 
+        Returns:
+            transformed_datasets: List of new datasets with samples transformed
+                by the operation.
+            incompatible_datasets: List of datasets that were of types unsupported
+                by the operation.
+
         """
         # Filter by input type compatibility
         compatible_datasets: list[Dataset[InputType]] = [
             cast(Dataset[InputType], dataset)
             for dataset in datasets
-            if issubclass(dataset.type, self.input_type)
+            if any(issubclass(dataset.type, t) for t in self._type_mapping)
         ]
         if len(compatible_datasets) == 0:
             logger.warning("No datasets compatible with %s found.", self.name)
-            return []
+            return [], list(datasets)
 
         # Calculate total number of samples for progress tracking
         total_samples = sum(len(dataset.samples) for dataset in compatible_datasets)
@@ -83,9 +96,10 @@ class SampleOperation(ABC, Generic[InputType, OutputType]):
             future_to_dataset: dict[Future[OutputType], Dataset[InputType]] = {}
             for dataset in compatible_datasets:
                 for sample in dataset.samples:
-                    if not isinstance(sample, self.input_type):
+                    supported_inputs = tuple(self._type_mapping.keys())
+                    if not isinstance(sample, supported_inputs):
                         # Sanity check for `cast()` above
-                        raise UnsupportedSampleTypeError(type(sample), self.input_type)
+                        raise UnsupportedSampleTypeError(type(sample), supported_inputs)
                     future = executor.submit(self.apply, sample)
                     future_to_dataset[future] = dataset
 
@@ -103,15 +117,18 @@ class SampleOperation(ABC, Generic[InputType, OutputType]):
 
         # Create new datasets with transformed samples
         new_datasets: list[Dataset[OutputType]] = []
-        for dataset, results in dataset_results.items():
+        for old_dataset, results in dataset_results.items():
             if len(results) > 0:
                 new_dataset = Dataset[OutputType](
-                    name=dataset.name,
-                    type=self.output_type,
+                    name=old_dataset.name,
+                    type=self._type_mapping[old_dataset.type],
                     samples=results,
                 )
                 new_datasets.append(new_dataset)
-        return new_datasets
+        incompatible_datasets = [
+            dataset for dataset in datasets if dataset not in dataset_results
+        ]
+        return new_datasets, incompatible_datasets
 
     def apply_to_directory(
         self,
@@ -123,6 +140,8 @@ class SampleOperation(ABC, Generic[InputType, OutputType]):
         """
         Apply to all samples in a file/directory and write the results to another.
 
+        Datasets of types unsupported by the operation will be skipped.
+
         Args:
             packed_dataset_or_dir: Path to a packed dataset file, or a directory
                 containing packed datasets.
@@ -132,12 +151,9 @@ class SampleOperation(ABC, Generic[InputType, OutputType]):
 
         """
         # Load from `packed_dataset_or_dir`
-        dataset_files = get_packed_dataset_files(packed_dataset_or_dir)
-        if len(dataset_files) == 0:
-            logger.warning("No datasets could be found at: %s", packed_dataset_or_dir)
-        datasets = [load_packed_dataset(path) for path in dataset_files]
+        datasets = load_dir(packed_dataset_or_dir)
         # Apply to all datasets
-        results = self.apply_to_datasets(datasets, desc=desc, jobs=jobs)
+        results, _ = self.apply_to_datasets(datasets, desc=desc, jobs=jobs)
         if len(results) == 0:
             logger.warning(
                 "%s failed to evaluate anything at %s", self.name, packed_dataset_or_dir

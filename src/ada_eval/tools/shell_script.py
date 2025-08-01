@@ -29,7 +29,7 @@ class ShellScript(GenericTool[SparkSample, GeneratedSparkSample]):
     config: ShellScriptConfig
 
     def __init__(self, config: ShellScriptConfig):
-        super().__init__(input_type=SparkSample, output_type=GeneratedSparkSample)
+        super().__init__(type_mapping={SparkSample: GeneratedSparkSample})
         self.config = config
 
     @classmethod
