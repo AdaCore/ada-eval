@@ -18,9 +18,7 @@ logger = logging.getLogger(__name__)
 DUMMY_COMPILER_EVAL_NAME: Literal["compiler"] = "compiler"
 
 
-class DummyCompiler(
-    GenericEval[GeneratedAdaSample, EvaluatedAdaSample, EvaluationStatsCompiler]
-):
+class DummyCompiler(GenericEval[GeneratedAdaSample, EvaluatedAdaSample]):
     """A dummy compiler evaluation that pretends compilation was successful."""
 
     def __init__(self) -> None:

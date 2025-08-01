@@ -14,11 +14,10 @@ logger = logging.getLogger(__name__)
 
 GeneratedSampleType = TypeVar("GeneratedSampleType", bound=GeneratedSample)
 EvaluatedSampleType = TypeVar("EvaluatedSampleType", bound=EvaluatedSample)
-EvaluationStatsType = TypeVar("EvaluationStatsType", bound=EvaluationStats)
 
 
 class GenericEval(
-    Generic[GeneratedSampleType, EvaluatedSampleType, EvaluationStatsType],
+    Generic[GeneratedSampleType, EvaluatedSampleType],
     SampleOperation[GeneratedSampleType | EvaluatedSampleType, EvaluatedSampleType],
 ):
     """
@@ -45,7 +44,7 @@ class GenericEval(
     @abstractmethod
     def evaluate(
         self, sample: EvaluatedSampleType | GeneratedSampleType
-    ) -> EvaluationStatsType:
+    ) -> EvaluationStats:
         """Evaluate a generated sample and return the resulting `EvaluationStats`."""
 
     def apply(
@@ -73,9 +72,7 @@ class WrongEvalOutputTypeError(TypeError):
 
     def __init__(
         self,
-        evaluation: GenericEval[
-            GeneratedSampleType, EvaluatedSampleType, EvaluationStatsType
-        ],
+        evaluation: GenericEval[GeneratedSampleType, EvaluatedSampleType],
         gen_sample: GeneratedSample,
     ) -> None:
         super().__init__(

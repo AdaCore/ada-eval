@@ -20,9 +20,7 @@ GNATPROVE_EVAL_NAME: Literal["GNATprove"] = "GNATprove"
 PROVE_TIMEOUT_S = 60
 
 
-class GnatProve(
-    GenericEval[GeneratedSparkSample, EvaluatedSparkSample, EvaluationStatsGnatProve]
-):
+class GnatProve(GenericEval[GeneratedSparkSample, EvaluatedSparkSample]):
     """An evaluation that runs GNATprove and checks for any proof failures."""
 
     def __init__(self) -> None:
