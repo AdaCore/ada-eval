@@ -86,11 +86,11 @@ def load_unpacked_dataset(path: Path) -> Dataset[Sample]:
         samples.append(sample_class.load_unpacked_sample(sample_dir))
     match dataset_type:
         case DatasetKind.ADA:
-            return Dataset(name=dataset_name, samples=samples, type=sample_class)
+            return Dataset(name=dataset_name, samples=samples, sample_type=sample_class)
         case DatasetKind.EXPLAIN:
-            return Dataset(name=dataset_name, samples=samples, type=sample_class)
+            return Dataset(name=dataset_name, samples=samples, sample_type=sample_class)
         case DatasetKind.SPARK:
-            return Dataset(name=dataset_name, samples=samples, type=sample_class)
+            return Dataset(name=dataset_name, samples=samples, sample_type=sample_class)
         case _:
             raise UnknownDatasetKindError(dataset_type)
 
@@ -125,10 +125,12 @@ def load_packed_dataset(path: Path) -> Dataset[Sample]:
         samples = [
             generated_sample_class.model_validate_json(x, strict=True) for x in lines
         ]
-        return Dataset(name=dataset_name, samples=samples, type=generated_sample_class)
+        return Dataset(
+            name=dataset_name, samples=samples, sample_type=generated_sample_class
+        )
     except ValidationError:
         samples = [sample_class.model_validate_json(x, strict=True) for x in lines]
-        return Dataset(name=dataset_name, samples=samples, type=sample_class)
+        return Dataset(name=dataset_name, samples=samples, sample_type=sample_class)
 
 
 def load_dir(packed_dataset_or_dir: Path) -> list[Dataset[Sample]]:

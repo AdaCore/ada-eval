@@ -1,6 +1,7 @@
 from .datasets import (
     Dataset,
     DatasetKind,
+    dataset_has_sample_type,
     get_packed_dataset_files,
 )
 from .samples import (
@@ -21,6 +22,7 @@ from .samples import (
     EvaluatedSparkSample,
     EvaluationStats,
     EvaluationStatsCompiler,
+    EvaluationStatsFailed,
     EvaluationStatsGnatProve,
     ExplainSample,
     ExplainSolution,
@@ -56,6 +58,7 @@ __all__ = [
     "EvaluatedSparkSample",
     "EvaluationStats",
     "EvaluationStatsCompiler",
+    "EvaluationStatsFailed",
     "EvaluationStatsGnatProve",
     "ExplainSample",
     "ExplainSolution",
@@ -69,5 +72,6 @@ __all__ = [
     "SampleOperation",
     "Sloc",
     "SparkSample",
+    "dataset_has_sample_type",
     "get_packed_dataset_files",
 ]

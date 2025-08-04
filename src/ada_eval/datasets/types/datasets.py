@@ -4,7 +4,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
-from typing import Generic, TypeVar
+from typing import Generic, TypeGuard, TypeVar
 
 from ada_eval.datasets.types.samples import is_unpacked_sample
 from ada_eval.utils import UnexpectedTypeError
@@ -40,28 +40,29 @@ class DatasetKind(Enum):
             raise UnexpectedTypeError(expected_type=Sample, actual_type=sample_type)
 
 
-SampleType = TypeVar("SampleType", bound=Sample)
+SampleType_co = TypeVar("SampleType_co", bound=Sample, covariant=True)
+TargetSampleType = TypeVar("TargetSampleType", bound=Sample)
 
 
 @dataclass(kw_only=True)
-class Dataset(Generic[SampleType]):
+class Dataset(Generic[SampleType_co]):
     name: str
-    type: type[SampleType]
-    samples: Sequence[SampleType]
+    sample_type: type[SampleType_co]
+    samples: Sequence[SampleType_co]  # Must be immutable for covariance
 
     def __hash__(self) -> int:
         """Make Dataset hashable based on name and type only."""
-        return hash((self.name, self.type))
+        return hash((self.name, self.sample_type))
 
     def __eq__(self, other: object) -> bool:
         """Compare datasets based on name and type only."""
         if not isinstance(other, Dataset):
             return False
-        return self.name == other.name and self.type is other.type
+        return self.name == other.name and self.sample_type is other.sample_type
 
     def dirname(self) -> str:
         """Get the stem of this dataset's file or directory name."""
-        return f"{DatasetKind.from_type(self.type)}_{self.name}"
+        return f"{DatasetKind.from_type(self.sample_type)}_{self.name}"
 
     def save_unpacked(self, unpacked_datasets_root: Path):
         dataset_root = unpacked_datasets_root / self.dirname()
@@ -74,6 +75,22 @@ class Dataset(Generic[SampleType]):
         with dest_file.open("w") as f:
             for sample in self.samples:
                 f.write(sample.model_dump_json() + "\n")
+
+
+def dataset_has_sample_type(
+    dataset: Dataset[Sample],
+    sample_types: type[TargetSampleType] | Sequence[type[TargetSampleType]],
+) -> TypeGuard[Dataset[TargetSampleType]]:
+    """
+    Type guard for a dataset's sample type.
+
+    `dataset_has_sample_type(dataset, (A, B, ...))` is equivalent to
+    `dataset_has_sample_type(dataset, A) or dataset_has_sample_type(dataset, B) or ...`.
+    """
+    if isinstance(sample_types, Sequence):
+        return issubclass(dataset.sample_type, tuple(sample_types))
+    else:
+        return issubclass(dataset.sample_type, sample_types)
 
 
 def is_unpacked_dataset(path: Path) -> bool:

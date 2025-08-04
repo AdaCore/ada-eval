@@ -15,6 +15,7 @@ from .types import (
     EvaluatedSample,
     EvaluationStats,
     EvaluationStatsCompiler,
+    EvaluationStatsFailed,
     EvaluationStatsGnatProve,
     ExplainSample,
     ExplainSolution,
@@ -23,6 +24,7 @@ from .types import (
     Sample,
     Sloc,
     SparkSample,
+    dataset_has_sample_type,
 )
 from .types.datasets import (
     get_packed_dataset_files,
@@ -52,6 +54,7 @@ __all__ = [
     "EvaluatedSample",
     "EvaluationStats",
     "EvaluationStatsCompiler",
+    "EvaluationStatsFailed",
     "EvaluationStatsGnatProve",
     "ExplainSample",
     "ExplainSolution",
@@ -61,6 +64,7 @@ __all__ = [
     "SampleOperation",
     "Sloc",
     "SparkSample",
+    "dataset_has_sample_type",
     "get_packed_dataset_files",
     "is_collection_of_packed_datasets",
     "is_collection_of_unpacked_datasets",

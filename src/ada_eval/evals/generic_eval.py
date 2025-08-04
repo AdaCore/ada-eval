@@ -5,6 +5,7 @@ from typing import Generic, TypeVar, cast
 from ada_eval.datasets import (
     EvaluatedSample,
     EvaluationStats,
+    EvaluationStatsFailed,
     GeneratedSample,
     SampleOperation,
 )
@@ -56,7 +57,15 @@ class GenericEval(
         ):
             raise WrongEvalOutputTypeError(evaluation=self, gen_sample=sample)
         evaluated_sample = cast(EvaluatedSampleType, evaluated_sample)
-        evaluated_sample.evaluation_results.append(self.evaluate(sample))
+        try:
+            evaluated_sample.evaluation_results.append(self.evaluate(sample))
+        except Exception as e:
+            logger.exception("Error during evaluation of %s", sample.name)
+            evaluated_sample.evaluation_results.append(
+                EvaluationStatsFailed(
+                    eval_name=self.name, exception_name=type(e).__name__
+                )
+            )
         return evaluated_sample
 
 

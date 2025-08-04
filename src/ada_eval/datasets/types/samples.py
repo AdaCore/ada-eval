@@ -352,6 +352,10 @@ class EvaluationStats(BaseModel):
     eval_name: str
 
 
+class EvaluationStatsFailed(EvaluationStats):
+    exception_name: str
+
+
 class EvaluationStatsCompiler(EvaluationStats):
     eval_name: Literal["compiler"] = "compiler"
     compiled: bool
