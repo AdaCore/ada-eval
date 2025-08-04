@@ -41,6 +41,10 @@ class GenericTool(
 ):
     config_type: type[BaseConfig]
 
+    @property
+    def progress_bar_desc(self) -> str:
+        return f"Generating completions with {self.name}"
+
     @classmethod
     def from_config_file(cls, config_file: Path):
         return cls.from_config(

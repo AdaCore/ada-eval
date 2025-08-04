@@ -29,7 +29,6 @@ def call_generate_completions(args):
         packed_dataset_or_dir=args.dataset,
         output_dir=GENERATED_DATASETS_DIR,
         jobs=args.jobs,
-        desc="Generating completions",
     )
 
 

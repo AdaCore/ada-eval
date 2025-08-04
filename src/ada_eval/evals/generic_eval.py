@@ -48,6 +48,10 @@ class GenericEval(
     ) -> EvaluationStats:
         """Evaluate a generated sample and return the resulting `EvaluationStats`."""
 
+    @property
+    def progress_bar_desc(self) -> str:
+        return f"Evaluating with {self.name}"
+
     def apply(
         self, sample: GeneratedSampleType | EvaluatedSampleType
     ) -> EvaluatedSampleType:

@@ -53,12 +53,17 @@ class SampleOperation(ABC, Generic[InputType, OutputType]):
     def name(self) -> str:
         pass
 
+    @property
+    @abstractmethod
+    def progress_bar_desc(self) -> str:
+        """Description for the progress bar when applying to multiple samples."""
+
     @abstractmethod
     def apply(self, sample: InputType) -> OutputType:
         """Apply the operation to a sample."""
 
     def apply_to_datasets(
-        self, datasets: Iterable[Dataset[DatasetSampleType]], desc: str, jobs: int
+        self, datasets: Iterable[Dataset[DatasetSampleType]], jobs: int
     ) -> tuple[
         list[Dataset[OutputType]],
         list[Dataset[InputType]],
@@ -69,7 +74,6 @@ class SampleOperation(ABC, Generic[InputType, OutputType]):
 
         Args:
             datasets: Iterable of datasets to apply the operation to.
-            desc: Description for progress tracking.
             jobs: Number of parallel jobs to run.
 
         Returns:
@@ -114,7 +118,7 @@ class SampleOperation(ABC, Generic[InputType, OutputType]):
             }
 
             # Process futures as they complete with progress tracking
-            with tqdm(total=total_samples, desc=desc) as pbar:
+            with tqdm(total=total_samples, desc=self.progress_bar_desc) as pbar:
                 for future in as_completed(future_to_input.keys()):
                     dataset, sample = future_to_input[future]
                     try:
@@ -157,7 +161,6 @@ class SampleOperation(ABC, Generic[InputType, OutputType]):
         packed_dataset_or_dir: Path,
         output_dir: Path,
         jobs: int,
-        desc: str,
     ) -> None:
         """
         Apply to all samples in a file/directory and write the results to another.
@@ -169,15 +172,12 @@ class SampleOperation(ABC, Generic[InputType, OutputType]):
                 containing packed datasets.
             output_dir: Directory where the results will be saved.
             jobs: Number of parallel jobs to run.
-            desc: Description for the progress bar.
 
         """
         # Load from `packed_dataset_or_dir`
         datasets = load_dir(packed_dataset_or_dir)
         # Apply to all compatible datasets
-        results, failures, incompatible = self.apply_to_datasets(
-            datasets, desc=desc, jobs=jobs
-        )
+        results, failures, incompatible = self.apply_to_datasets(datasets, jobs=jobs)
         if len(incompatible) > 0:
             logger.warning(
                 "'%s' is incompatible with %d datasets found at '%s'. "

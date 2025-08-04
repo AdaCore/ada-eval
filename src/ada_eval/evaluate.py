@@ -17,7 +17,7 @@ def run_evals(
     evals: list[Eval],
     packed_dataset_or_dir: Path,
     output_dir: Path,
-    jobs: int = 1,
+    jobs: int,
 ) -> None:
     """
     Evaluate all samples in a file/directory and write the results to another.
@@ -47,11 +47,7 @@ def run_evals(
     # Evaluate all datasets
     for evaluation in evaluations:
         evaluated_datasets, failed_datasets, incompatible_datasets = (
-            evaluation.apply_to_datasets(
-                datasets,
-                desc=f"Evaluating with {evaluation.name}",
-                jobs=jobs,
-            )
+            evaluation.apply_to_datasets(datasets, jobs=jobs)
         )
         if len(failed_datasets) > 0:
             # `GenericEval` should catch exceptions and convert them to
