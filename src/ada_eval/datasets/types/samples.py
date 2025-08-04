@@ -198,6 +198,16 @@ class Sample(BaseModel):
         raise NotImplementedError
 
 
+def is_unpacked_sample(path: Path) -> bool:
+    """
+    Check if this is the path to a sample.
+
+    This is the case if the dir contains an OTHER_JSON_NAME file.
+    """
+    other_json = path / OTHER_JSON_NAME
+    return path.is_dir() and other_json.is_file()
+
+
 class AdaSample(Sample):
     """
     Ada-specific sample extending the base Sample class.
@@ -336,16 +346,6 @@ class GeneratedExplainSample(ExplainSample, GeneratedSample):
 
 class GeneratedSparkSample(SparkSample, GeneratedAdaSample):
     pass
-
-
-def is_unpacked_sample(path: Path) -> bool:
-    """
-    Check if this is the path to a sample.
-
-    This is the case if the dir contains an OTHER_JSON_NAME file.
-    """
-    other_json = path / OTHER_JSON_NAME
-    return path.is_dir() and other_json.is_file()
 
 
 class EvaluationStats(BaseModel):
