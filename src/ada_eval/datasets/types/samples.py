@@ -75,7 +75,7 @@ class ExplainSolution(BaseModel):
 VALID_SAMPLE_NAME_PATTERN = re.compile(r"^[\w-]+$")
 
 
-class UnpackedDirectoryContextManager:
+class _UnpackedDirectoryContextManager:
     """
     Context manager for unpacking a `DirectoryContents` to a temp directory.
 
@@ -122,9 +122,9 @@ class DirectoryContents(BaseModel):
             with full_path.open("w") as f:
                 f.write(contents)
 
-    def unpacked(self) -> UnpackedDirectoryContextManager:
+    def unpacked(self) -> _UnpackedDirectoryContextManager:
         """Return a context manager that unpacks the contents to a temp directory."""
-        return UnpackedDirectoryContextManager(self)
+        return _UnpackedDirectoryContextManager(self)
 
 
 def get_contents_git_aware(root: Path) -> DirectoryContents:
