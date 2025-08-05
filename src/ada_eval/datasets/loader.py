@@ -1,4 +1,5 @@
 import logging
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
@@ -50,6 +51,20 @@ class UnknownDatasetKindError(Exception):
         super().__init__(f"Unknown dataset type: {dataset_type}")
 
 
+class DuplicateNameError(ValueError):
+    """Raised when a sample or dataset name is inappropriately duplicated."""
+
+    def __init__(self, dataset_or_sample: Dataset[Sample] | Sample, location: Path):
+        self.dataset_or_sample = dataset_or_sample
+        if isinstance(dataset_or_sample, Dataset):
+            name = f"{dataset_or_sample.dirname()})"
+            object_type = "dataset"
+        else:
+            name = f"{dataset_or_sample.name}"
+            object_type = "sample"
+        super().__init__(f"Duplicate {object_type} name '{name}' found in '{location}'")
+
+
 def get_explain_solution(
     sample_root: Path, other_data: dict[str, Any]
 ) -> ExplainSolution:
@@ -60,6 +75,21 @@ def get_explain_solution(
         correct_statements=other_data[CORRECT_STATEMENTS_KEY],
         incorrect_statements=other_data[INCORRECT_STATEMENTS_KEY],
     )
+
+
+def check_no_duplicate_sample_names(samples: Sequence[Sample], location: Path) -> None:
+    """
+    Check that no two samples in the sequence have the same name.
+
+    Raises:
+        DuplicateNameError: If duplicate sample names are found.
+
+    """
+    seen_names = set()
+    for sample in samples:
+        if sample.name in seen_names:
+            raise DuplicateNameError(sample, location)
+        seen_names.add(sample.name)
 
 
 def load_unpacked_dataset(path: Path) -> Dataset[Sample]:
@@ -84,6 +114,7 @@ def load_unpacked_dataset(path: Path) -> Dataset[Sample]:
         if not is_unpacked_sample(sample_dir):
             continue
         samples.append(sample_class.load_unpacked_sample(sample_dir))
+    check_no_duplicate_sample_names(samples, path)
     match dataset_type:
         case DatasetKind.ADA:
             return Dataset(name=dataset_name, samples=samples, sample_type=sample_class)
@@ -125,11 +156,13 @@ def load_packed_dataset(path: Path) -> Dataset[Sample]:
         samples = [
             generated_sample_class.model_validate_json(x, strict=True) for x in lines
         ]
+        check_no_duplicate_sample_names(samples, path)
         return Dataset(
             name=dataset_name, samples=samples, sample_type=generated_sample_class
         )
     except ValidationError:
         samples = [sample_class.model_validate_json(x, strict=True) for x in lines]
+        check_no_duplicate_sample_names(samples, path)
         return Dataset(name=dataset_name, samples=samples, sample_type=sample_class)
 
 
@@ -144,8 +177,24 @@ def load_dir(packed_dataset_or_dir: Path) -> list[Dataset[Sample]]:
     Returns:
         A list of loaded datasets.
 
+    Raises:
+        InvalidDatasetError: If the path is not a valid dataset.
+        InvalidDatasetNameError: If a dataset file has an invalid name format.
+        DuplicateNameError: If a dataset kind-name pair is duplicated, or a
+            sample name is duplicated within a dataset.
+        ValueError: If a dataset kind is not recognized.
+
     """
+    # Load datasets
     dataset_files = get_packed_dataset_files(packed_dataset_or_dir)
     if len(dataset_files) == 0:
         logger.warning("No datasets could be found at: %s", packed_dataset_or_dir)
-    return [load_packed_dataset(path) for path in dataset_files]
+    datasets = [load_packed_dataset(path) for path in dataset_files]
+    # Enforce unique dataset names
+    datasets_set: set[tuple[str, DatasetKind]] = set()
+    for dataset in datasets:
+        name_and_kind = (dataset.name, dataset.kind())
+        if name_and_kind in datasets_set:
+            raise DuplicateNameError(dataset, packed_dataset_or_dir)
+        datasets_set.add(name_and_kind)
+    return datasets

@@ -125,7 +125,11 @@ class SampleOperation(ABC, Generic[InputType, OutputType]):
                         result = future.result()
                         dataset_results[dataset].append(result)
                     except Exception:
-                        logging.exception("Error processing sample")
+                        logging.exception(
+                            "Error processing sample %s from dataset %s",
+                            sample.name,
+                            dataset.dirname(),
+                        )
                         failures[dataset].append(sample)
                     finally:
                         pbar.update(1)

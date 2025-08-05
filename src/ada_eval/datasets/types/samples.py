@@ -7,7 +7,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Literal
 
-from pydantic import BaseModel, SerializeAsAny, field_serializer, field_validator
+from pydantic import BaseModel, field_serializer, field_validator
 
 from ada_eval.datasets.utils import get_file_or_empty, git_ls_files
 
@@ -159,8 +159,11 @@ class Sample(BaseModel):
             to to the sample root.
         prompt (str): Prompt for the sample
         sources (DirectoryContents): Source files for the sample.
-        canonical_solution (Any): Canonical solution for the sample. The type
+        canonical_solution (object): Canonical solution for the sample. The type
             should be constrained by the subclass.
+        canonical_evaluation_results (list[EvaluationStats]): Results of
+            evaluating the canonical solution. Empty if no such evaluation has
+            yet been performed.
         comments (str): Any comments about the sample by the author. May be empty.
 
     """
@@ -170,6 +173,7 @@ class Sample(BaseModel):
     prompt: str
     sources: DirectoryContents
     canonical_solution: object
+    canonical_evaluation_results: list["EvaluationStats"] = []
     comments: str
 
     @field_validator("name")
@@ -348,30 +352,34 @@ class GeneratedSparkSample(SparkSample, GeneratedAdaSample):
     pass
 
 
-class EvaluationStats(BaseModel):
+class EvaluationStatsBase(BaseModel):
     eval_name: str
 
 
-class EvaluationStatsFailed(EvaluationStats):
+class EvaluationStatsFailed(EvaluationStatsBase):
     exception_name: str
 
 
-class EvaluationStatsCompiler(EvaluationStats):
+class EvaluationStatsCompiler(EvaluationStatsBase):
     eval_name: Literal["compiler"] = "compiler"
     compiled: bool
     has_pre_format_compile_warnings: bool
     has_post_format_compile_warnings: bool
 
 
-class EvaluationStatsGnatProve(EvaluationStats):
+class EvaluationStatsGnatProve(EvaluationStatsBase):
     eval_name: Literal["GNATprove"] = "GNATprove"
     successfully_proven: bool
     runtime_ms: int
 
 
+EvaluationStats = (
+    EvaluationStatsFailed | EvaluationStatsCompiler | EvaluationStatsGnatProve
+)
+
+
 class EvaluatedSample(GeneratedSample):
-    # `SerializeAsAny` to allow for additional fields in subclasses of `EvaluationStats`
-    evaluation_results: list[SerializeAsAny[EvaluationStats]]
+    evaluation_results: list[EvaluationStats]
 
 
 class EvaluatedAdaSample(GeneratedAdaSample, EvaluatedSample):
@@ -386,6 +394,13 @@ class EvaluatedSparkSample(GeneratedSparkSample, EvaluatedAdaSample):
     pass
 
 
+# Type mappings for promoting `Sample` -> `GeneratedSample` and
+# `GeneratedSample` -> `EvaluatedSample`
+BASE_GENERATED_TYPE_MAP: dict[type[Sample], type[GeneratedSample]] = {
+    AdaSample: GeneratedAdaSample,
+    ExplainSample: GeneratedExplainSample,
+    SparkSample: GeneratedSparkSample,
+}
 GENERATED_EVALUATED_TYPE_MAP: dict[type[GeneratedSample], type[EvaluatedSample]] = {
     GeneratedAdaSample: EvaluatedAdaSample,
     GeneratedExplainSample: EvaluatedExplainSample,

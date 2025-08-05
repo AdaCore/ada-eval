@@ -1,6 +1,6 @@
 import logging
 from abc import abstractmethod
-from typing import Generic, TypeVar, cast
+from typing import Generic, TypeVar
 
 from ada_eval.datasets import (
     EvaluatedSample,
@@ -42,34 +42,35 @@ class GenericEval(
             full_type_mapping[input_type] = output_type
         super().__init__(type_mapping=full_type_mapping)
 
+    @property
+    def progress_bar_desc(self) -> str:
+        return f"Evaluating with {self.name}"
+
     @abstractmethod
     def evaluate(
         self, sample: EvaluatedSampleType | GeneratedSampleType
     ) -> EvaluationStats:
         """Evaluate a generated sample and return the resulting `EvaluationStats`."""
 
-    @property
-    def progress_bar_desc(self) -> str:
-        return f"Evaluating with {self.name}"
-
     def apply(
         self, sample: GeneratedSampleType | EvaluatedSampleType
     ) -> EvaluatedSampleType:
+        # Promote the `GeneratedSample` to an  `EvaluatedSample` if necessary.
         evaluated_sample = sample.to_evaluated_sample()
-        if not any(
-            isinstance(evaluated_sample, t) for t in self._type_mapping.values()
-        ):
+        for t in self._type_mapping.values():  # Mypy doesn't understand `if any(...)`
+            if isinstance(evaluated_sample, t):
+                break
+        else:
             raise WrongEvalOutputTypeError(evaluation=self, gen_sample=sample)
-        evaluated_sample = cast(EvaluatedSampleType, evaluated_sample)
+        # Evaluate the sample and add the results to the `EvaluatedSample`
         try:
-            evaluated_sample.evaluation_results.append(self.evaluate(sample))
+            eval_stats = self.evaluate(sample)
         except Exception as e:
             logger.exception("Error during evaluation of %s", sample.name)
-            evaluated_sample.evaluation_results.append(
-                EvaluationStatsFailed(
-                    eval_name=self.name, exception_name=type(e).__name__
-                )
+            eval_stats = EvaluationStatsFailed(
+                eval_name=self.name, exception_name=type(e).__name__
             )
+        evaluated_sample.evaluation_results.append(eval_stats)
         return evaluated_sample
 
 

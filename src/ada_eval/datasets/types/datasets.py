@@ -46,6 +46,16 @@ TargetSampleType = TypeVar("TargetSampleType", bound=Sample)
 
 @dataclass(kw_only=True)
 class Dataset(Generic[SampleType_co]):
+    """
+    A dataset of samples.
+
+    Attributes:
+        name: Name of the dataset. Should be unique within the dataset kind.
+        sample_type: The concrete type of all samples in the dataset.
+        samples: The dataset's samples.
+
+    """
+
     name: str
     sample_type: type[SampleType_co]
     samples: Sequence[SampleType_co]  # Must be immutable for covariance
@@ -60,9 +70,13 @@ class Dataset(Generic[SampleType_co]):
             return False
         return self.name == other.name and self.sample_type is other.sample_type
 
+    def kind(self) -> DatasetKind:
+        """Return the kind of this dataset."""
+        return DatasetKind.from_type(self.sample_type)
+
     def dirname(self) -> str:
-        """Get the stem of this dataset's file or directory name."""
-        return f"{DatasetKind.from_type(self.sample_type)}_{self.name}"
+        """Return the stem of this dataset's file or directory name."""
+        return f"{self.kind()}_{self.name}"
 
     def save_unpacked(self, unpacked_datasets_root: Path):
         dataset_root = unpacked_datasets_root / self.dirname()
@@ -74,7 +88,7 @@ class Dataset(Generic[SampleType_co]):
         dest_file = dest_dir / f"{self.dirname()}.jsonl"
         with dest_file.open("w") as f:
             for sample in self.samples:
-                f.write(sample.model_dump_json() + "\n")
+                f.write(sample.model_dump_json(exclude_defaults=True) + "\n")
 
 
 def dataset_has_sample_type(

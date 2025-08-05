@@ -5,7 +5,7 @@ from pathlib import Path
 
 from ada_eval.datasets.pack_unpack import pack_datasets, unpack_datasets
 from ada_eval.evals import Eval
-from ada_eval.evaluate import run_evals
+from ada_eval.evaluate import evaluate_directory
 from ada_eval.paths import (
     COMPACTED_DATASETS_DIR,
     EVALUATED_DATASETS_DIR,
@@ -35,11 +35,16 @@ def call_generate_completions(args):
 def call_evaluate_completions(args):
     if args.evals is None:
         args.evals = list(Eval)
-    run_evals(
+    if args.dataset is None:
+        args.dataset = (
+            COMPACTED_DATASETS_DIR if args.canonical else GENERATED_DATASETS_DIR
+        )
+    evaluate_directory(
         evals=args.evals,
         packed_dataset_or_dir=args.dataset,
-        output_dir=EVALUATED_DATASETS_DIR,
+        output_dir=args.dataset if args.canonical else EVALUATED_DATASETS_DIR,
         jobs=args.jobs,
+        canonical_evaluation=args.canonical,
     )
 
 
@@ -141,28 +146,42 @@ def main() -> None:
     generate_parser = subparsers.add_parser(
         "evaluate",
         help="Evaluate completions",
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     generate_parser.set_defaults(func=call_evaluate_completions)
     generate_parser.add_argument(
-        "--dataset",
-        type=Path,
-        help="Path to packed dataset or dir of packed datasets",
-        default=GENERATED_DATASETS_DIR,
+        "--canonical",
+        action="store_true",
+        help=(
+            "Evaluate the canonical solution instead of the generated samples. "
+            "The results will be recorded in the 'canonical_evaluation_results' "
+            "of each sample in the original dataset files (overwriting any "
+            "value already present)."
+        ),
     )
     generate_parser.add_argument(
-        "-j",
-        "--jobs",
-        type=int,
-        help="Number of samples to generate in parallel",
-        default=cpu_count() or 1,
+        "--dataset",
+        type=Path,
+        help=(
+            "Path to packed dataset or dir of packed datasets. (Default: "
+            f"'{GENERATED_DATASETS_DIR}', or '{COMPACTED_DATASETS_DIR}' if "
+            "'--canonical' is set)"
+        ),
+        default=None,
     )
     generate_parser.add_argument(
         "--evals",
         type=Eval,
         choices=list(Eval),
         nargs="*",
-        help="Name of the evals to run. If unspecified, all evals will be run.",
+        help="Names of the evals to run. (Default: all)",
+    )
+    default_num_jobs = cpu_count() or 1
+    generate_parser.add_argument(
+        "-j",
+        "--jobs",
+        type=int,
+        help=f"Number of evaluations to run in parallel. (Default: {default_num_jobs})",
+        default=default_num_jobs,
     )
 
     args = parser.parse_args()
