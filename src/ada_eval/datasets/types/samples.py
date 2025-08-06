@@ -7,7 +7,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Literal
 
-from pydantic import BaseModel, field_serializer, field_validator
+from pydantic import BaseModel, RootModel, field_serializer, field_validator
 
 from ada_eval.datasets.utils import get_file_or_empty, git_ls_files
 
@@ -101,22 +101,22 @@ class _UnpackedDirectoryContextManager:
             self.temp_dir = None
 
 
-class DirectoryContents(BaseModel):
+class DirectoryContents(RootModel[dict[Path, str]]):
     """
     The contents of a directory.
 
     Attributes:
-        files (dict[Path, str]): A mapping of the files' relative paths to their
+        root (dict[Path, str]): A mapping of the files' relative paths to their
             contents.
 
     """
 
-    files: dict[Path, str]
+    root: dict[Path, str]
 
     def unpack_to(self, dest_dir: Path):
         """Unpack the contents into the specified directory."""
         dest_dir.mkdir(parents=True, exist_ok=True)  # Should exist even if empty
-        for rel_path, contents in self.files.items():
+        for rel_path, contents in self.root.items():
             full_path = dest_dir / rel_path
             full_path.parent.mkdir(parents=True, exist_ok=True)
             with full_path.open("w") as f:
@@ -134,19 +134,19 @@ def get_contents_git_aware(root: Path) -> DirectoryContents:
     Will exclude any files that are ignored by git.
     """
     if not root.is_dir():
-        return DirectoryContents(files={})
+        return DirectoryContents({})
     full_paths = sorted(git_ls_files(root))
     files = {p.relative_to(root): p.read_text("utf-8") for p in full_paths}
-    return DirectoryContents(files=files)
+    return DirectoryContents(files)
 
 
 def get_contents(root: Path) -> DirectoryContents:
     """Return the contents of a directory."""
     if not root.is_dir():
-        return DirectoryContents(files={})
+        return DirectoryContents({})
     full_paths = [p for p in sorted(root.rglob("*")) if p.is_file()]
     files = {p.relative_to(root): p.read_text("utf-8") for p in full_paths}
-    return DirectoryContents(files=files)
+    return DirectoryContents(files)
 
 
 class Sample(BaseModel):
