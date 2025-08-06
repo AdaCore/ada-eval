@@ -7,7 +7,13 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Literal
 
-from pydantic import BaseModel, RootModel, field_serializer, field_validator
+from pydantic import (
+    BaseModel,
+    RootModel,
+    TypeAdapter,
+    field_serializer,
+    field_validator,
+)
 
 from ada_eval.datasets.utils import get_file_or_empty, git_ls_files
 
@@ -35,6 +41,7 @@ REFERENCE_ANSWER_FILE_NAME = "reference_answer.md"
 CORRECT_STATEMENTS_KEY = "correct_statements"
 INCORRECT_STATEMENTS_KEY = "incorrect_statements"
 LOCATION_KEY = "location"
+CANONICAL_EVAL_KEY = "canonical_evaluation_results"
 LOCATION_SOLUTION_KEY = "location_solution"
 
 
@@ -173,7 +180,7 @@ class Sample(BaseModel):
     prompt: str
     sources: DirectoryContents
     canonical_solution: object
-    canonical_evaluation_results: list["EvaluationStats"] = []
+    canonical_evaluation_results: list["EvaluationStats"]
     comments: str
 
     @field_validator("name")
@@ -187,14 +194,26 @@ class Sample(BaseModel):
         """Get the working dir for this sample, given that of the parent dataset."""
         return dataset_working_dir / self.name
 
-    def unpack(self, dataset_root: Path):
-        dest_dir = dataset_root / self.name
+    def unpack(self, dataset_root: Path, other_data: dict[str, object] | None = None):
+        """
+        Unpack the sample in expanded form.
+
+        Args:
+            dataset_root: The dataset root directory to unpack into.
+            other_data: Additional data to include in the `other.json` file.
+
+        """
+        dest_dir = self.working_dir_in(dataset_root)
         dest_dir.mkdir(exist_ok=True, parents=True)
         (dest_dir / PROMPT_FILE_NAME).write_text(self.prompt)
         (dest_dir / COMMENTS_FILE_NAME).write_text(self.comments)
         self.sources.unpack_to(dest_dir / BASE_DIR_NAME)
-        other_json = {LOCATION_KEY: self.location.model_dump()}
-        (dest_dir / OTHER_JSON_NAME).write_text(json.dumps(other_json, indent=4))
+        other_data = {LOCATION_KEY: self.location.model_dump()} | (other_data or {})
+        if len(self.canonical_evaluation_results) > 0:
+            other_data[CANONICAL_EVAL_KEY] = [
+                es.model_dump() for es in self.canonical_evaluation_results
+            ]
+        (dest_dir / OTHER_JSON_NAME).write_text(json.dumps(other_data, indent=4) + "\n")
 
     @classmethod
     @abstractmethod
@@ -229,17 +248,12 @@ class AdaSample(Sample):
     canonical_solution: DirectoryContents
     unit_tests: DirectoryContents
 
-    def unpack(self, dataset_root: Path):
-        super().unpack(dataset_root)
-        dest_dir = dataset_root / self.name
-        location_solution = None
-        if self.location_solution:
-            location_solution = self.location_solution.model_dump()
-        other_json = {
-            LOCATION_KEY: self.location.model_dump(),
-            LOCATION_SOLUTION_KEY: location_solution,
-        }
-        (dest_dir / OTHER_JSON_NAME).write_text(json.dumps(other_json, indent=4))
+    def unpack(self, dataset_root: Path, other_data: dict[str, object] | None = None):
+        other_data = other_data or {}
+        if self.location_solution is not None:
+            other_data[LOCATION_SOLUTION_KEY] = self.location_solution.model_dump()
+        super().unpack(dataset_root, other_data=other_data)
+        dest_dir = self.working_dir_in(dataset_root)
         self.canonical_solution.unpack_to(dest_dir / SOLUTION_DIR_NAME)
         self.unit_tests.unpack_to(dest_dir / UNIT_TEST_DIR_NAME)
 
@@ -256,6 +270,9 @@ class AdaSample(Sample):
             location_solution = Location.model_validate(
                 other_data[LOCATION_SOLUTION_KEY]
             )
+        canonical_evaluation_results = _evaluation_results_adapter.validate_python(
+            other_data.get(CANONICAL_EVAL_KEY, [])
+        )
         return cls(
             name=sample_dir.name,
             location=Location.model_validate(other_data[LOCATION_KEY]),
@@ -264,6 +281,7 @@ class AdaSample(Sample):
             comments=comments,
             sources=base_files,
             canonical_solution=solution_files,
+            canonical_evaluation_results=canonical_evaluation_results,
             unit_tests=unit_test_files,
         )
 
@@ -271,17 +289,15 @@ class AdaSample(Sample):
 class ExplainSample(Sample):
     canonical_solution: ExplainSolution
 
-    def unpack(self, dataset_root: Path):
-        super().unpack(dataset_root)
-        dest_dir = dataset_root / self.name
-        with (dest_dir / REFERENCE_ANSWER_FILE_NAME).open("w") as f:
-            f.write(self.canonical_solution.reference_answer)
-        other_json = {
+    def unpack(self, dataset_root: Path, other_data: dict[str, object] | None = None):
+        other_data = {
             CORRECT_STATEMENTS_KEY: self.canonical_solution.correct_statements,
             INCORRECT_STATEMENTS_KEY: self.canonical_solution.incorrect_statements,
-        }
-        with (dest_dir / OTHER_JSON_NAME).open("w") as f:
-            f.write(json.dumps(other_json, indent=4))
+        } | (other_data or {})
+        super().unpack(dataset_root, other_data=other_data)
+        dest_dir = self.working_dir_in(dataset_root)
+        with (dest_dir / REFERENCE_ANSWER_FILE_NAME).open("w") as f:
+            f.write(self.canonical_solution.reference_answer)
 
     @classmethod
     def load_unpacked_sample(cls, sample_dir: Path):
@@ -290,6 +306,9 @@ class ExplainSample(Sample):
         prompt = get_file_or_empty(sample_dir / PROMPT_FILE_NAME)
         comments = get_file_or_empty(sample_dir / COMMENTS_FILE_NAME)
         reference_answer = get_file_or_empty(sample_dir / REFERENCE_ANSWER_FILE_NAME)
+        canonical_evaluation_results = _evaluation_results_adapter.validate_python(
+            other_data.get(CANONICAL_EVAL_KEY, [])
+        )
         return cls(
             name=sample_dir.name,
             location=Location.model_validate(other_data[LOCATION_KEY]),
@@ -301,6 +320,7 @@ class ExplainSample(Sample):
                 correct_statements=other_data[CORRECT_STATEMENTS_KEY],
                 incorrect_statements=other_data[INCORRECT_STATEMENTS_KEY],
             ),
+            canonical_evaluation_results=canonical_evaluation_results,
         )
 
 
@@ -377,6 +397,8 @@ class EvaluationStatsGnatProve(EvaluationStatsBase):
 EvaluationStats = (
     EvaluationStatsFailed | EvaluationStatsGprBuild | EvaluationStatsGnatProve
 )
+
+_evaluation_results_adapter = TypeAdapter(list[EvaluationStats])
 
 
 class EvaluatedSample(GeneratedSample):

@@ -7,5 +7,11 @@
         },
         "end": null
     },
-    "location_solution": null
+    "canonical_evaluation_results": [
+        {
+            "eval_name": "GNATprove",
+            "successfully_proven": true,
+            "timed_out": false
+        }
+    ]
 }
