@@ -15,7 +15,7 @@ from .generic_eval import GenericEval
 logger = logging.getLogger(__name__)
 
 
-DUMMY_COMPILER_EVAL_NAME: Literal["compiler"] = "compiler"
+DUMMY_COMPILER_EVAL_NAME: Literal["dummy_compiler"] = "dummy_compiler"
 
 
 class DummyCompiler(GenericEval[GeneratedAdaSample, EvaluatedAdaSample]):

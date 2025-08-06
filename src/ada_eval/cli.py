@@ -130,7 +130,7 @@ def main() -> None:
     )
     generate_parser.add_argument(
         "--tool",
-        type=Tool,
+        type=lambda s: Tool(s.lower()),
         choices=list(Tool),
         help="Name of tool to use for generation",
         required=True,
@@ -170,7 +170,7 @@ def main() -> None:
     )
     generate_parser.add_argument(
         "--evals",
-        type=Eval,
+        type=lambda s: Eval(s.lower()),
         choices=list(Eval),
         nargs="*",
         help="Names of the evals to run. (Default: all)",

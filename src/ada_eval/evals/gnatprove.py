@@ -14,7 +14,7 @@ from .generic_eval import GenericEval
 logger = logging.getLogger(__name__)
 
 
-GNATPROVE_EVAL_NAME: Literal["GNATprove"] = "GNATprove"
+GNATPROVE_EVAL_NAME: Literal["gnatprove"] = "gnatprove"
 
 # TODO (#2): Make this an attribute of each `SparkSample` or a command-line arg
 PROVE_TIMEOUT_S = 60
