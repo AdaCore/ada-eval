@@ -159,11 +159,6 @@ class SampleOperation(ABC, Generic[InputType, OutputType]):
             for old_dataset, failed_samples in failures.items()
             if len(failed_samples) > 0
         ]
-        if len(new_datasets) == 0 and len(failed_datasets) == 0:
-            logger.warning(
-                "'%s' failed on all compatible samples.",
-                self.name,
-            )
         return new_datasets, failed_datasets, incompatible_datasets
 
     def apply_to_directory(
