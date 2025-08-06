@@ -2,10 +2,9 @@
 
 import json
 import re
-from abc import abstractmethod
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Literal
+from typing import Literal, Self
 
 from pydantic import (
     BaseModel,
@@ -216,9 +215,23 @@ class Sample(BaseModel):
         (dest_dir / OTHER_JSON_NAME).write_text(json.dumps(other_data, indent=4) + "\n")
 
     @classmethod
-    @abstractmethod
-    def load_unpacked_sample(cls, sample_dir: Path):
-        raise NotImplementedError
+    def load_unpacked_sample(cls, sample_dir: Path) -> Self:
+        other_data = json.loads(get_file_or_empty(sample_dir / OTHER_JSON_NAME))
+        base_files = get_contents_git_aware(sample_dir / BASE_DIR_NAME)
+        prompt = get_file_or_empty(sample_dir / PROMPT_FILE_NAME)
+        comments = get_file_or_empty(sample_dir / COMMENTS_FILE_NAME)
+        canonical_evaluation_results = _evaluation_results_adapter.validate_python(
+            other_data.get(CANONICAL_EVAL_KEY, [])
+        )
+        return cls(
+            name=sample_dir.name,
+            location=Location.model_validate(other_data[LOCATION_KEY]),
+            prompt=prompt,
+            comments=comments,
+            sources=base_files,
+            canonical_solution=None,  # Placeholder
+            canonical_evaluation_results=canonical_evaluation_results,
+        )
 
 
 def is_unpacked_sample(path: Path) -> bool:
@@ -259,29 +272,24 @@ class AdaSample(Sample):
 
     @classmethod
     def load_unpacked_sample(cls, sample_dir: Path):
-        other_data = json.loads(get_file_or_empty(sample_dir / OTHER_JSON_NAME))
-        base_files = get_contents_git_aware(sample_dir / BASE_DIR_NAME)
-        prompt = get_file_or_empty(sample_dir / PROMPT_FILE_NAME)
-        comments = get_file_or_empty(sample_dir / COMMENTS_FILE_NAME)
         solution_files = get_contents_git_aware(sample_dir / SOLUTION_DIR_NAME)
         unit_test_files = get_contents_git_aware(sample_dir / UNIT_TEST_DIR_NAME)
+        other_data = json.loads(get_file_or_empty(sample_dir / OTHER_JSON_NAME))
         location_solution = None
         if other_data.get(LOCATION_SOLUTION_KEY, None):
             location_solution = Location.model_validate(
                 other_data[LOCATION_SOLUTION_KEY]
             )
-        canonical_evaluation_results = _evaluation_results_adapter.validate_python(
-            other_data.get(CANONICAL_EVAL_KEY, [])
-        )
+        base_sample = Sample.load_unpacked_sample(sample_dir)
         return cls(
-            name=sample_dir.name,
-            location=Location.model_validate(other_data[LOCATION_KEY]),
+            name=base_sample.name,
+            location=base_sample.location,
             location_solution=location_solution,
-            prompt=prompt,
-            comments=comments,
-            sources=base_files,
+            prompt=base_sample.prompt,
+            comments=base_sample.comments,
+            sources=base_sample.sources,
             canonical_solution=solution_files,
-            canonical_evaluation_results=canonical_evaluation_results,
+            canonical_evaluation_results=base_sample.canonical_evaluation_results,
             unit_tests=unit_test_files,
         )
 
@@ -302,25 +310,20 @@ class ExplainSample(Sample):
     @classmethod
     def load_unpacked_sample(cls, sample_dir: Path):
         other_data = json.loads(get_file_or_empty(sample_dir / OTHER_JSON_NAME))
-        base_files = get_contents_git_aware(sample_dir / BASE_DIR_NAME)
-        prompt = get_file_or_empty(sample_dir / PROMPT_FILE_NAME)
-        comments = get_file_or_empty(sample_dir / COMMENTS_FILE_NAME)
         reference_answer = get_file_or_empty(sample_dir / REFERENCE_ANSWER_FILE_NAME)
-        canonical_evaluation_results = _evaluation_results_adapter.validate_python(
-            other_data.get(CANONICAL_EVAL_KEY, [])
-        )
+        base_sample = Sample.load_unpacked_sample(sample_dir)
         return cls(
-            name=sample_dir.name,
-            location=Location.model_validate(other_data[LOCATION_KEY]),
-            prompt=prompt,
-            comments=comments,
-            sources=base_files,
+            name=base_sample.name,
+            location=base_sample.location,
+            prompt=base_sample.prompt,
+            comments=base_sample.comments,
+            sources=base_sample.sources,
             canonical_solution=ExplainSolution(
                 reference_answer=reference_answer,
                 correct_statements=other_data[CORRECT_STATEMENTS_KEY],
                 incorrect_statements=other_data[INCORRECT_STATEMENTS_KEY],
             ),
-            canonical_evaluation_results=canonical_evaluation_results,
+            canonical_evaluation_results=base_sample.canonical_evaluation_results,
         )
 
 
