@@ -1,4 +1,4 @@
-package Integer_Utils is
+package body Integer_Utils is
 
    procedure Absolute_Value (X : Integer; R : out Natural) is
    begin
