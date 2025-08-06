@@ -1,3 +1,4 @@
+import shutil
 import subprocess
 import time
 from pathlib import Path
@@ -58,3 +59,18 @@ class ExecutableNotFoundError(RuntimeError):
 
     def __init__(self, executable_name: str):
         super().__init__(f"'{executable_name}' is not available in the PATH.")
+
+
+def check_on_path(executable_name: str) -> None:
+    """
+    Check if an executable is available in the PATH.
+
+    Args:
+        executable_name (str): The name of the executable to check.
+
+    Raises:
+        ExecutableNotFoundError: If the executable is not found in the PATH.
+
+    """
+    if shutil.which(executable_name) is None:
+        raise ExecutableNotFoundError(executable_name)

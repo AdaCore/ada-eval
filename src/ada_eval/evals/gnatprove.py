@@ -1,5 +1,4 @@
 import logging
-import subprocess
 from typing import Literal
 
 from ada_eval.datasets.types import (
@@ -7,7 +6,7 @@ from ada_eval.datasets.types import (
     EvaluationStatsGnatProve,
     GeneratedSparkSample,
 )
-from ada_eval.utils import ExecutableNotFoundError, run_cmd_with_timeout
+from ada_eval.utils import check_on_path, run_cmd_with_timeout
 
 from .generic_eval import GenericEval
 
@@ -25,11 +24,9 @@ class GnatProve(GenericEval[GeneratedSparkSample, EvaluatedSparkSample]):
 
     def __init__(self) -> None:
         super().__init__(type_mapping={GeneratedSparkSample: EvaluatedSparkSample})
-        # Check `gnatprove` is available in the PATH
-        try:
-            subprocess.run(["gnatprove", "--version"], capture_output=True)  # noqa: PLW1510  # `check` is irrelevant here
-        except FileNotFoundError as e:
-            raise ExecutableNotFoundError("gnatprove") from e
+        # Detect missing `gnatprove` before attempting any evaluation for a
+        # cleaner error output.
+        check_on_path("gnatprove")
 
     @property
     def name(self) -> str:
