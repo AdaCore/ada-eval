@@ -5,7 +5,7 @@ from typing import Literal
 from ada_eval.datasets.types import (
     EvaluatedAdaSample,
     EvaluatedSparkSample,
-    EvaluationStatsCompiler,
+    EvaluationStatsGprBuild,
     GeneratedAdaSample,
     GeneratedSparkSample,
 )
@@ -15,11 +15,11 @@ from .generic_eval import GenericEval
 logger = logging.getLogger(__name__)
 
 
-DUMMY_COMPILER_EVAL_NAME: Literal["dummy_compiler"] = "dummy_compiler"
+DUMMY_GPRBUILD_EVAL_NAME: Literal["dummy_gprbuild"] = "dummy_gprbuild"
 
 
-class DummyCompiler(GenericEval[GeneratedAdaSample, EvaluatedAdaSample]):
-    """A dummy compiler evaluation that pretends compilation was successful."""
+class DummyGprBuild(GenericEval[GeneratedAdaSample, EvaluatedAdaSample]):
+    """A dummy `gprbuild` evaluation that pretends compilation was successful."""
 
     def __init__(self) -> None:
         super().__init__(
@@ -31,11 +31,11 @@ class DummyCompiler(GenericEval[GeneratedAdaSample, EvaluatedAdaSample]):
 
     @property
     def name(self) -> str:
-        return DUMMY_COMPILER_EVAL_NAME
+        return DUMMY_GPRBUILD_EVAL_NAME
 
-    def evaluate(self, _: GeneratedAdaSample) -> EvaluationStatsCompiler:
+    def evaluate(self, _: GeneratedAdaSample) -> EvaluationStatsGprBuild:
         sleep(1)
-        return EvaluationStatsCompiler(
+        return EvaluationStatsGprBuild(
             compiled=True,
             has_pre_format_compile_warnings=False,
             has_post_format_compile_warnings=False,

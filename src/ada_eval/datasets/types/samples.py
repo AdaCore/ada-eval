@@ -360,8 +360,8 @@ class EvaluationStatsFailed(EvaluationStatsBase):
     exception_name: str
 
 
-class EvaluationStatsCompiler(EvaluationStatsBase):
-    eval_name: Literal["compiler"] = "compiler"
+class EvaluationStatsGprBuild(EvaluationStatsBase):
+    eval_name: Literal["gprbuild"] = "gprbuild"
     compiled: bool
     has_pre_format_compile_warnings: bool
     has_post_format_compile_warnings: bool
@@ -374,7 +374,7 @@ class EvaluationStatsGnatProve(EvaluationStatsBase):
 
 
 EvaluationStats = (
-    EvaluationStatsFailed | EvaluationStatsCompiler | EvaluationStatsGnatProve
+    EvaluationStatsFailed | EvaluationStatsGprBuild | EvaluationStatsGnatProve
 )
 
 
