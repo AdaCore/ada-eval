@@ -67,9 +67,7 @@ class GenericEval(
             eval_stats = self.evaluate(sample)
         except Exception as e:
             logger.exception("Error during evaluation of %s", sample.name)
-            eval_stats = EvaluationStatsFailed(
-                eval_name=self.name, exception_name=type(e).__name__
-            )
+            eval_stats = EvaluationStatsFailed(eval_name=self.name, exception=repr(e))
         evaluated_sample.evaluation_results.append(eval_stats)
         return evaluated_sample
 

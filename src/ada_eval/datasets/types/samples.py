@@ -357,7 +357,7 @@ class EvaluationStatsBase(BaseModel):
 
 
 class EvaluationStatsFailed(EvaluationStatsBase):
-    exception_name: str
+    exception: str
 
 
 class EvaluationStatsGprBuild(EvaluationStatsBase):
