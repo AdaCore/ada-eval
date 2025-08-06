@@ -10,7 +10,7 @@ from ada_eval.datasets import (
     dataset_has_sample_type,
 )
 from ada_eval.datasets.loader import load_dir
-from ada_eval.datasets.types import BASE_GENERATED_TYPE_MAP, GenerationStats
+from ada_eval.datasets.types import BASE_TYPE_TO_GENERATED, GenerationStats
 from ada_eval.evals import Eval, create_eval
 
 logger = logging.getLogger(__name__)
@@ -83,7 +83,7 @@ def evaluate_datasets_canonical(
         if dataset_has_sample_type(dataset, GeneratedSample):
             gen_sample_type = dataset.sample_type
         else:
-            gen_sample_type = BASE_GENERATED_TYPE_MAP[dataset.sample_type]
+            gen_sample_type = BASE_TYPE_TO_GENERATED[dataset.sample_type]
         gen_samples: list[GeneratedSample] = []
         for sample in dataset.samples:
             gen_sample = gen_sample_type(

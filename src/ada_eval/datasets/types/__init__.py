@@ -6,7 +6,7 @@ from .datasets import (
 )
 from .samples import (
     BASE_DIR_NAME,
-    BASE_GENERATED_TYPE_MAP,
+    BASE_TYPE_TO_GENERATED,
     COMMENTS_FILE_NAME,
     CORRECT_STATEMENTS_KEY,
     INCORRECT_STATEMENTS_KEY,
@@ -40,7 +40,7 @@ from .samples import (
 
 __all__ = [
     "BASE_DIR_NAME",
-    "BASE_GENERATED_TYPE_MAP",
+    "BASE_TYPE_TO_GENERATED",
     "COMMENTS_FILE_NAME",
     "CORRECT_STATEMENTS_KEY",
     "INCORRECT_STATEMENTS_KEY",

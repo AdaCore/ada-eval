@@ -330,7 +330,7 @@ class GeneratedSample(Sample):
         if isinstance(self, EvaluatedSample):
             return self
         else:
-            return GENERATED_EVALUATED_TYPE_MAP[type(self)](
+            return GENERATED_TYPE_TO_EVALUATED[type(self)](
                 **self.model_dump(),  # Copy all fields from the original sample
                 evaluation_results=[],
             )
@@ -396,12 +396,12 @@ class EvaluatedSparkSample(GeneratedSparkSample, EvaluatedAdaSample):
 
 # Type mappings for promoting `Sample` -> `GeneratedSample` and
 # `GeneratedSample` -> `EvaluatedSample`
-BASE_GENERATED_TYPE_MAP: dict[type[Sample], type[GeneratedSample]] = {
+BASE_TYPE_TO_GENERATED: dict[type[Sample], type[GeneratedSample]] = {
     AdaSample: GeneratedAdaSample,
     ExplainSample: GeneratedExplainSample,
     SparkSample: GeneratedSparkSample,
 }
-GENERATED_EVALUATED_TYPE_MAP: dict[type[GeneratedSample], type[EvaluatedSample]] = {
+GENERATED_TYPE_TO_EVALUATED: dict[type[GeneratedSample], type[EvaluatedSample]] = {
     GeneratedAdaSample: EvaluatedAdaSample,
     GeneratedExplainSample: EvaluatedExplainSample,
     GeneratedSparkSample: EvaluatedSparkSample,
