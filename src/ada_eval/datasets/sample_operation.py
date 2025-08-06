@@ -7,7 +7,7 @@ from typing import Generic, TypeVar
 
 from tqdm import tqdm
 
-from .loader import load_dir
+from .loader import load_dir, save_to_dir
 from .types import Dataset, Sample, dataset_has_sample_type
 
 logger = logging.getLogger(__name__)
@@ -199,14 +199,11 @@ class SampleOperation(ABC, Generic[InputType, OutputType]):
                 sum(len(f.samples) for f in failures),
                 packed_dataset_or_dir,
             )
-        # Save any results to `output_dir`
         if len(results) == 0:
             logger.warning(
                 "'%s' could not be applied to any samples found at at '%s'",
                 self.name,
                 packed_dataset_or_dir,
             )
-        else:
-            output_dir.mkdir(exist_ok=True, parents=True)
-            for dataset in results:
-                dataset.save_packed(output_dir)
+        # Save any results to `output_dir`
+        save_to_dir(results, output_dir)

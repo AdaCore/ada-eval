@@ -9,7 +9,7 @@ from ada_eval.datasets import (
     Sample,
     dataset_has_sample_type,
 )
-from ada_eval.datasets.loader import load_dir
+from ada_eval.datasets.loader import load_dir, save_to_dir
 from ada_eval.datasets.types import BASE_TYPE_TO_GENERATED, GenerationStats
 from ada_eval.evals import Eval, create_eval
 
@@ -169,6 +169,4 @@ def evaluate_directory(
             )
             return
     # Save results to `output_dir`
-    output_dir.mkdir(exist_ok=True, parents=True)
-    for dataset in evaluated_datasets:
-        dataset.save_packed(output_dir)
+    save_to_dir(evaluated_datasets, output_dir)
