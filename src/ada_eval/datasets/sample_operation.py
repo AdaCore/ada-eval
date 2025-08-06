@@ -134,7 +134,13 @@ class SampleOperation(ABC, Generic[InputType, OutputType]):
                     finally:
                         pbar.update(1)
 
-        # Create new datasets with transformed samples
+        # Sort samples by name within each dataset for consistent output when
+        # running in parallel
+        for sample_dict in (dataset_results, failures):
+            for sample_list in sample_dict.values():
+                sample_list.sort(key=lambda s: s.name)
+
+        # Create new datasets for the transformed and failed samples
         new_datasets: list[Dataset[OutputType]] = [
             Dataset(
                 name=old_dataset.name,
