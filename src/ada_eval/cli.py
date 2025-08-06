@@ -143,12 +143,12 @@ def main() -> None:
     )
 
     # Evaluate completions for a dataset
-    generate_parser = subparsers.add_parser(
+    evaluation_parser = subparsers.add_parser(
         "evaluate",
         help="Evaluate completions",
     )
-    generate_parser.set_defaults(func=call_evaluate_completions)
-    generate_parser.add_argument(
+    evaluation_parser.set_defaults(func=call_evaluate_completions)
+    evaluation_parser.add_argument(
         "--canonical",
         action="store_true",
         help=(
@@ -158,7 +158,7 @@ def main() -> None:
             "value already present)."
         ),
     )
-    generate_parser.add_argument(
+    evaluation_parser.add_argument(
         "--dataset",
         type=Path,
         help=(
@@ -168,7 +168,7 @@ def main() -> None:
         ),
         default=None,
     )
-    generate_parser.add_argument(
+    evaluation_parser.add_argument(
         "--evals",
         type=lambda s: Eval(s.lower()),
         choices=list(Eval),
@@ -176,7 +176,7 @@ def main() -> None:
         help="Names of the evals to run. (Default: all)",
     )
     default_num_jobs = cpu_count() or 1
-    generate_parser.add_argument(
+    evaluation_parser.add_argument(
         "-j",
         "--jobs",
         type=int,

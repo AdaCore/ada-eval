@@ -22,7 +22,6 @@ from .types import (
     GeneratedSample,
     Location,
     Sample,
-    Sloc,
     SparkSample,
     dataset_has_sample_type,
 )
@@ -62,7 +61,6 @@ __all__ = [
     "Location",
     "Sample",
     "SampleOperation",
-    "Sloc",
     "SparkSample",
     "dataset_has_sample_type",
     "get_packed_dataset_files",

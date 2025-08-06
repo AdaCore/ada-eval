@@ -1,0 +1,1 @@
+Instead of raising an exception, can you modify the search function to use the new Search_Result type instead. The new implementation should be provable by gnatprove without warnings.

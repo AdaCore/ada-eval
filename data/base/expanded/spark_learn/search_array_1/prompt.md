@@ -1,0 +1,1 @@
+The implementation of Search_Array is correct, but gnatprove is unhappy, stating that an "unexpected exception might be raised". It's not unexpected. I expect it to be raised. Please can you help me fix the function specification to tell gnatprove that an exception might be raised.

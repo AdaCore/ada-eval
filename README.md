@@ -1,85 +1,296 @@
 # Ada Eval
 Framework for evaluating LLM based tools for Ada/SPARK use cases.
 
-## Brainstorming
+- [Ada Eval](#ada-eval)
+  - [Setup](#setup)
+    - [Install uv](#install-uv)
+    - [ANCR Setup](#ancr-setup)
+    - [Alire Setup](#alire-setup)
+    - [Manual Setup](#manual-setup)
+    - [Per-clone setup](#per-clone-setup)
+  - [Running the Project](#running-the-project)
+  - [Project Development Info](#project-development-info)
+    - [Project structure](#project-structure)
+    - [Common Commands](#common-commands)
+    - [Adding a new Sample (Challenge/Problem)](#adding-a-new-sample-challengeproblem)
+      - [Adding a new SPARK sample](#adding-a-new-spark-sample)
+    - [Generating new completions](#generating-new-completions)
+    - [Evaluating completions](#evaluating-completions)
+    - [Adding or Updating Python Dependencies](#adding-or-updating-python-dependencies)
+    - [The package version is already in `eng/ai/ada-eval` or `it/package-registry`](#the-package-version-is-already-in-engaiada-eval-or-itpackage-registry)
+    - [The package version is not in `eng/ai/rag` or `it/package-registry`](#the-package-version-is-not-in-engairag-or-itpackage-registry)
 
-- [x] Dataset - Each item in the dataset should include
-  - [x] task_type (string) - text that describes the type of problem. Either "explain", "ada", "spark"
-  - [x] input_code (string) - text that we can run gnatchop on to get the starting Ada code
-  - [x] location_of_interest (string) - the line number and (optionaly) the column that the problem is interested in (line number of subprogram specification or )
-  - [x] prompt (optional string) - optional prompt to provide context for the problem. Imagining for explain tasks, the user may want different things explained for the same piece of code
-  - [x] canonical_solution
-    - [x] coding completion tasks (string) - text that we can run gnatchop, that would give a working solution to the problem
-    - [x] explain task (object)
-    - [x] explanation written by a domain expert
-      - [x] list of key points to hit in the explanation
-      - [x] maybe also a list of points that the explanation should not include, as they would be incorrect
-- [ ] Tool config - a json file that specifies any options that should be passed to the tool. This could include things like
-  - [ ] timeout and/or iteration limit
-  - [ ] thread count
-  - [ ] models to use
-    - [ ] This might have to take into account the type of endpoint
-    - [ ] This may also need different models/endpoints for different tasks
-  - [ ] etc.
-- [ ] Evaluation scripts
-  - [ ] Generate solutions. We probably want an executor per task. The executor's job will depend on the task:
-    - [ ] code completion
-      - [ ] Create a temporary directory that will act as the home for the project that the tool is to run on
-      - [ ] Run gnatchop on the input_code, producing the source code for the project
-      - [ ] Generate any other template files like a gpr file
-      - [ ] Run the tool on the project, with options as specified in the tool config and the problem
-      - [ ] Record output
-        - [ ] The contents of the project after the tool has run. TODO should this include all files, in case the tool has generated new files, or modified template files?
-        - [ ] If the tool crashed record why (e.g. out of memory, timeout, bug, etc.), and maybe a stack trace if it exists
-        - [ ] Whether the tool reported success or failure
-        - [ ] Wall and CPU time of the process (this will most likely exclude calls to an LLM)
-        - [ ] How many input tokens the tool used while running
-        - [ ] How many output tokens the tool used while running
-        - [ ] How many iterations the tool took to run, if any
-      - [ ] Clean up the temporary directory
-    - [ ] code/spark explanation
-      - [ ] Create a temporary directory that will act as the home for the project that the tool is to run on
-      - [ ] Run gnatchop on the input_code, producing the source code for the project
-      - [ ] Generate any other template files like a gpr file
-      - [ ] Run the tool on the project, with options as specified in the tool config and the problem
-      - [ ] Record output
-        - [ ] The explanation that the tool produced
-        - [ ] If the tool crashed record why (e.g. out of memory, timeout, bug, etc.), and maybe a stack trace if it exists
-        - [ ] Whether the tool reported success or failure
-        - [ ] Wall and CPU time of the process (this will most likely exclude calls to an LLM)
-        - [ ] How many input tokens the tool used while running
-        - [ ] How many output tokens the tool used while running
-      - [ ] Clean up the temporary directory
-  - [ ] Evaluate solutions. We probably want multiple evaluators, depending on how they will be evaluating the output of the tool
-    - [ ] code completion
-      - [ ] Create a temporary directory that will act as the home for the project and any test harnesses
-      - [ ] Check that the output of the tool is a valid Ada program that:
-        - [ ] compiles
-        - [ ] compiles with no warnings other than style warnings
-        - [ ] runs
-        - [ ] produces the expected output. To do this we can:
-          - [ ] run unit tests defined in the dataset
-          - [ ] perform differential fuzzing against the canonical solution
-        - [ ] exits in a reasonable amount of time (compare as a percentage difference to the canonical solution)
-        - [ ] proves
-          - [ ] I don't know much about SPARK yet/have forgotten most of what I previously learned, but maybe we can also record to what level the program is provable
-      - [ ] Record results for all of the above
-      - [ ] Clean up the temporary directory
-    - [ ] code/spark explanation
-      - [ ] Compute the BLEU score of the explanation produced by the tool against the canonical solution
-      - [ ] Compute the ROUGE score of the explanation produced by the tool against the canonical solution
-      - [ ] Use an embedding model to compute the cosine similarity of the explanation produced by the tool against the canonical solution
-      - [ ] Use an LLM to identify whether or not each key point in the canonical solution was hit by the explanation produced by the tool
-      - [ ] Use an LLM to identify whether or not any of the points that should not be included in the explanation were included
-      - [ ] Record results for all of the above
-  - [ ] Report results - this should include (per solution and summaries)
-    - [ ] accuracy (including pass@k)
-    - [ ] time taken (even if failed)
-    - [ ] iterations taken (even if failed)
-    - [ ] if it failed, why it failed e.g.
-      - [ ] tool reported failure, and the reason why e.g. timeout, iteration limit, etc.
-      - [ ] executor reported failure (e.g. out of memory error, task timeout, etc.)
-      - [ ] evaluation failed (e.g. compilation error, spark error, test failure, etc.)
-    - [ ] input tokens used while attempting to solve the problem
-    - [ ] output tokens used while attempting to solve the problem
-  - [ ] End-to-end evaluation - a script to perform the entire evaluation process
+
+## Setup
+
+To get started with this project, you will need the following tools installed on your system:
+- [uv](https://docs.astral.sh/uv/)
+- [e3-cli](https://gitlab.adacore-it.com/it/e3-cli/)
+- [git](https://git-scm.com/)
+- [make](https://www.gnu.org/software/make/)
+
+You will also need an Ada toolchain and GNATprove installed on your system. Some options for doing this:
+1. [ANCR](#ancr-setup)
+2. [Alire](#alire-setup)
+3. [Manual](#manual-setup)
+
+### Install uv
+
+uv should not be installed in the project's virtual environment. We can use pipx to install it globally, but still in a virtual environment. For alternative methods, see the [official docs](https://docs.astral.sh/uv/getting-started/installation/).
+
+```sh
+# Using official script:
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Using pipx
+pipx install uv
+
+# Using brew
+brew install uv
+
+# Using cargo
+cargo install --git https://github.com/astral-sh/uv uv
+```
+
+uv can update itself by running:
+```sh
+uv self update
+```
+
+Optionally, you can also install completions for uv and uvx:
+
+```sh
+# Determine your shell (e.g., with `echo $SHELL`), then run one of:
+
+# For bash
+echo 'eval "$(uv generate-shell-completion bash)"' >> ~/.bashrc
+echo 'eval "$(uvx --generate-shell-completion bash)"' >> ~/.bashrc
+
+# For zsh
+echo 'eval "$(uv generate-shell-completion zsh)"' >> ~/.zshrc
+echo 'eval "$(uvx --generate-shell-completion zsh)"' >> ~/.zshrc
+
+# For fish
+echo 'uv generate-shell-completion fish | source' >> ~/.config/fish/config.fish
+echo 'uvx --generate-shell-completion fish | source' >> ~/.config/fish/config.fish
+
+# For elvish
+echo 'eval (uv generate-shell-completion elvish | slurp)' >> ~/.elvish/rc.elv
+echo 'eval (uvx --generate-shell-completion elvish | slurp)' >> ~/.elvish/rc.elv
+
+```
+
+See [docs](https://docs.astral.sh/uv/) for more info about uv.
+
+### ANCR Setup
+Note that this won't work on macOS systems.
+
+If you haven't already, you will need to clone [ANCR](https://github.com/AdaCore/ANCR). You should then run:
+```
+./bin/ancr all mcp
+./bin/ancr shell mcp
+code ../ada-eval
+uv sync
+```
+You should now have a working Ada toolchain and GNATprove installed and in your environment.
+
+### Alire Setup
+
+If you're using macOS, you can use Alire to set up your environment by running:
+
+```sh
+alr install gnat_native gnatprove gprbuild
+```
+
+You must ensure that ~/.alire/bin/ is in your PATH.
+
+### Manual Setup
+Figure out how to install everything yourself 👍
+
+### Per-clone setup
+
+Do this when you first clone the project.
+Use uv to install python dependencies (this will automatically create a virtual environment):
+
+```sh
+uv sync
+```
+
+By default, uv will create a virtual environment named .venv in your project. If you're using VS Code, you can use `Python: Select Interpreter` to select Python from the virtual environment generated by uv. This will enable code navigation.
+
+If you don't use VS Code, you use the standard `source .venv/bin/activate` or equivalent to activate the virtual environment.
+
+Alternatively, you can run commands in the project's virtual environment without activating it by running `uv run ...` (e.g., `uv run pytest`).
+
+
+## Running the Project
+
+The project has a simple CLI, as well as a makefile that contains some useful commands for your convenience.
+
+You can see the CLI options by running:
+
+```sh
+uv run ada-eval --help
+```
+
+If you look at the make target `generate-spark-claude`, you will see an example of how to generate completions for our existing challenges, using Claude Code.
+```sh
+make generate-spark-claude
+```
+
+## Project Development Info
+
+### Project structure
+
+At a high level, the project is structured as follows:
+
+```sh
+.
+├── data  # Data directory containing various datasets
+│   ├── base  # Base data directory
+│   │   ├── compacted  # Contains datasets in single jsonl files
+│   │   └── expanded  # Contains expanded datasets. Much easier to read and modify vs the jsonl files
+│   ├── evaluated  # Datasets that contain generated completions and corresponding evaluation results
+│   └── generated  # Datasets that contain generated completions
+├── src  # Source code for ada-eval
+├── tests  # Tests for ada-eval
+├── tools  # Tools used by ada-eval during generation
+├── Makefile  # Contains various commands for convenience
+├── pyproject.toml  # Defines project dependencies and configuration
+├── README.md  # This file
+└── uv.lock  # Lock file for dependencies managed by uv
+```
+
+### Common Commands
+
+To format your code, run:
+```sh
+make format
+```
+
+To run linter/type checker, run:
+
+```sh
+make check
+```
+
+To run the testsuite run:
+```sh
+make test
+```
+
+### Adding a new Sample (Challenge/Problem)
+
+In `data/base/expanded`, you will find directories that each represent a dataset, which contain a number of samples (challenges/problems). The sample will have a different structure depending on the type of the dataset. Currently we only have SPARK datasets, though there is some support for Explain and Ada datasets too.
+
+The general idea of each of these types are:
+- **Ada**: Will require the modification of some Ada code to solve the challenge/problem
+- **SPARK**: Will require the modification of some SPARK code to solve the challenge/problem. This could include adding new SPARK contracts, modifying existing ones, or changing the implementation to satisfy the given challenge.
+- **Explain**: Contains some Ada/SPARK code and a question about it. The goal is to generate an explanation of the code that answers the question.
+
+The rough structure of a SPARK sample is as follows:
+
+```sh
+example_sample
+├── base  # The project for the challenge. This will be duplicated somewhere for a tool to attempt to modify to solve the challenge
+│   ├── default.gpr
+│   └── src
+├── comments.md  # Comments about the sample for humans to better understand it
+├── other.json  # Contains additional metadata for the sample. For SPARK samples, this will include the name of the subprogram of interest, and the relative path to the file that contains it's specification.
+├── prompt.md  # The prompt that is provided to the tool to specify the challenge/problem
+├── solution  # A solution to the challenge/problem. For SPARK samples, this will be a project that can be built, passes the tests, and gnatprove is happy with.
+│   ├── default.gpr
+│   ├── main.adc
+│   └── src
+└── tests  # Unit test project for the sample. Used in addition to gnatprove to verify that the solution is correct.
+```
+
+#### Adding a new SPARK sample
+
+1. Create a new directory in `data/base/expanded/your_dataset_of_choice` with the name of the sample.
+2. Add the following:
+   - `base/`: A project that contains the code that needs to be modified to solve the challenge/problem
+   - `solution/`: A complete project that contains the modified code with the solved problem
+   - `tests/`: A project that contains unit tests for the sample.
+   - `comments.md`: if the challenge isn't obvious, consider including a more detailed description of the challenge/problem in this file
+   - `prompt.md`: A prompt that describes the challenge/problem. This will be provided to the tool to generate a solution.
+   - `other.json`: A file that contains additional metadata about the sample. For SPARK samples, this should look like:
+    ```json
+    {
+        "location": {
+            "path": "src/relative/path/to/file.ads",  // Should be relative to the base/solution directory of the sample
+            "subprogram_name": "Name_Of_Subprogram"  // The name of the subprogram that is the focus of the challenge/problem
+        }
+    }
+    ```
+3. Verify that the solution proves:
+   ```sh
+    cd solution
+    gnatprove -P default.gpr -j0
+   ```
+   Note that for now we're checking that the entire project proves, not limiting the check to a single subprogram, and are using the default mode "all".
+4. Verify that the unit tests pass for the solution:
+    ```sh
+      cd tests
+      GPR_PROJECT_PATH=$PWD/../solution gprbuild -s -P tests.gpr && ./bin/tests
+    ```
+    This should output nothing and return a zero exit code if the tests pass.
+
+### Generating new completions
+
+To generate new completions for one or multiple datasets, you can use the `generate` command of the CLI. For example, to generate completions for all datasets using Claude Code, you can run:
+
+```sh
+uv generate --tool shell_script --tool_config_file tools/configs/claude_code_no_mcp.json
+```
+
+Currently you have to specify the type of tool you want to use, and the configuration file for that tool. The configuration files provide a place for modifying settings. Currently there are only shell tools, and the only values are used to specify where the script is located, and how long it should be allowed to run for.
+
+This interface is not final.
+
+### Evaluating completions
+
+TODO - This is currently a work in progress, and does nothing useful yet.
+
+
+### Adding or Updating Python Dependencies
+
+Since we are using our GitLab instance as our Python package registry (specifically `eng/ai/ada-eval` and `it/package-registry`), the following steps will depend on whether the desired package is already in the registry or not.
+
+### The package version is already in `eng/ai/ada-eval` or `it/package-registry`
+
+Run:
+
+```sh
+uv add <package-name>
+uv sync
+```
+
+For more info see [docs](https://docs.astral.sh/uv/reference/cli/#uv-add)
+
+### The package version is not in `eng/ai/rag` or `it/package-registry`
+
+1. Find the new files that need to be added to our GitLab package registry
+   1. Find the `tool.uv.index` section in `pyproject.toml` and either remove or comment out the line which says `default = true`
+   2. Add the new package: `uv add <package-name>`, `uv lock`
+   3. Find all of the URLS in `uv.lock` which start with `https://files.pythonhosted.org/packages`
+2. Download copies of all files not in our package registry
+   1. Make a temporary directory
+   2. In that temporary directory, download all of the files from the URLs that start with `https://files.pythonhosted.org/packages`
+      - This can be done by running `curl -L -O <url>` for each URL
+3. Re-upload the files to our package registry
+
+   1. Create or update ~/.pypirc to add the rag project to the index-servers:
+
+      ```INI
+      [distutils]
+      index-servers =
+          ada-eval
+
+      [ada-eval]
+      repository = https://gitlab.adacore-it.com/api/v4/projects/eng%2Fai%2Fada-eval/packages/pypi
+      username: oauth2
+      password: <token generated by e3-cli go, which can be found in ~/.adacore-jwts/gitlab_pat>
+      ```
+
+   2. Use twine to upload the files to the package registry: `uvx twine upload -r ada-eval --skip-existing *`

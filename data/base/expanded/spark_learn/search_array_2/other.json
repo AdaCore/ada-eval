@@ -1,0 +1,13 @@
+{
+    "location": {
+        "path": "src/search_array.ads",
+        "subprogram_name": "Contains"
+    },
+    "canonical_evaluation_results": [
+        {
+            "eval_name": "GNATprove",
+            "successfully_proven": true,
+            "timed_out": false
+        }
+    ]
+}

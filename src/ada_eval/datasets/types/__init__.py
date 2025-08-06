@@ -11,7 +11,6 @@ from .samples import (
     CORRECT_STATEMENTS_KEY,
     INCORRECT_STATEMENTS_KEY,
     LOCATION_KEY,
-    LOCATION_SOLUTION_KEY,
     OTHER_JSON_NAME,
     PROMPT_FILE_NAME,
     REFERENCE_ANSWER_FILE_NAME,
@@ -34,7 +33,6 @@ from .samples import (
     GenerationStats,
     Location,
     Sample,
-    Sloc,
     SparkSample,
 )
 
@@ -45,7 +43,6 @@ __all__ = [
     "CORRECT_STATEMENTS_KEY",
     "INCORRECT_STATEMENTS_KEY",
     "LOCATION_KEY",
-    "LOCATION_SOLUTION_KEY",
     "OTHER_JSON_NAME",
     "PROMPT_FILE_NAME",
     "REFERENCE_ANSWER_FILE_NAME",
@@ -72,7 +69,6 @@ __all__ = [
     "Location",
     "Sample",
     "SampleOperation",
-    "Sloc",
     "SparkSample",
     "dataset_has_sample_type",
     "get_packed_dataset_files",

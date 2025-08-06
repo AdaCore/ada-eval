@@ -1,11 +1,7 @@
 {
     "location": {
         "path": "src/show_ineffective_statements.ads",
-        "start": {
-            "line": 5,
-            "column": null
-        },
-        "end": null
+        "subprogram_name": "Swap2"
     },
     "canonical_evaluation_results": [
         {
