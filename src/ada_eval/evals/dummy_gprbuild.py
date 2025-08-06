@@ -39,4 +39,5 @@ class DummyGprBuild(GenericEval[GeneratedAdaSample, EvaluatedAdaSample]):
             compiled=True,
             has_pre_format_compile_warnings=False,
             has_post_format_compile_warnings=False,
+            timed_out=False,
         )

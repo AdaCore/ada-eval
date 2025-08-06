@@ -40,13 +40,13 @@ class GnatProve(GenericEval[GeneratedSparkSample, EvaluatedSparkSample]):
             #
             # TODO (#2): Restrict which subprogram is analyzed and scrape more
             # detailed results from `obj/gnatprove.out`
-            result, time_ms = run_cmd_with_timeout(
+            result, _ = run_cmd_with_timeout(
                 ["gnatprove", "--checks-as-errors=on", "--warnings=error", "-k"],
                 working_dir,
                 PROVE_TIMEOUT_S,
             )
             # Return a GeneratedSparkSample
-            successfully_proven = False if result is None else (result.returncode == 0)
             return EvaluationStatsGnatProve(
-                successfully_proven=successfully_proven, runtime_ms=time_ms
+                successfully_proven=(result is not None and result.returncode == 0),
+                timed_out=(result is None),
             )

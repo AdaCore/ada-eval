@@ -365,12 +365,13 @@ class EvaluationStatsGprBuild(EvaluationStatsBase):
     compiled: bool
     has_pre_format_compile_warnings: bool
     has_post_format_compile_warnings: bool
+    timed_out: bool
 
 
 class EvaluationStatsGnatProve(EvaluationStatsBase):
     eval_name: Literal["GNATprove"] = "GNATprove"
     successfully_proven: bool
-    runtime_ms: int
+    timed_out: bool
 
 
 EvaluationStats = (
