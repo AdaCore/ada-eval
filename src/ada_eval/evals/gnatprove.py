@@ -35,17 +35,25 @@ class GnatProve(GenericEval[GeneratedSparkSample, EvaluatedSparkSample]):
     def evaluate(self, sample: GeneratedSparkSample) -> EvaluationStatsGnatProve:
         with sample.generated_solution.unpacked() as working_dir:
             logger.debug("Evaluating %s with GNATprove in %s", sample.name, working_dir)
-            # Run `gnatprove` with no arguments (except those required to get
-            # non-zero exit code on failure)
+            # Run `gnatprove`, specifying the unit and subprogram to analyze,
+            # and ensuring that all kinds of proof failure yield a non-zero exit
+            # code.
             #
-            # TODO (#2): Restrict which subprogram is analyzed and scrape more
-            # detailed results from `obj/gnatprove.out`
+            # TODO (#2): Scrape more detailed results from `obj/gnatprove.out`
             result, _ = run_cmd_with_timeout(
-                ["gnatprove", "--checks-as-errors=on", "--warnings=error", "-k"],
+                [
+                    "gnatprove",
+                    "--checks-as-errors=on",
+                    "--warnings=error",
+                    "-k",
+                    f"--limit-name={sample.location.subprogram_name}",
+                    "-u",
+                    str(sample.location.path),
+                ],
                 working_dir,
                 PROVE_TIMEOUT_S,
             )
-            # Return a GeneratedSparkSample
+            # Return the `EvaluationStats`
             return EvaluationStatsGnatProve(
                 successfully_proven=(result is not None and result.returncode == 0),
                 timed_out=(result is None),
