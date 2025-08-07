@@ -34,6 +34,7 @@ from .samples import (
     Location,
     Sample,
     SparkSample,
+    SubprogramNotFoundError,
 )
 
 __all__ = [
@@ -70,6 +71,7 @@ __all__ = [
     "Sample",
     "SampleOperation",
     "SparkSample",
+    "SubprogramNotFoundError",
     "dataset_has_sample_type",
     "get_packed_dataset_files",
 ]

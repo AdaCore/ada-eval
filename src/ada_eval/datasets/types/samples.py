@@ -74,7 +74,7 @@ def find_subprogram_line(file_path: Path, subprogram_name: str) -> int:
     lines = content.splitlines()
 
     # Compile the regex pattern once for efficiency
-    pattern = re.compile(rf"\b{re.escape(subprogram_name)}\b")
+    pattern = re.compile(rf"\b(function|procedure)\s+{re.escape(subprogram_name)}\b")
 
     # Look for the first line that contains subprogram name
     for i, line in enumerate(lines, 1):
@@ -423,6 +423,7 @@ class EvaluationStatsGprBuild(EvaluationStatsBase):
 class EvaluationStatsGnatProve(EvaluationStatsBase):
     eval_name: Literal["GNATprove"] = "GNATprove"
     successfully_proven: bool
+    subprogram_found: bool
     timed_out: bool
 
 

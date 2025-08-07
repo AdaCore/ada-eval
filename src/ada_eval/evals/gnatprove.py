@@ -5,6 +5,7 @@ from ada_eval.datasets.types import (
     EvaluatedSparkSample,
     EvaluationStatsGnatProve,
     GeneratedSparkSample,
+    SubprogramNotFoundError,
 )
 from ada_eval.utils import check_on_path, run_cmd_with_timeout
 
@@ -35,19 +36,28 @@ class GnatProve(GenericEval[GeneratedSparkSample, EvaluatedSparkSample]):
     def evaluate(self, sample: GeneratedSparkSample) -> EvaluationStatsGnatProve:
         with sample.generated_solution.unpacked() as working_dir:
             logger.debug("Evaluating %s with GNATprove in %s", sample.name, working_dir)
+            # Search for the subprogram of interest.
+            try:
+                subp_lineno = sample.location.find_line_number(working_dir)
+            except SubprogramNotFoundError:
+                return EvaluationStatsGnatProve(
+                    successfully_proven=False,
+                    subprogram_found=False,
+                    timed_out=False,
+                )
             # Run `gnatprove`, specifying the unit and subprogram to analyze,
             # and ensuring that all kinds of proof failure yield a non-zero exit
             # code.
             #
             # TODO (#2): Scrape more detailed results from `obj/gnatprove.out`
+            # and stdout/stderr.
             result, _ = run_cmd_with_timeout(
                 [
                     "gnatprove",
                     "--checks-as-errors=on",
                     "--warnings=error",
                     "-k",
-                    f"--limit-name={sample.location.subprogram_name}",
-                    "-u",
+                    f"--limit-subp={sample.location.path.name}:{subp_lineno}",
                     str(sample.location.path),
                 ],
                 working_dir,
@@ -56,5 +66,6 @@ class GnatProve(GenericEval[GeneratedSparkSample, EvaluatedSparkSample]):
             # Return the `EvaluationStats`
             return EvaluationStatsGnatProve(
                 successfully_proven=(result is not None and result.returncode == 0),
+                subprogram_found=True,
                 timed_out=(result is None),
             )
