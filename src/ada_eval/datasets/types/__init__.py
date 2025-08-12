@@ -3,6 +3,7 @@ from .datasets import (
     DatasetKind,
     dataset_has_sample_type,
     get_packed_dataset_files,
+    save_to_dir_packed,
 )
 from .samples import (
     BASE_DIR_NAME,
@@ -74,4 +75,5 @@ __all__ = [
     "SubprogramNotFoundError",
     "dataset_has_sample_type",
     "get_packed_dataset_files",
+    "save_to_dir_packed",
 ]

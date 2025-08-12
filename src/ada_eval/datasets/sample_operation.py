@@ -7,8 +7,8 @@ from typing import Generic, TypeVar
 
 from tqdm import tqdm
 
-from .loader import load_dir, save_to_dir
-from .types import Dataset, Sample, dataset_has_sample_type
+from .loader import load_dir
+from .types import Dataset, Sample, dataset_has_sample_type, save_to_dir_packed
 
 logger = logging.getLogger(__name__)
 
@@ -206,4 +206,4 @@ class SampleOperation(ABC, Generic[InputType, OutputType]):
                 packed_dataset_or_dir,
             )
         # Save any results to `output_dir`
-        save_to_dir(results, output_dir)
+        save_to_dir_packed(results, output_dir)

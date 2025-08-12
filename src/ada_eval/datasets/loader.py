@@ -1,5 +1,4 @@
 import logging
-import shutil
 from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
@@ -199,22 +198,3 @@ def load_dir(packed_dataset_or_dir: Path) -> list[Dataset[Sample]]:
             raise DuplicateNameError(dataset, packed_dataset_or_dir)
         datasets_set.add(name_and_kind)
     return datasets
-
-
-def save_to_dir(datasets: Iterable[Dataset[Sample]], output_dir: Path) -> None:
-    """
-    Save datasets to a directory.
-
-    Any existing files will be removed or overwritten. A directory will be
-    created if necessary (even if `datasets` is empty).
-
-    Args:
-        datasets: Datasets to save.
-        output_dir: Directory where the datasets will be saved.
-
-    """
-    if output_dir.exists():
-        shutil.rmtree(output_dir)
-    output_dir.mkdir(parents=True)
-    for dataset in datasets:
-        dataset.save_packed(output_dir)

@@ -9,8 +9,12 @@ from ada_eval.datasets import (
     Sample,
     dataset_has_sample_type,
 )
-from ada_eval.datasets.loader import load_dir, save_to_dir
-from ada_eval.datasets.types import BASE_TYPE_TO_GENERATED, GenerationStats
+from ada_eval.datasets.loader import load_dir
+from ada_eval.datasets.types import (
+    BASE_TYPE_TO_GENERATED,
+    GenerationStats,
+    save_to_dir_packed,
+)
 from ada_eval.evals import Eval, create_eval
 
 logger = logging.getLogger(__name__)
@@ -169,4 +173,4 @@ def evaluate_directory(
             )
             return
     # Save results to `output_dir`
-    save_to_dir(evaluated_datasets, output_dir)
+    save_to_dir_packed(evaluated_datasets, output_dir)

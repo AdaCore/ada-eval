@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
+import shutil
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
@@ -159,3 +160,22 @@ def get_packed_dataset_files(path: Path) -> list[Path]:
     if is_collection_of_packed_datasets(path):
         return [p for p in path.iterdir() if is_packed_dataset(p)]
     return []
+
+
+def save_to_dir_packed(datasets: Iterable[Dataset[Sample]], output_dir: Path) -> None:
+    """
+    Save datasets to a directory.
+
+    Any existing files will be removed or overwritten. A directory will be
+    created if necessary (even if `datasets` is empty).
+
+    Args:
+        datasets: Datasets to save.
+        output_dir: Directory where the datasets will be saved.
+
+    """
+    if output_dir.exists():
+        shutil.rmtree(output_dir)
+    output_dir.mkdir(parents=True)
+    for dataset in datasets:
+        dataset.save_packed(output_dir)
