@@ -15,6 +15,16 @@ from ada_eval.paths import (
 from ada_eval.tools import Tool, create_tool
 
 
+def tool(tool_name: str) -> Tool:
+    """Case-insensitive `Tool` constructor."""
+    return Tool(tool_name.lower())
+
+
+def eval_(eval_name: str) -> Eval:
+    """Case-insensitive `Eval` constructor."""
+    return Eval(eval_name.lower())
+
+
 def call_unpack_datasets(args):
     unpack_datasets(src=args.src, dest_dir=args.dest, force=args.force)
 
@@ -130,7 +140,7 @@ def main() -> None:
     )
     generate_parser.add_argument(
         "--tool",
-        type=lambda s: Tool(s.lower()),
+        type=tool,
         choices=list(Tool),
         help="Name of tool to use for generation",
         required=True,
@@ -170,7 +180,7 @@ def main() -> None:
     )
     evaluation_parser.add_argument(
         "--evals",
-        type=lambda s: Eval(s.lower()),
+        type=eval_,
         choices=list(Eval),
         nargs="*",
         help="Names of the evals to run. (Default: all)",
