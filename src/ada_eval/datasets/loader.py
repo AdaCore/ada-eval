@@ -78,6 +78,14 @@ def get_explain_solution(
     )
 
 
+def _parse_dataset_dirname(path: Path, expected_format: str) -> tuple[DatasetKind, str]:
+    """Parse a dataset file/directory path into its kind and name."""
+    if "_" not in path.stem:
+        raise InvalidDatasetNameError(path, expected_format)
+    dataset_type_str, _, dataset_name = path.stem.partition("_")
+    return DatasetKind(dataset_type_str), dataset_name
+
+
 def check_no_duplicate_sample_names(samples: Iterable[Sample], location: Path) -> None:
     """
     Check that no two samples in the sequence have the same name.
@@ -96,10 +104,9 @@ def check_no_duplicate_sample_names(samples: Iterable[Sample], location: Path) -
 def load_unpacked_dataset(path: Path) -> Dataset[Sample]:
     if not is_unpacked_dataset(path):
         raise InvalidDatasetError(path, "unpacked")
-    if "_" not in path.stem:
-        raise InvalidDatasetNameError(path, "unpacked dataset dir name")
-    dataset_type_str, _, dataset_name = path.stem.partition("_")
-    dataset_type = DatasetKind(dataset_type_str)
+    dataset_type, dataset_name = _parse_dataset_dirname(
+        path, "unpacked dataset dir name"
+    )
     sample_class: type[Sample]
     match dataset_type:
         case DatasetKind.ADA:
@@ -113,8 +120,16 @@ def load_unpacked_dataset(path: Path) -> Dataset[Sample]:
     samples = []
     for sample_dir in sorted(path.iterdir()):
         if not is_unpacked_sample(sample_dir):
+            logger.warning("Skipping non-sample directory: %s", sample_dir)
             continue
-        samples.append(sample_class.load_unpacked_sample(sample_dir))
+        try:
+            loaded_sample = sample_class.load_unpacked_sample(sample_dir)
+        except Exception as e:
+            e.add_note(
+                f"This exception occurred while loading the sample at: {sample_dir}"
+            )
+            raise
+        samples.append(loaded_sample)
     check_no_duplicate_sample_names(samples, path)
     match dataset_type:
         case DatasetKind.ADA:
@@ -131,10 +146,7 @@ def load_packed_dataset(path: Path) -> Dataset[Sample]:
     """Load a packed dataset from its `.jsonl` file."""
     if not is_packed_dataset(path):
         raise InvalidDatasetError(path, "packed")
-    if "_" not in path.stem:
-        raise InvalidDatasetNameError(path, "packed dataset filename")
-    dataset_type_str, _, dataset_name = path.stem.partition("_")
-    dataset_type = DatasetKind(dataset_type_str)
+    dataset_type, dataset_name = _parse_dataset_dirname(path, "packed dataset filename")
     sample_class: type[Sample]
     generated_sample_class: type[GeneratedSample]
     match dataset_type:
