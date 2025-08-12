@@ -22,6 +22,7 @@ from ada_eval.datasets.types import (
     get_packed_dataset_files,
 )
 from ada_eval.datasets.types.datasets import (
+    get_unpacked_dataset_dirs,
     is_packed_dataset,
     is_unpacked_dataset,
 )
@@ -166,13 +167,17 @@ def load_packed_dataset(path: Path) -> Dataset[Sample]:
         return Dataset(name=dataset_name, samples=samples, sample_type=sample_class)
 
 
-def load_dir(packed_dataset_or_dir: Path) -> list[Dataset[Sample]]:
+def load_dir(path: Path, *, unpacked: bool = False) -> list[Dataset[Sample]]:
     """
     Load all datasets in a file/directory.
 
+    If `unpacked` is `False`, load either a packed dataset file or a directory
+    containing packed datasets. If `unpacked` is `True`, load either an unpacked
+    dataset directory or a directory of unpacked datasets.
+
     Args:
-        packed_dataset_or_dir: Path to a packed dataset file, or a directory
-            containing packed datasets.
+        path: The path to load.
+        unpacked: Whether the datasets are unpacked.
 
     Returns:
         A list of loaded datasets.
@@ -186,15 +191,19 @@ def load_dir(packed_dataset_or_dir: Path) -> list[Dataset[Sample]]:
 
     """
     # Load datasets
-    dataset_files = get_packed_dataset_files(packed_dataset_or_dir)
-    if len(dataset_files) == 0:
-        logger.warning("No datasets could be found at: %s", packed_dataset_or_dir)
-    datasets = [load_packed_dataset(path) for path in dataset_files]
+    if unpacked:
+        dataset_paths = get_unpacked_dataset_dirs(path)
+        datasets = [load_unpacked_dataset(path) for path in dataset_paths]
+    else:
+        dataset_paths = get_packed_dataset_files(path)
+        datasets = [load_packed_dataset(path) for path in dataset_paths]
+    if len(dataset_paths) == 0:
+        logger.warning("No datasets could be found at: %s", path)
     # Enforce unique dataset names
     datasets_set: set[tuple[str, DatasetKind]] = set()
     for dataset in datasets:
         name_and_kind = (dataset.name, dataset.kind())
         if name_and_kind in datasets_set:
-            raise DuplicateNameError(dataset, packed_dataset_or_dir)
+            raise DuplicateNameError(dataset, path)
         datasets_set.add(name_and_kind)
     return datasets
