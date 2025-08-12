@@ -157,15 +157,20 @@ class DirectoryContents(RootModel[dict[Path, str]]):
     Attributes:
         root (dict[Path, str]): A mapping of the files' relative paths to their
             contents.
+        files (dict[Path, str]): More descriptive alias for `root`.
 
     """
 
     root: dict[Path, str]
 
+    @property
+    def files(self) -> dict[Path, str]:
+        return self.root
+
     def unpack_to(self, dest_dir: Path):
         """Unpack the contents into the specified directory."""
         dest_dir.mkdir(parents=True, exist_ok=True)  # Should exist even if empty
-        for rel_path, contents in self.root.items():
+        for rel_path, contents in self.files.items():
             full_path = dest_dir / rel_path
             full_path.parent.mkdir(parents=True, exist_ok=True)
             with full_path.open("w") as f:
