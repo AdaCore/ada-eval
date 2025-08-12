@@ -14,7 +14,7 @@ from pydantic import (
     field_validator,
 )
 
-from ada_eval.datasets.utils import get_file_or_empty, git_ls_files
+from ada_eval.datasets.utils import get_file_or_empty, git_ls_files, is_in_git_worktree
 
 
 class InvalidSampleNameError(ValueError):
@@ -180,10 +180,13 @@ def get_contents_git_aware(root: Path) -> DirectoryContents:
     """
     Return the contents of a directory.
 
-    Will exclude any files that are ignored by git.
+    If `root` is inside a Git worktree, excludes any files that are ignored by
+    Git.
     """
     if not root.is_dir():
         return DirectoryContents({})
+    if not is_in_git_worktree(root):
+        return get_contents(root)
     full_paths = sorted(git_ls_files(root))
     files = {p.relative_to(root): p.read_text("utf-8") for p in full_paths}
     return DirectoryContents(files)
