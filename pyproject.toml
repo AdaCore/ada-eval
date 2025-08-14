@@ -117,8 +117,11 @@ ignore = [
 ]
 
 [tool.pytest.ini_options]
-addopts = "-ra -q --cov=ada_eval --cov-report=term-missing"
+addopts = "-ra -q --cov=ada_eval --cov-report=term-missing --cov-branch"
 testpaths = ["tests"]
+
+[tool.coverage.report]
+precision = 2
 
 [build-system]
 requires = ["hatchling"]
