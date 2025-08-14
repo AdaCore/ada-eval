@@ -36,9 +36,6 @@ default = true
 name = "adacore"
 url = "https://gitlab.adacore-it.com/api/v4/projects/it%2Fpackage-registry/packages/pypi/simple"
 
-[tool.ruff]
-exclude = ["tests"]
-
 [tool.ruff.lint]
 select = [
     "F",     # pyflakes
@@ -114,7 +111,10 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**/*.py" = ["S101", "T201"]
+"tests/**/*.py" = [
+    "S101",    # Allow asserts
+    "PLR2004", # Allow magic value comparison (e.g. `assert len(x) == 3`)
+]
 
 [tool.pytest.ini_options]
 addopts = "-ra -q --cov=ada_eval --cov-report=term-missing"

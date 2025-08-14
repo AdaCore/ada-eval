@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 
 import pytest
@@ -26,7 +27,11 @@ def test_make_files_relative_to_with_non_relative_files():
         Path("/home/user/project/file1.txt"),
         Path("/home/user/other_project/file2.txt"),
     ]
-    with pytest.raises(ValueError):
+    error_msg = (
+        "'/home/user/other_project/file2.txt' is not in the subpath of "
+        "'/home/user/project'"
+    )
+    with pytest.raises(ValueError, match=re.escape(error_msg)):
         make_files_relative_to(base_path, files)
 
 
