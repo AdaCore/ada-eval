@@ -16,7 +16,7 @@ from ada_eval.tools.factory import Tool
 
 
 def test_no_args(capsys):
-    with pytest.raises(SystemExit):
+    with patch.object(sys, "argv", ["ada-eval"]), pytest.raises(SystemExit):
         main()
     output = capsys.readouterr()
     assert "error: the following arguments are required: {" in output.err
