@@ -1,0 +1,16 @@
+{
+    "location": {
+        "path": "source_file_0",
+        "subprogram_name": "My_Subprogram"
+    },
+    "canonical_evaluation_results": [
+        {
+            "eval_name": "GNATprove",
+            "exception": "SomeError(\"Some message\")"
+        },
+        {
+            "eval_name": "gprbuild",
+            "exception": "SomeError(\"Some message\")"
+        }
+    ]
+}
