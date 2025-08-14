@@ -35,7 +35,7 @@ class InvalidDatasetError(Exception):
     """Raised when a path is not a valid dataset."""
 
     def __init__(self, path: Path, dataset_type: str):
-        super().__init__(f"{path} is not a {dataset_type} dataset")
+        super().__init__(f"'{path}' is not a valid {dataset_type} dataset")
 
 
 class InvalidDatasetNameError(Exception):
@@ -48,7 +48,7 @@ class InvalidDatasetNameError(Exception):
 class UnknownDatasetKindError(Exception):
     """Raised when an unknown dataset type is encountered."""
 
-    def __init__(self, dataset_type):
+    def __init__(self, dataset_type: DatasetKind | str):
         super().__init__(f"Unknown dataset type: {dataset_type}")
 
 
@@ -83,6 +83,8 @@ def _parse_dataset_dirname(path: Path, expected_format: str) -> tuple[DatasetKin
     if "_" not in path.stem:
         raise InvalidDatasetNameError(path, expected_format)
     dataset_type_str, _, dataset_name = path.stem.partition("_")
+    if not any(k.value == dataset_type_str for k in DatasetKind):
+        raise UnknownDatasetKindError(dataset_type_str)
     return DatasetKind(dataset_type_str), dataset_name
 
 
@@ -131,15 +133,7 @@ def load_unpacked_dataset(path: Path) -> Dataset[Sample]:
             raise
         samples.append(loaded_sample)
     check_no_duplicate_sample_names(samples, path)
-    match dataset_type:
-        case DatasetKind.ADA:
-            return Dataset(name=dataset_name, samples=samples, sample_type=sample_class)
-        case DatasetKind.EXPLAIN:
-            return Dataset(name=dataset_name, samples=samples, sample_type=sample_class)
-        case DatasetKind.SPARK:
-            return Dataset(name=dataset_name, samples=samples, sample_type=sample_class)
-        case _:
-            raise UnknownDatasetKindError(dataset_type)
+    return Dataset(name=dataset_name, samples=samples, sample_type=sample_class)
 
 
 def load_packed_dataset(path: Path) -> Dataset[Sample]:
@@ -169,14 +163,20 @@ def load_packed_dataset(path: Path) -> Dataset[Sample]:
         samples = [
             generated_sample_class.model_validate_json(x, strict=True) for x in lines
         ]
-        check_no_duplicate_sample_names(samples, path)
-        return Dataset(
-            name=dataset_name, samples=samples, sample_type=generated_sample_class
-        )
+        sample_class = generated_sample_class
     except ValidationError:
-        samples = [sample_class.model_validate_json(x, strict=True) for x in lines]
-        check_no_duplicate_sample_names(samples, path)
-        return Dataset(name=dataset_name, samples=samples, sample_type=sample_class)
+        samples = []
+        for line_num, line in enumerate(lines, start=1):
+            try:
+                sample = sample_class.model_validate_json(line, strict=True)
+            except Exception as e:
+                e.add_note(
+                    f"This error occurred while parsing line {line_num} of '{path}'"
+                )
+                raise
+            samples.append(sample)
+    check_no_duplicate_sample_names(samples, path)
+    return Dataset(name=dataset_name, samples=samples, sample_type=sample_class)
 
 
 def load_dir(path: Path, *, unpacked: bool = False) -> list[Dataset[Sample]]:
@@ -195,11 +195,15 @@ def load_dir(path: Path, *, unpacked: bool = False) -> list[Dataset[Sample]]:
         A list of loaded datasets.
 
     Raises:
-        InvalidDatasetError: If the path is not a valid dataset.
         InvalidDatasetNameError: If a dataset file has an invalid name format.
-        DuplicateNameError: If a dataset kind-name pair is duplicated, or a
-            sample name is duplicated within a dataset.
-        ValueError: If a dataset kind is not recognized.
+        DuplicateNameError: If a dataset kind-name pair is duplicated (should be
+            impossible on most file systems), or a sample name is duplicated
+            within a dataset (should only be possible for packed datasets on
+            most file systems).
+        UnknownDatasetKindError: If a dataset kind is not recognized.
+        PathMustBeRelativeError: If a sample's `Location` is not relative.
+        json.decoder.JSONDecodeError: If a sample contains invalid JSON.
+        pydantic.ValidationError: If a sample is invalid in some other way.
 
     """
     # Load datasets

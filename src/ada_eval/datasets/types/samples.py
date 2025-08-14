@@ -45,14 +45,14 @@ CANONICAL_EVAL_KEY = "canonical_evaluation_results"
 
 class PathMustBeRelativeError(Exception):
     def __init__(self, path: Path):
-        super().__init__(f"Path '{path}' must be relative")
+        super().__init__(f"Path '{path}' is not relative")
 
 
 class SubprogramNotFoundError(ValueError):
     """Raised when a subprogram is not found in a file."""
 
     def __init__(self, subprogram_name: str, file_path: Path):
-        super().__init__(f"Subprogram '{subprogram_name}' not found in {file_path}")
+        super().__init__(f"Subprogram '{subprogram_name}' not found in '{file_path}'")
 
 
 def find_subprogram_line(file_path: Path, subprogram_name: str) -> int:
@@ -357,8 +357,8 @@ class ExplainSample(Sample):
             sources=base_sample.sources,
             canonical_solution=ExplainSolution(
                 reference_answer=reference_answer,
-                correct_statements=other_data[CORRECT_STATEMENTS_KEY],
-                incorrect_statements=other_data[INCORRECT_STATEMENTS_KEY],
+                correct_statements=other_data.get(CORRECT_STATEMENTS_KEY, []),
+                incorrect_statements=other_data.get(INCORRECT_STATEMENTS_KEY, []),
             ),
             canonical_evaluation_results=base_sample.canonical_evaluation_results,
         )
