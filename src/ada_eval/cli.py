@@ -33,7 +33,7 @@ def call_pack_datasets(args):
     pack_datasets(src_dir=args.src, dest_dir=args.dest, force=args.force)
 
 
-def call_generate_completions(args):
+def generate(args):
     tool = create_tool(args.tool, args.tool_config_file)
     tool.apply_to_directory(
         packed_dataset_or_dir=args.dataset,
@@ -42,7 +42,7 @@ def call_generate_completions(args):
     )
 
 
-def call_evaluate_completions(args):
+def evaluate(args):
     if args.evals is None:
         args.evals = list(Eval)
     if args.dataset is None:
@@ -121,7 +121,7 @@ def main() -> None:
         help="Generate completions",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    generate_parser.set_defaults(func=call_generate_completions)
+    generate_parser.set_defaults(func=generate)
     generate_parser.add_argument(
         "--dataset",
         type=Path,
@@ -157,7 +157,7 @@ def main() -> None:
         "evaluate",
         help="Evaluate completions",
     )
-    evaluation_parser.set_defaults(func=call_evaluate_completions)
+    evaluation_parser.set_defaults(func=evaluate)
     evaluation_parser.add_argument(
         "--canonical",
         action="store_true",
