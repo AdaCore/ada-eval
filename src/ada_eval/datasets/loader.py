@@ -1,19 +1,14 @@
 import logging
 from collections.abc import Iterable
 from pathlib import Path
-from typing import Any
 
 from pydantic import ValidationError
 
 from ada_eval.datasets.types import (
-    CORRECT_STATEMENTS_KEY,
-    INCORRECT_STATEMENTS_KEY,
-    REFERENCE_ANSWER_FILE_NAME,
     AdaSample,
     Dataset,
     DatasetKind,
     ExplainSample,
-    ExplainSolution,
     GeneratedAdaSample,
     GeneratedExplainSample,
     GeneratedSample,
@@ -64,18 +59,6 @@ class DuplicateNameError(ValueError):
             name = f"{dataset_or_sample.name}"
             object_type = "sample"
         super().__init__(f"Duplicate {object_type} name '{name}' found in '{location}'")
-
-
-def get_explain_solution(
-    sample_root: Path, other_data: dict[str, Any]
-) -> ExplainSolution:
-    file = sample_root / REFERENCE_ANSWER_FILE_NAME
-    reference_answer = file.read_text(encoding="utf-8")
-    return ExplainSolution(
-        reference_answer=reference_answer,
-        correct_statements=other_data[CORRECT_STATEMENTS_KEY],
-        incorrect_statements=other_data[INCORRECT_STATEMENTS_KEY],
-    )
 
 
 def _parse_dataset_dirname(path: Path, expected_format: str) -> tuple[DatasetKind, str]:
