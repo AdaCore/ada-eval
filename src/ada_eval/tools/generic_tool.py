@@ -1,8 +1,7 @@
 import logging
-from abc import abstractmethod
 from enum import Enum
 from pathlib import Path
-from typing import Generic, TypeVar
+from typing import Generic, Self, TypeVar
 
 from pydantic import BaseModel
 
@@ -30,28 +29,35 @@ class LLMConfig(BaseModel):
 class BaseConfig(BaseModel):
     timeout_s: int
 
+    @classmethod
+    def from_file(cls, config_file: Path) -> Self:
+        """Load the configuration from a JSON file."""
+        return cls.model_validate_json(config_file.read_text(encoding="utf-8"))
 
+
+ConfigType = TypeVar("ConfigType", bound=BaseConfig)
 BaseSampleType = TypeVar("BaseSampleType", bound=Sample)
 GeneratedSampleType = TypeVar("GeneratedSampleType", bound=GeneratedSample)
 
 
 class GenericTool(
-    Generic[BaseSampleType, GeneratedSampleType],
+    Generic[ConfigType, BaseSampleType, GeneratedSampleType],
     SampleOperation[BaseSampleType, GeneratedSampleType],
 ):
-    config_type: type[BaseConfig]
+    config: ConfigType
+
+    # `config_type` is a class variable, but cannot be typed as such because a
+    # `TypeVar` cannot be used in a `ClassVar`, and class properties are
+    # deprecated.
+    config_type: type[ConfigType]
+
+    def __init__(self, config: ConfigType):
+        self.config = config
 
     @property
     def progress_bar_desc(self) -> str:
         return f"Generating completions with {self.name}"
 
     @classmethod
-    def from_config_file(cls, config_file: Path):
-        return cls.from_config(
-            cls.config_type.model_validate_json(config_file.read_text(encoding="utf-8"))
-        )
-
-    @classmethod
-    @abstractmethod
-    def from_config(cls, config: BaseConfig):
-        pass
+    def from_config_file(cls, config_file: Path) -> Self:
+        return cls(cls.config_type.from_file(config_file))

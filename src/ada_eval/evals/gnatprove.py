@@ -1,5 +1,5 @@
 import logging
-from typing import Literal
+from typing import ClassVar, Literal
 
 from ada_eval.datasets.types import (
     EvaluatedSparkSample,
@@ -23,15 +23,13 @@ PROVE_TIMEOUT_S = 60
 class GnatProve(GenericEval[GeneratedSparkSample, EvaluatedSparkSample]):
     """An evaluation that runs GNATprove and checks for any proof failures."""
 
+    name: ClassVar = GNATPROVE_EVAL_NAME
+    supported_types: ClassVar = {GeneratedSparkSample: EvaluatedSparkSample}
+
     def __init__(self) -> None:
-        super().__init__(type_mapping={GeneratedSparkSample: EvaluatedSparkSample})
         # Detect missing `gnatprove` before attempting any evaluation for a
         # cleaner error output.
         check_on_path("gnatprove")
-
-    @property
-    def name(self) -> str:
-        return GNATPROVE_EVAL_NAME
 
     def evaluate(self, sample: GeneratedSparkSample) -> EvaluationStatsGnatProve:
         with sample.generated_solution.unpacked() as working_dir:

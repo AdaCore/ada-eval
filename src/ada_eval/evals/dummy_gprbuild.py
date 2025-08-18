@@ -1,6 +1,6 @@
 import logging
 from time import sleep
-from typing import Literal
+from typing import ClassVar, Literal
 
 from ada_eval.datasets.types import (
     EvaluatedAdaSample,
@@ -21,17 +21,11 @@ DUMMY_GPRBUILD_EVAL_NAME: Literal["dummy_gprbuild"] = "dummy_gprbuild"
 class DummyGprBuild(GenericEval[GeneratedAdaSample, EvaluatedAdaSample]):
     """A dummy `gprbuild` evaluation that pretends compilation was successful."""
 
-    def __init__(self) -> None:
-        super().__init__(
-            type_mapping={
-                GeneratedAdaSample: EvaluatedAdaSample,
-                GeneratedSparkSample: EvaluatedSparkSample,
-            }
-        )
-
-    @property
-    def name(self) -> str:
-        return DUMMY_GPRBUILD_EVAL_NAME
+    name: ClassVar = DUMMY_GPRBUILD_EVAL_NAME
+    supported_types: ClassVar = {
+        GeneratedAdaSample: EvaluatedAdaSample,
+        GeneratedSparkSample: EvaluatedSparkSample,
+    }
 
     def evaluate(self, _: GeneratedAdaSample) -> EvaluationStatsGprBuild:
         sleep(1)

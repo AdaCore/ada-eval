@@ -28,23 +28,12 @@ class GenericEval(
     of an existing `EvaluatedSample`.
     """
 
-    def __init__(
-        self, type_mapping: dict[type[GeneratedSampleType], type[EvaluatedSampleType]]
-    ) -> None:
-        # Construct the full type mapping: unevaluated `GeneratedSample`s are converted
-        # to the corresponding `EvaluatedSample` type, while the `EvaluatedSample`s
-        # are mapped to themselves (but with additional `EvaluationStats`).
-        full_type_mapping: dict[
-            type[GeneratedSampleType | EvaluatedSampleType], type[EvaluatedSampleType]
-        ] = {}
-        for input_type, output_type in type_mapping.items():
-            full_type_mapping[output_type] = output_type
-            full_type_mapping[input_type] = output_type
-        super().__init__(type_mapping=full_type_mapping)
-
     @property
-    def progress_bar_desc(self) -> str:
-        return f"Evaluating with {self.name}"
+    @abstractmethod
+    def supported_types(
+        self,
+    ) -> dict[type[GeneratedSampleType], type[EvaluatedSampleType]]:
+        """The supported `GeneratedSample`s (and corresponding `EvaluatedSample`s)."""
 
     @abstractmethod
     def evaluate(
@@ -52,12 +41,30 @@ class GenericEval(
     ) -> EvaluationStats:
         """Evaluate a generated sample and return the resulting `EvaluationStats`."""
 
+    @property
+    def progress_bar_desc(self) -> str:
+        return f"Evaluating with {self.name}"
+
+    @property
+    def type_map(
+        self,
+    ) -> dict[
+        type[GeneratedSampleType | EvaluatedSampleType], type[EvaluatedSampleType]
+    ]:
+        # Construct the full type mapping: unevaluated `GeneratedSample`s are
+        # converted to the corresponding `EvaluatedSample` type, while the
+        # `EvaluatedSample`s are mapped to themselves (but with additional
+        # `EvaluationStats`).
+        return self.supported_types | {
+            output_type: output_type for output_type in self.supported_types.values()
+        }
+
     def apply(
         self, sample: GeneratedSampleType | EvaluatedSampleType
     ) -> EvaluatedSampleType:
         # Promote the `GeneratedSample` to an  `EvaluatedSample` if necessary.
         evaluated_sample = sample.to_evaluated_sample()
-        for t in self._type_mapping.values():  # Mypy doesn't understand `if any(...)`
+        for t in self.type_map.values():  # Mypy doesn't understand `if any(...)`
             if isinstance(evaluated_sample, t):
                 break
         else:
@@ -92,5 +99,5 @@ class WrongEvalOutputTypeError(TypeError):
             f"{type(gen_sample).__name__}, but the corresponding evaluated sample "
             f"type ({type(gen_sample.to_evaluated_sample()).__name__}) is not "
             "compatible with the eval's output types "
-            f"({[t.__name__ for t in evaluation._type_mapping.values()]})."  # noqa: SLF001  # Error is used only by `GenericEval`
+            f"({[t.__name__ for t in evaluation.type_map.values()]})."
         )

@@ -43,11 +43,6 @@ class SampleOperation(ABC, Generic[InputType, OutputType]):
 
     """
 
-    _type_mapping: dict[type[InputType], type[OutputType]]
-
-    def __init__(self, type_mapping: dict[type[InputType], type[OutputType]]):
-        self._type_mapping = type_mapping
-
     @property
     @abstractmethod
     def name(self) -> str:
@@ -57,6 +52,11 @@ class SampleOperation(ABC, Generic[InputType, OutputType]):
     @abstractmethod
     def progress_bar_desc(self) -> str:
         """Description for the progress bar when applying to multiple samples."""
+
+    @property
+    @abstractmethod
+    def type_map(self) -> dict[type[InputType], type[OutputType]]:
+        """Map from input sample types to output sample types."""
 
     @abstractmethod
     def apply(self, sample: InputType) -> OutputType:
@@ -90,7 +90,7 @@ class SampleOperation(ABC, Generic[InputType, OutputType]):
         compatible_datasets: list[Dataset[InputType]] = []
         incompatible_datasets: list[Dataset[DatasetSampleType]] = []
         for inp_dataset in datasets:
-            if dataset_has_sample_type(inp_dataset, tuple(self._type_mapping.keys())):
+            if dataset_has_sample_type(inp_dataset, tuple(self.type_map.keys())):
                 compatible_datasets.append(inp_dataset)
             else:
                 incompatible_datasets.append(inp_dataset)
@@ -144,7 +144,7 @@ class SampleOperation(ABC, Generic[InputType, OutputType]):
         new_datasets: list[Dataset[OutputType]] = [
             Dataset(
                 name=old_dataset.name,
-                sample_type=self._type_mapping[old_dataset.sample_type],
+                sample_type=self.type_map[old_dataset.sample_type],
                 samples=results,
             )
             for old_dataset, results in dataset_results.items()

@@ -1,5 +1,6 @@
 import logging
 from pathlib import Path
+from typing import ClassVar, Self
 
 from ada_eval.datasets.types import GenerationStats, SparkSample
 from ada_eval.datasets.types.samples import GeneratedSparkSample, get_contents
@@ -16,41 +17,18 @@ SHELL_SCRIPT_TOOL_NAME = "shell_script"
 class ShellScriptConfig(BaseConfig):
     shell_script: Path  # Should be relative to the config file
 
-
-class InvalidConfigTypeError(Exception):
-    def __init__(self, expected_type, actual_type) -> None:
-        super().__init__(
-            f"Expected {expected_type.__name__}, got {actual_type.__name__}"
-        )
-
-
-class ShellScript(GenericTool[SparkSample, GeneratedSparkSample]):
-    config_type = ShellScriptConfig
-    config: ShellScriptConfig
-
-    def __init__(self, config: ShellScriptConfig):
-        super().__init__(type_mapping={SparkSample: GeneratedSparkSample})
-        self.config = config
-
     @classmethod
-    def from_config_file(cls, config_file: Path) -> "ShellScript":
-        config = ShellScriptConfig.model_validate_json(
-            config_file.read_text(encoding="utf-8")
-        )
+    def from_file(cls, config_file: Path) -> Self:
+        config = super().from_file(config_file)
         # Resolve the shell script path relative to the config file's directory
         resolved_script_path = (config_file.parent / config.shell_script).resolve()
-        new_config = config.model_copy(update={"shell_script": resolved_script_path})
-        return cls(new_config)
+        return config.model_copy(update={"shell_script": resolved_script_path})
 
-    @classmethod
-    def from_config(cls, config: BaseConfig):
-        if not isinstance(config, ShellScriptConfig):
-            raise InvalidConfigTypeError(ShellScriptConfig, type(config))
-        return cls(config)
 
-    @property
-    def name(self) -> str:
-        return SHELL_SCRIPT_TOOL_NAME
+class ShellScript(GenericTool[ShellScriptConfig, SparkSample, GeneratedSparkSample]):
+    name: ClassVar = SHELL_SCRIPT_TOOL_NAME
+    type_map: ClassVar = {SparkSample: GeneratedSparkSample}
+    config_type = ShellScriptConfig
 
     def apply(self, sample: SparkSample) -> GeneratedSparkSample:
         with sample.sources.unpacked() as sample_working_dir:
