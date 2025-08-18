@@ -13,20 +13,6 @@ from .types import Dataset, Sample, dataset_has_sample_type, save_to_dir_packed
 logger = logging.getLogger(__name__)
 
 
-class UnsupportedSampleTypeError(TypeError):
-    """Raised when a sample type is not supported by a `SampleOperation`."""
-
-    def __init__(self, sample_type, expected_types: tuple[type[Sample], ...]) -> None:
-        if len(expected_types) == 1:
-            expected_types_str = expected_types[0].__name__
-        else:
-            expected_types_str = f"one of {[t.__name__ for t in expected_types]}"
-        super().__init__(
-            f"Unsupported sample type: got {sample_type.__name__}, "
-            "expected " + expected_types_str
-        )
-
-
 InputType = TypeVar("InputType", bound=Sample)
 OutputType = TypeVar("OutputType", bound=Sample)
 DatasetSampleType = TypeVar("DatasetSampleType", bound=Sample)
@@ -46,7 +32,7 @@ class SampleOperation(ABC, Generic[InputType, OutputType]):
     @property
     @abstractmethod
     def name(self) -> str:
-        pass
+        """Name used to identify the operation in logs, progress bars, etc."""
 
     @property
     @abstractmethod
@@ -201,7 +187,7 @@ class SampleOperation(ABC, Generic[InputType, OutputType]):
             )
         if len(results) == 0:
             logger.warning(
-                "'%s' could not be applied to any samples found at at '%s'",
+                "'%s' could not be applied to any samples found at '%s'.",
                 self.name,
                 packed_dataset_or_dir,
             )
