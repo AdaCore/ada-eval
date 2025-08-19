@@ -4,6 +4,7 @@ from pathlib import Path
 
 from helpers import (
     assert_git_status,
+    expanded_test_datasets,  # noqa: F401  # Fixtures used implicitly
     generated_test_datasets,  # noqa: F401  # Fixtures used implicitly
     setup_git_repo,
 )
@@ -13,7 +14,7 @@ from ada_eval.datasets.types.datasets import (
     Dataset,
     DatasetKind,
     dataset_has_sample_type,
-    save_to_dir_packed,
+    save_to_dir,
 )
 from ada_eval.datasets.types.samples import (
     AdaSample,
@@ -106,14 +107,14 @@ def test_save_to_dir_packed(tmp_path: Path, generated_test_datasets: Path):  # n
     assert len(list(generated_test_datasets.iterdir())) == 0
     assert_git_status(tmp_path, expect_dirty=True)
 
-    # `save_to_dir_packed()` should overwrite anything present, so add a file
+    # `save_to_dir()` should overwrite anything present, so add a file
     # which we expect to be removed
     test_file = generated_test_datasets / "test_file.txt"
     test_file.write_text("This file should be removed.")
     assert test_file.exists()
 
-    # Save the datasets with `save_to_dir_packed()`
-    save_to_dir_packed(datasets, generated_test_datasets)
+    # Save the datasets with `save_to_dir()`
+    save_to_dir(datasets, generated_test_datasets)
 
     # This should have regenerated the original dataset files and removed
     # `test_file`
@@ -125,6 +126,61 @@ def test_save_to_dir_packed(tmp_path: Path, generated_test_datasets: Path):  # n
     shutil.rmtree(generated_test_datasets)
     assert not generated_test_datasets.exists()
     assert_git_status(tmp_path, expect_dirty=True)
-    save_to_dir_packed(datasets, generated_test_datasets)
+    save_to_dir(datasets, generated_test_datasets)
     assert generated_test_datasets.exists()
+    assert_git_status(tmp_path, expect_dirty=False)
+
+
+def test_save_to_dir_unpacked(tmp_path: Path, expanded_test_datasets: Path):  # noqa: F811  # pytest fixture
+    # Initialise a Git repository to track changes
+    setup_git_repo(tmp_path)
+    subprocess.run(["git", "add", "."], cwd=tmp_path, check=True)
+    subprocess.run(["git", "commit", "-m", "msg"], cwd=tmp_path, check=True)
+    assert_git_status(tmp_path, expect_dirty=False)
+
+    # Load the dataset files
+    datasets = load_dir(expanded_test_datasets)
+
+    # Delete the dataset files
+    for path in expanded_test_datasets.iterdir():
+        shutil.rmtree(path)
+    assert len(list(expanded_test_datasets.iterdir())) == 0
+    assert_git_status(tmp_path, expect_dirty=True)
+
+    # `save_to_dir()` should overwrite anything present, so add a file
+    # which we expect to be removed
+    test_file = expanded_test_datasets / "test_file.txt"
+    test_file.write_text("This file should be removed.")
+    assert test_file.exists()
+
+    # Save the datasets with `save_to_dir()`
+    save_to_dir(datasets, expanded_test_datasets, unpacked=True)
+
+    # This should have regenerated the original dataset files and removed
+    # `test_file`.
+    assert len(list(expanded_test_datasets.iterdir())) > 0
+    assert not test_file.exists()
+
+    # There will be git changes, as we did not commit a `comments.md` or
+    # `prompt.md` file for `spark_test/test_sample_2`, but these will have been
+    # populated with default values, and therefore created (empty) during saving.
+    assert_git_status(tmp_path, expect_dirty=True)
+    spark_sample_2_dir = expanded_test_datasets / "spark_test" / "test_sample_2"
+    assert (spark_sample_2_dir / "comments.md").read_text() == ""
+    assert (spark_sample_2_dir / "prompt.md").read_text() == ""
+
+    # Remove the offending files and check that the git status is clean to
+    # verify that the files were regenerated correctly
+    (spark_sample_2_dir / "comments.md").unlink()
+    (spark_sample_2_dir / "prompt.md").unlink()
+    assert_git_status(tmp_path, expect_dirty=False)
+
+    # This should also work if the directory does not initially exist
+    shutil.rmtree(expanded_test_datasets)
+    assert not expanded_test_datasets.exists()
+    assert_git_status(tmp_path, expect_dirty=True)
+    save_to_dir(datasets, expanded_test_datasets, unpacked=True)
+    assert expanded_test_datasets.exists()
+    (spark_sample_2_dir / "comments.md").unlink()
+    (spark_sample_2_dir / "prompt.md").unlink()
     assert_git_status(tmp_path, expect_dirty=False)

@@ -13,7 +13,8 @@ from ada_eval.datasets.loader import load_dir
 from ada_eval.datasets.types import (
     BASE_TYPE_TO_GENERATED,
     GenerationStats,
-    save_to_dir_packed,
+    is_unpacked_data,
+    save_to_dir,
 )
 from ada_eval.evals import Eval, create_eval
 
@@ -123,7 +124,7 @@ def evaluate_datasets_canonical(
 
 def evaluate_directory(
     evals: list[Eval],
-    packed_dataset_or_dir: Path,
+    path: Path,
     output_dir: Path,
     jobs: int,
     *,
@@ -134,8 +135,8 @@ def evaluate_directory(
 
     Args:
         evals: List of `Eval`s to run.
-        packed_dataset_or_dir: Path to a packed dataset file, or a directory
-            containing packed datasets.
+        path: Path to a packed dataset file, or a directory containing packed or
+            unpacked dataset(s).
         output_dir: Directory where the results will be saved.
         jobs: Number of parallel jobs to run.
         canonical_evaluation: If `True`, evaluate the canonical solution instead
@@ -146,7 +147,7 @@ def evaluate_directory(
 
     """
     # Load datasets
-    datasets_unchecked = load_dir(packed_dataset_or_dir)
+    datasets_unchecked = load_dir(path)
     # Evaluate datasets
     evaluated_datasets: Sequence[Dataset[Sample]]
     if canonical_evaluation:
@@ -172,5 +173,6 @@ def evaluate_directory(
                 "No datasets were compatible with any eval; no results to save."
             )
             return
-    # Save results to `output_dir`
-    save_to_dir_packed(evaluated_datasets, output_dir)
+    # Save results to `output_dir` (avoiding overwriting unpacked data with
+    # packed data, e.g. if running canonical evaluation on the unpacked base dir)
+    save_to_dir(evaluated_datasets, output_dir, unpacked=is_unpacked_data(output_dir))

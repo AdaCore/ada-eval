@@ -18,7 +18,9 @@ from ada_eval.datasets.types import (
 )
 from ada_eval.datasets.types.datasets import (
     get_unpacked_dataset_dirs,
+    is_packed_data,
     is_packed_dataset,
+    is_unpacked_data,
     is_unpacked_dataset,
 )
 from ada_eval.datasets.types.samples import Sample, is_unpacked_sample
@@ -31,6 +33,15 @@ class InvalidDatasetError(Exception):
 
     def __init__(self, path: Path, dataset_type: str):
         super().__init__(f"'{path}' is not a valid {dataset_type} dataset")
+
+
+class MixedDatasetFormatsError(ValueError):
+    """Raised when loading a path containing both packed and unpacked datasets."""
+
+    def __init__(self, path: Path):
+        super().__init__(
+            f"'{path}' contains a mixture of packed and unpacked datasets."
+        )
 
 
 class InvalidDatasetNameError(Exception):
@@ -162,22 +173,22 @@ def load_packed_dataset(path: Path) -> Dataset[Sample]:
     return Dataset(name=dataset_name, samples=samples, sample_type=sample_class)
 
 
-def load_dir(path: Path, *, unpacked: bool = False) -> list[Dataset[Sample]]:
+def load_dir(path: Path) -> list[Dataset[Sample]]:
     """
     Load all datasets in a file/directory.
 
-    If `unpacked` is `False`, load either a packed dataset file or a directory
-    containing packed datasets. If `unpacked` is `True`, load either an unpacked
-    dataset directory or a directory of unpacked datasets.
+    Load either a packed dataset file, a directory of packed datasets, an
+    unpacked dataset directory or a directory of unpacked datasets.
 
     Args:
         path: The path to load.
-        unpacked: Whether the datasets are unpacked.
 
     Returns:
         A list of loaded datasets.
 
     Raises:
+        MixedDatasetFormatsError: If `path` contains a mixture of packed and
+            unpacked datasets.
         InvalidDatasetNameError: If a dataset file has an invalid name format.
         DuplicateNameError: If a dataset kind-name pair is duplicated (should be
             impossible on most file systems), or a sample name is duplicated
@@ -189,6 +200,11 @@ def load_dir(path: Path, *, unpacked: bool = False) -> list[Dataset[Sample]]:
         pydantic.ValidationError: If a sample is invalid in some other way.
 
     """
+    # Determine if we are loading packed or unpacked datasets
+    packed = is_packed_data(path)
+    unpacked = is_unpacked_data(path)
+    if packed and unpacked:
+        raise MixedDatasetFormatsError(path)
     # Load datasets
     if unpacked:
         dataset_paths = get_unpacked_dataset_dirs(path)

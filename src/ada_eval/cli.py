@@ -36,7 +36,7 @@ def call_pack_datasets(args):
 def generate(args):
     tool = create_tool(args.tool, args.tool_config_file)
     tool.apply_to_directory(
-        packed_dataset_or_dir=args.dataset,
+        path=args.dataset,
         output_dir=GENERATED_DATASETS_DIR,
         jobs=args.jobs,
     )
@@ -51,7 +51,7 @@ def evaluate(args):
         )
     evaluate_directory(
         evals=args.evals,
-        packed_dataset_or_dir=args.dataset,
+        path=args.dataset,
         output_dir=args.dataset if args.canonical else EVALUATED_DATASETS_DIR,
         jobs=args.jobs,
         canonical_evaluation=args.canonical,

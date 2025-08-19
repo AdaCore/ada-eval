@@ -84,7 +84,7 @@ def test_generate(capsys):
             )
             dataset_path = COMPACTED_DATASETS_DIR if dataset is None else Path(dataset)
             mock_tool.apply_to_directory.assert_called_once_with(
-                packed_dataset_or_dir=dataset_path,
+                path=dataset_path,
                 output_dir=GENERATED_DATASETS_DIR,
                 jobs=1 if jobs is None else int(jobs),
             )
@@ -158,7 +158,7 @@ def test_evaluate(capsys):
                 output_dir = EVALUATED_DATASETS_DIR
             mock_evaluate_directory.assert_called_once_with(
                 evals=expected_evals,
-                packed_dataset_or_dir=dataset_path,
+                path=dataset_path,
                 output_dir=output_dir,
                 jobs=8 if jobs is None else int(jobs),
                 canonical_evaluation=canonical,

@@ -8,7 +8,7 @@ from typing import Generic, TypeVar
 from tqdm import tqdm
 
 from .loader import load_dir
-from .types import Dataset, Sample, dataset_has_sample_type, save_to_dir_packed
+from .types import Dataset, Sample, dataset_has_sample_type, save_to_dir
 
 logger = logging.getLogger(__name__)
 
@@ -149,7 +149,7 @@ class SampleOperation(ABC, Generic[InputType, OutputType]):
 
     def apply_to_directory(
         self,
-        packed_dataset_or_dir: Path,
+        path: Path,
         output_dir: Path,
         jobs: int,
     ) -> None:
@@ -159,14 +159,14 @@ class SampleOperation(ABC, Generic[InputType, OutputType]):
         Datasets of types unsupported by the operation will be skipped.
 
         Args:
-            packed_dataset_or_dir: Path to a packed dataset file, or a directory
-                containing packed datasets.
+            path: Path to a packed dataset file, or a directory containing
+                packed or unpacked dataset(s).
             output_dir: Directory where the results will be saved.
             jobs: Number of parallel jobs to run.
 
         """
-        # Load from `packed_dataset_or_dir`
-        datasets = load_dir(packed_dataset_or_dir)
+        # Load from `path`
+        datasets = load_dir(path)
         # Apply to all compatible datasets
         results, failures, incompatible = self.apply_to_datasets(datasets, jobs=jobs)
         if len(incompatible) > 0:
@@ -175,7 +175,7 @@ class SampleOperation(ABC, Generic[InputType, OutputType]):
                 "These datasets will be omitted from the results.",
                 self.name,
                 len(incompatible),
-                packed_dataset_or_dir,
+                path,
             )
         if len(failures) > 0:
             logger.warning(
@@ -183,13 +183,13 @@ class SampleOperation(ABC, Generic[InputType, OutputType]):
                 "These samples will be omitted from the results.",
                 self.name,
                 sum(len(f.samples) for f in failures),
-                packed_dataset_or_dir,
+                path,
             )
         if len(results) == 0:
             logger.warning(
                 "'%s' could not be applied to any samples found at '%s'.",
                 self.name,
-                packed_dataset_or_dir,
+                path,
             )
         # Save any results to `output_dir`
-        save_to_dir_packed(results, output_dir)
+        save_to_dir(results, output_dir)

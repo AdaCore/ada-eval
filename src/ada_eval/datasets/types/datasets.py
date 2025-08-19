@@ -10,12 +10,7 @@ from typing import Generic, TypeGuard, TypeVar
 from ada_eval.datasets.types.samples import is_unpacked_sample
 from ada_eval.utils import UnexpectedTypeError
 
-from .samples import (
-    AdaSample,
-    ExplainSample,
-    Sample,
-    SparkSample,
-)
+from .samples import AdaSample, ExplainSample, GeneratedSample, Sample, SparkSample
 
 
 # Enum that specifies the kind of dataset (in terms of the base sample type,
@@ -126,6 +121,11 @@ def is_collection_of_unpacked_datasets(path: Path) -> bool:
     return path.is_dir() and any(is_unpacked_dataset(d) for d in path.iterdir())
 
 
+def is_unpacked_data(path: Path) -> bool:
+    """Check if `path` is either an unpacked dataset or a collection thereof."""
+    return is_unpacked_dataset(path) or is_collection_of_unpacked_datasets(path)
+
+
 def get_unpacked_dataset_dirs(path: Path) -> list[Path]:
     """Get the list of paths that contain the unpacked contents of a dataset."""
     if not is_collection_of_unpacked_datasets(path) and not is_unpacked_dataset(path):
@@ -153,6 +153,11 @@ def is_collection_of_packed_datasets(path: Path) -> bool:
     return path.is_dir() and any(is_packed_dataset(p) for p in path.iterdir())
 
 
+def is_packed_data(path: Path) -> bool:
+    """Check if `path` is either a packed dataset or a collection thereof."""
+    return is_packed_dataset(path) or is_collection_of_packed_datasets(path)
+
+
 def get_packed_dataset_files(path: Path) -> list[Path]:
     """Get the list of paths to the files in the dataset."""
     if is_packed_dataset(path):
@@ -162,7 +167,9 @@ def get_packed_dataset_files(path: Path) -> list[Path]:
     return []
 
 
-def save_to_dir_packed(datasets: Iterable[Dataset[Sample]], output_dir: Path) -> None:
+def save_to_dir(
+    datasets: Iterable[Dataset[Sample]], output_dir: Path, *, unpacked: bool = False
+) -> None:
     """
     Save datasets to a directory.
 
@@ -172,10 +179,16 @@ def save_to_dir_packed(datasets: Iterable[Dataset[Sample]], output_dir: Path) ->
     Args:
         datasets: Datasets to save.
         output_dir: Directory where the datasets will be saved.
+        unpacked: If `True`, save the datasets in unpacked form, otherwise save
+            them in packed form.
 
     """
+    if unpacked and any(dataset_has_sample_type(d, GeneratedSample) for d in datasets):
+        raise NotImplementedError(
+            "Saving generated datasets in unpacked form is not supported."
+        )
     if output_dir.exists():
         shutil.rmtree(output_dir)
     output_dir.mkdir(parents=True)
     for dataset in datasets:
-        dataset.save_packed(output_dir)
+        (dataset.save_unpacked if unpacked else dataset.save_packed)(output_dir)

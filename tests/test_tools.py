@@ -1,3 +1,4 @@
+import shutil
 import textwrap
 from pathlib import Path
 from typing import ClassVar
@@ -5,6 +6,7 @@ from typing import ClassVar
 import pytest
 from helpers import (
     compacted_test_datasets,  # noqa: F401  # Fixtures used implicitly
+    expanded_test_datasets,  # noqa: F401  # Fixtures used implicitly
     generated_test_datasets,  # noqa: F401  # Fixtures used implicitly
 )
 
@@ -34,6 +36,7 @@ from ada_eval.tools.generic_tool import BaseConfig, GenericTool
 def test_generic_tool(
     tmp_path: Path,
     compacted_test_datasets: Path,  # noqa: F811  # pytest fixture
+    expanded_test_datasets: Path,  # noqa: F811  # pytest fixture
     capsys: pytest.CaptureFixture[str],
     caplog: pytest.LogCaptureFixture,
 ):
@@ -109,17 +112,21 @@ def test_generic_tool(
     assert len(generated_datasets_0) == 3
     check_generated_datasets(generated_datasets_0)
 
-    # Test applying directly to a directory
+    # Test applying directly to a directory (both packed and unpacked)
     out_dir = tmp_path / "output"
-    tool.apply_to_directory(compacted_test_datasets, out_dir, jobs=8)
-    output = capsys.readouterr()
-    assert "Generating completions with mock_tool_0:" in output.err
-    assert output.out == ""
-    generated_datasets = [  # Mypy-friendly check that all have generated type
-        d for d in load_dir(out_dir) if dataset_has_sample_type(d, GeneratedSample)
-    ]
-    assert len(generated_datasets) == 3
-    check_generated_datasets(generated_datasets)
+    for in_dir in (compacted_test_datasets, expanded_test_datasets):
+        if out_dir.exists():
+            shutil.rmtree(out_dir)
+        assert not out_dir.exists()
+        tool.apply_to_directory(in_dir, out_dir, jobs=8)
+        output = capsys.readouterr()
+        assert "Generating completions with mock_tool_0:" in output.err
+        assert output.out == ""
+        generated_datasets = [  # Mypy-friendly check that all have generated type
+            d for d in load_dir(out_dir) if dataset_has_sample_type(d, GeneratedSample)
+        ]
+        assert len(generated_datasets) == 3
+        check_generated_datasets(generated_datasets)
 
     # None of the above should have logged any warnings
     assert caplog.text == ""
