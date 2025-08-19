@@ -58,18 +58,11 @@ class UnknownDatasetKindError(Exception):
         super().__init__(f"Unknown dataset type: {dataset_type}")
 
 
-class DuplicateNameError(ValueError):
-    """Raised when a sample or dataset name is inappropriately duplicated."""
+class DuplicateSampleNameError(ValueError):
+    """Raised when a dataset contains more than one sample with the same name."""
 
-    def __init__(self, dataset_or_sample: Dataset[Sample] | Sample, location: Path):
-        self.dataset_or_sample = dataset_or_sample
-        if isinstance(dataset_or_sample, Dataset):
-            name = f"{dataset_or_sample.dirname()})"
-            object_type = "dataset"
-        else:
-            name = f"{dataset_or_sample.name}"
-            object_type = "sample"
-        super().__init__(f"Duplicate {object_type} name '{name}' found in '{location}'")
+    def __init__(self, sample_name: str, location: Path):
+        super().__init__(f"Duplicate sample name '{sample_name}' found in '{location}'")
 
 
 def _parse_dataset_dirname(path: Path, expected_format: str) -> tuple[DatasetKind, str]:
@@ -87,13 +80,13 @@ def check_no_duplicate_sample_names(samples: Iterable[Sample], location: Path) -
     Check that no two samples in the sequence have the same name.
 
     Raises:
-        DuplicateNameError: If duplicate sample names are found.
+        DuplicateSampleNameError: If duplicate sample names are found.
 
     """
     seen_names = set()
     for sample in samples:
         if sample.name in seen_names:
-            raise DuplicateNameError(sample, location)
+            raise DuplicateSampleNameError(sample.name, location)
         seen_names.add(sample.name)
 
 
@@ -190,10 +183,8 @@ def load_dir(path: Path) -> list[Dataset[Sample]]:
         MixedDatasetFormatsError: If `path` contains a mixture of packed and
             unpacked datasets.
         InvalidDatasetNameError: If a dataset file has an invalid name format.
-        DuplicateNameError: If a dataset kind-name pair is duplicated (should be
-            impossible on most file systems), or a sample name is duplicated
-            within a dataset (should only be possible for packed datasets on
-            most file systems).
+        DuplicateSampleNameError: If a sample name is duplicated within a dataset
+            (should only be possible for packed datasets on most file systems).
         UnknownDatasetKindError: If a dataset kind is not recognized.
         PathMustBeRelativeError: If a sample's `Location` is not relative.
         json.decoder.JSONDecodeError: If a sample contains invalid JSON.
@@ -214,11 +205,4 @@ def load_dir(path: Path) -> list[Dataset[Sample]]:
         datasets = [load_packed_dataset(path) for path in dataset_paths]
     if len(dataset_paths) == 0:
         logger.warning("No datasets could be found at: %s", path)
-    # Enforce unique dataset names
-    datasets_set: set[tuple[str, DatasetKind]] = set()
-    for dataset in datasets:
-        name_and_kind = (dataset.name, dataset.kind())
-        if name_and_kind in datasets_set:
-            raise DuplicateNameError(dataset, path)
-        datasets_set.add(name_and_kind)
     return datasets

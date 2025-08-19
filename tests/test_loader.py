@@ -21,7 +21,7 @@ from ada_eval.datasets import (
     dataset_has_sample_type,
 )
 from ada_eval.datasets.loader import (
-    DuplicateNameError,
+    DuplicateSampleNameError,
     InvalidDatasetError,
     InvalidDatasetNameError,
     MixedDatasetFormatsError,
@@ -491,7 +491,7 @@ def test_load_dir_duplicate_sample_names(compacted_test_datasets):  # noqa: F811
     )
     spark_dataset_file.write_text(spark_dataset_packed_content)
     error_msg = f"Duplicate sample name 'test_sample_1' found in '{spark_dataset_file}'"
-    with pytest.raises(DuplicateNameError, match=re.escape(error_msg)):
+    with pytest.raises(DuplicateSampleNameError, match=re.escape(error_msg)):
         load_dir(compacted_test_datasets)
 
 
