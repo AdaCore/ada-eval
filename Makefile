@@ -30,10 +30,17 @@ generate-dummy:
 	uv run ada-eval generate \
 		--jobs 4 \
 		--tool shell_script \
-		--tool_config_file tools/configs/shell_dummy.json
+		--tool-config-file tools/configs/shell_dummy.json
 
 generate-spark-claude:
 	uv run ada-eval generate \
 		--jobs 4 \
 		--tool shell_script \
-		--tool_config_file tools/configs/claude_code_no_mcp.json
+		--tool-config-file tools/configs/claude_code_no_mcp.json
+
+evaluate:
+	uv run ada-eval evaluate
+
+evaluate-canonical:
+	uv run ada-eval evaluate --canonical
+	uv run ada-eval pack

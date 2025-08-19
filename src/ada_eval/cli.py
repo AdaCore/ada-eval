@@ -47,7 +47,7 @@ def evaluate(args):
         args.evals = list(Eval)
     if args.dataset is None:
         args.dataset = (
-            COMPACTED_DATASETS_DIR if args.canonical else GENERATED_DATASETS_DIR
+            EXPANDED_DATASETS_DIR if args.canonical else GENERATED_DATASETS_DIR
         )
     evaluate_directory(
         evals=args.evals,
