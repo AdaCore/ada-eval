@@ -10,6 +10,7 @@ from ada_eval.evals import Eval
 from ada_eval.paths import (
     COMPACTED_DATASETS_DIR,
     EVALUATED_DATASETS_DIR,
+    EXPANDED_DATASETS_DIR,
     GENERATED_DATASETS_DIR,
 )
 from ada_eval.tools.factory import Tool
@@ -148,7 +149,7 @@ def test_evaluate(capsys):
             )
             if canonical:
                 dataset_path = (
-                    COMPACTED_DATASETS_DIR if dataset is None else Path(dataset)
+                    EXPANDED_DATASETS_DIR if dataset is None else Path(dataset)
                 )
                 output_dir = dataset_path
             else:
