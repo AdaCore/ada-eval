@@ -16,10 +16,10 @@ from ada_eval.datasets.types.datasets import (
     DatasetKind,
     dataset_has_sample_type,
 )
+from ada_eval.datasets.types.directory_contents import DirectoryContents
 from ada_eval.datasets.types.samples import (
     BASE_TYPE_TO_GENERATED,
     AdaSample,
-    DirectoryContents,
     ExplainSample,
     GeneratedAdaSample,
     GeneratedExplainSample,

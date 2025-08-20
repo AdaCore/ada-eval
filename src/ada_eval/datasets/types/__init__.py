@@ -8,6 +8,7 @@ from .datasets import (
     is_unpacked_data,
     save_to_dir,
 )
+from .directory_contents import get_contents
 from .samples import (
     BASE_TYPE_TO_GENERATED,
     AdaSample,
@@ -30,7 +31,6 @@ from .samples import (
     Sample,
     SparkSample,
     SubprogramNotFoundError,
-    get_contents,
 )
 
 __all__ = [

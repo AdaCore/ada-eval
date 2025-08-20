@@ -26,9 +26,9 @@ from ada_eval.datasets.loader import (
     load_packed_dataset,
     load_unpacked_dataset,
 )
+from ada_eval.datasets.types.directory_contents import DirectoryContents
 from ada_eval.datasets.types.samples import (
     AdaSample,
-    DirectoryContents,
     EvaluationStatsFailed,
     EvaluationStatsGnatProve,
     EvaluationStatsGprBuild,
