@@ -1,5 +1,7 @@
 """Common types used in the Ada Eval project."""
 
+from __future__ import annotations
+
 import json
 import re
 from pathlib import Path
@@ -131,10 +133,10 @@ class _UnpackedDirectoryContextManager:
     Returns the `Path` to the temp directory on entry, and cleans it up on exit.
     """
 
-    contents: "DirectoryContents"
+    contents: DirectoryContents
     temp_dir: TemporaryDirectory[str] | None = None
 
-    def __init__(self, contents: "DirectoryContents"):
+    def __init__(self, contents: DirectoryContents):
         self.contents = contents
         self.temp_dir = None
 
@@ -230,7 +232,7 @@ class Sample(BaseModel):
     prompt: str
     sources: DirectoryContents
     canonical_solution: object
-    canonical_evaluation_results: list["EvaluationStats"]
+    canonical_evaluation_results: list[EvaluationStats]
     comments: str
 
     @field_validator("name")
@@ -380,7 +382,7 @@ class GeneratedSample(Sample):
     generation_stats: GenerationStats
     generated_solution: object
 
-    def to_evaluated_sample(self) -> "EvaluatedSample":
+    def to_evaluated_sample(self) -> EvaluatedSample:
         """
         Return this sample as an evaluated sample.
 
