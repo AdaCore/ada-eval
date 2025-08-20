@@ -241,7 +241,7 @@ example_sample
 To generate new completions for one or multiple datasets, you can use the `generate` command of the CLI. For example, to generate completions for all datasets using Claude Code, you can run:
 
 ```sh
-uv generate --tool shell_script --tool_config_file tools/configs/claude_code_no_mcp.json
+uv generate --tool shell_script --tool-config-file tools/configs/claude_code_no_mcp.json
 ```
 
 Currently you have to specify the type of tool you want to use, and the configuration file for that tool. The configuration files provide a place for modifying settings. Currently there are only shell tools, and the only values are used to specify where the script is located, and how long it should be allowed to run for.

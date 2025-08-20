@@ -1,13 +1,11 @@
 from enum import Enum
 from pathlib import Path
 
-from ada_eval.tools.shell_script import ShellScript
-
-from .generic_tool import GenericTool
+from .shell_script import ShellScript
 
 
 class Tool(Enum):
-    SHELL_SCRIPT = "shell_script"
+    SHELL_SCRIPT = ShellScript.name
 
     def __str__(self):
         return self.value
@@ -18,7 +16,7 @@ class UnsupportedToolError(Exception):
         super().__init__(f"Unsupported tool: {tool}")
 
 
-def create_tool(tool: Tool, config_file: Path) -> GenericTool:
+def create_tool(tool: Tool, config_file: Path) -> ShellScript:
     match tool:
         case Tool.SHELL_SCRIPT:
             return ShellScript.from_config_file(config_file)

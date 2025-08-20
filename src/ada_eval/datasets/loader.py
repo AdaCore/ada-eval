@@ -1,32 +1,45 @@
+import logging
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Any
 
-from ada_eval.datasets.types import (
-    CORRECT_STATEMENTS_KEY,
-    INCORRECT_STATEMENTS_KEY,
-    REFERENCE_ANSWER_FILE_NAME,
-    AdaDataset,
+from pydantic import ValidationError
+
+from .types import (
     AdaSample,
     Dataset,
-    DatasetType,
-    ExplainDataset,
+    DatasetKind,
     ExplainSample,
-    ExplainSolution,
-    SparkDataset,
+    GeneratedAdaSample,
+    GeneratedExplainSample,
+    GeneratedSample,
+    GeneratedSparkSample,
+    Sample,
     SparkSample,
+    get_packed_dataset_files,
+    get_unpacked_dataset_dirs,
+    is_packed_data,
+    is_unpacked_data,
 )
-from ada_eval.datasets.types.datasets import (
-    is_packed_dataset,
-    is_unpacked_dataset,
-)
-from ada_eval.datasets.types.samples import Sample, is_unpacked_sample
+from .types.datasets import is_packed_dataset, is_unpacked_dataset
+from .types.samples import is_unpacked_sample
+
+logger = logging.getLogger(__name__)
 
 
 class InvalidDatasetError(Exception):
     """Raised when a path is not a valid dataset."""
 
     def __init__(self, path: Path, dataset_type: str):
-        super().__init__(f"{path} is not a {dataset_type} dataset")
+        super().__init__(f"'{path}' is not a valid {dataset_type} dataset")
+
+
+class MixedDatasetFormatsError(ValueError):
+    """Raised when loading a path containing both packed and unpacked datasets."""
+
+    def __init__(self, path: Path):
+        super().__init__(
+            f"'{path}' contains a mixture of packed and unpacked datasets."
+        )
 
 
 class InvalidDatasetNameError(Exception):
@@ -36,82 +49,158 @@ class InvalidDatasetNameError(Exception):
         super().__init__(f"Expected {expected_format} to contain an underscore: {path}")
 
 
-class UnknownDatasetTypeError(Exception):
+class UnknownDatasetKindError(Exception):
     """Raised when an unknown dataset type is encountered."""
 
-    def __init__(self, dataset_type):
+    def __init__(self, dataset_type: DatasetKind | str):
         super().__init__(f"Unknown dataset type: {dataset_type}")
 
 
-def get_explain_solution(
-    sample_root: Path, other_data: dict[str, Any]
-) -> ExplainSolution:
-    file = sample_root / REFERENCE_ANSWER_FILE_NAME
-    reference_answer = file.read_text(encoding="utf-8")
-    return ExplainSolution(
-        reference_answer=reference_answer,
-        correct_statements=other_data[CORRECT_STATEMENTS_KEY],
-        incorrect_statements=other_data[INCORRECT_STATEMENTS_KEY],
-    )
+class DuplicateSampleNameError(ValueError):
+    """Raised when a dataset contains more than one sample with the same name."""
+
+    def __init__(self, sample_name: str, location: Path):
+        super().__init__(f"Duplicate sample name '{sample_name}' found in '{location}'")
 
 
-def load_unpacked_dataset(path: Path) -> Dataset:
+def _parse_dataset_dirname(path: Path, expected_format: str) -> tuple[DatasetKind, str]:
+    """Parse a dataset file/directory path into its kind and name."""
+    if "_" not in path.stem:
+        raise InvalidDatasetNameError(path, expected_format)
+    dataset_type_str, _, dataset_name = path.stem.partition("_")
+    if not any(k.value == dataset_type_str for k in DatasetKind):
+        raise UnknownDatasetKindError(dataset_type_str)
+    return DatasetKind(dataset_type_str), dataset_name
+
+
+def check_no_duplicate_sample_names(samples: Iterable[Sample], location: Path) -> None:
+    """
+    Check that no two samples in the sequence have the same name.
+
+    Raises:
+        DuplicateSampleNameError: If duplicate sample names are found.
+
+    """
+    seen_names = set()
+    for sample in samples:
+        if sample.name in seen_names:
+            raise DuplicateSampleNameError(sample.name, location)
+        seen_names.add(sample.name)
+
+
+def load_unpacked_dataset(path: Path) -> Dataset[Sample]:
     if not is_unpacked_dataset(path):
         raise InvalidDatasetError(path, "unpacked")
-    if "_" not in path.stem:
-        raise InvalidDatasetNameError(path, "unpacked dataset dir name")
-    first_underscore = path.stem.index("_")
-    dataset_type = DatasetType(path.stem[:first_underscore])
+    dataset_type, dataset_name = _parse_dataset_dirname(
+        path, "unpacked dataset dir name"
+    )
     sample_class: type[Sample]
     match dataset_type:
-        case DatasetType.ADA:
+        case DatasetKind.ADA:
             sample_class = AdaSample
-        case DatasetType.SPARK:
+        case DatasetKind.SPARK:
             sample_class = SparkSample
-        case DatasetType.EXPLAIN:
+        case DatasetKind.EXPLAIN:
             sample_class = ExplainSample
         case _:
-            raise UnknownDatasetTypeError(dataset_type)
-    dataset_name = path.stem[first_underscore + 1 :]
+            raise UnknownDatasetKindError(dataset_type)
     samples = []
     for sample_dir in sorted(path.iterdir()):
         if not is_unpacked_sample(sample_dir):
+            logger.warning("Skipping non-sample directory: %s", sample_dir)
             continue
-        samples.append(sample_class.load_unpacked_sample(sample_dir))
-    match dataset_type:
-        case DatasetType.ADA:
-            return AdaDataset(name=dataset_name, samples=samples, type=dataset_type)
-        case DatasetType.EXPLAIN:
-            return ExplainDataset(name=dataset_name, samples=samples, type=dataset_type)
-        case DatasetType.SPARK:
-            return SparkDataset(name=dataset_name, samples=samples, type=dataset_type)
-        case _:
-            raise UnknownDatasetTypeError(dataset_type)
+        try:
+            loaded_sample = sample_class.load_unpacked_sample(sample_dir)
+        except Exception as e:
+            e.add_note(
+                f"This exception occurred while loading the sample at: {sample_dir}"
+            )
+            raise
+        samples.append(loaded_sample)
+    check_no_duplicate_sample_names(samples, path)
+    return Dataset(name=dataset_name, samples=samples, sample_type=sample_class)
 
 
-def load_packed_dataset(path: Path) -> Dataset:
+def load_packed_dataset(path: Path) -> Dataset[Sample]:
+    """Load a packed dataset from its `.jsonl` file."""
     if not is_packed_dataset(path):
         raise InvalidDatasetError(path, "packed")
-    if "_" not in path.stem:
-        raise InvalidDatasetNameError(path, "packed dataset filename")
-    first_underscore = path.stem.index("_")
-    dataset_type = DatasetType(path.stem[:first_underscore])
-    dataset_name = path.stem[first_underscore + 1 :]
-    dataset_class: type[Dataset]
+    dataset_type, dataset_name = _parse_dataset_dirname(path, "packed dataset filename")
     sample_class: type[Sample]
+    generated_sample_class: type[GeneratedSample]
     match dataset_type:
-        case DatasetType.ADA:
-            dataset_class = AdaDataset
+        case DatasetKind.ADA:
             sample_class = AdaSample
-        case DatasetType.EXPLAIN:
-            dataset_class = ExplainDataset
+            generated_sample_class = GeneratedAdaSample
+        case DatasetKind.EXPLAIN:
             sample_class = ExplainSample
-        case DatasetType.SPARK:
-            dataset_class = SparkDataset
+            generated_sample_class = GeneratedExplainSample
+        case DatasetKind.SPARK:
             sample_class = SparkSample
+            generated_sample_class = GeneratedSparkSample
         case _:
-            raise UnknownDatasetTypeError(dataset_type)
+            raise UnknownDatasetKindError(dataset_type)
     with path.open() as f:
         lines = f.readlines()
-    samples = [sample_class.model_validate_json(x, strict=True) for x in lines]
-    return dataset_class(name=dataset_name, samples=samples, type=dataset_type)
+    # Try to load as `GeneratedSample`s first, but fall back to `Sample`s if that fails
+    samples: list[Sample]
+    try:
+        samples = [
+            generated_sample_class.model_validate_json(x, strict=True) for x in lines
+        ]
+        sample_class = generated_sample_class
+    except ValidationError:
+        samples = []
+        for line_num, line in enumerate(lines, start=1):
+            try:
+                sample = sample_class.model_validate_json(line, strict=True)
+            except Exception as e:
+                e.add_note(
+                    f"This error occurred while parsing line {line_num} of '{path}'"
+                )
+                raise
+            samples.append(sample)
+    check_no_duplicate_sample_names(samples, path)
+    return Dataset(name=dataset_name, samples=samples, sample_type=sample_class)
+
+
+def load_datasets(path: Path) -> list[Dataset[Sample]]:
+    """
+    Load all datasets in a file/directory.
+
+    Load either a packed dataset file, a directory of packed datasets, an
+    unpacked dataset directory or a directory of unpacked datasets.
+
+    Args:
+        path: The path to load.
+
+    Returns:
+        A list of loaded datasets.
+
+    Raises:
+        MixedDatasetFormatsError: If `path` contains a mixture of packed and
+            unpacked datasets.
+        InvalidDatasetNameError: If a dataset file has an invalid name format.
+        UnknownDatasetKindError: If a dataset kind is not recognized.
+        DuplicateSampleNameError: If a sample name is duplicated within a dataset
+            (should only be possible for packed datasets on most file systems).
+        PathMustBeRelativeError: If a sample's `Location` is not relative.
+        json.decoder.JSONDecodeError: If a sample contains invalid JSON.
+        pydantic.ValidationError: If a sample is invalid in some other way.
+
+    """
+    # Determine if we are loading packed or unpacked datasets
+    packed = is_packed_data(path)
+    unpacked = is_unpacked_data(path)
+    if packed and unpacked:
+        raise MixedDatasetFormatsError(path)
+    # Load datasets
+    if unpacked:
+        dataset_paths = get_unpacked_dataset_dirs(path)
+        datasets = [load_unpacked_dataset(path) for path in dataset_paths]
+    else:
+        dataset_paths = get_packed_dataset_files(path)
+        datasets = [load_packed_dataset(path) for path in dataset_paths]
+    if len(dataset_paths) == 0:
+        logger.warning("No datasets could be found at: %s", path)
+    return datasets

@@ -32,7 +32,7 @@ ruff:
 mypy:
   extends: .lint
   script:
-    - uv run mypy --no-error-summary . > mypy-out.txt || true # "|| true" is used for preventing job failure when mypy find errors
+    - uv run mypy --no-error-summary > mypy-out.txt || true # "|| true" is used for preventing job failure when mypy find errors
     - uv run mypy-gitlab-code-quality < mypy-out.txt > code-quality-report.json
 
 pytest:
@@ -40,7 +40,7 @@ pytest:
   stage: test
   needs: []
   script:
-    - uv run pytest --junitxml=report.xml --cov --cov-report term-missing --cov-report xml:coverage.xml
+    - uv run pytest --junitxml=report.xml --cov-report xml:coverage.xml
   artifacts:
     when: always
     reports:
@@ -48,3 +48,4 @@ pytest:
       coverage_report:
         coverage_format: cobertura
         path: coverage.xml
+  coverage: /TOTAL.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/

@@ -2,6 +2,18 @@ import subprocess
 from pathlib import Path
 
 
+def is_in_git_worktree(path: Path) -> bool:
+    """Check if a path is in a git worktree."""
+    result = subprocess.run(
+        ["git", "rev-parse", "--is-inside-work-tree"],
+        check=False,
+        encoding="utf-8",
+        capture_output=True,
+        cwd=path,
+    )
+    return result.returncode == 0 and result.stdout.strip() == "true"
+
+
 def git_ls_files(root: Path) -> list[Path]:
     """Get a list of files in a directory using git ls-files."""
     if not root.exists():
