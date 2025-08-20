@@ -1,4 +1,4 @@
-from .loader import load_dir
+from .loader import load_datasets
 from .sample_operation import SampleOperation
 from .types import (
     AdaSample,
@@ -22,7 +22,7 @@ from .types import (
     SubprogramNotFoundError,
     dataset_has_sample_type,
     get_contents,
-    save_to_dir,
+    save_datasets,
 )
 
 __all__ = [
@@ -48,6 +48,6 @@ __all__ = [
     "SubprogramNotFoundError",
     "dataset_has_sample_type",
     "get_contents",
-    "load_dir",
-    "save_to_dir",
+    "load_datasets",
+    "save_datasets",
 ]

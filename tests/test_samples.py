@@ -47,7 +47,7 @@ def test_location_find_line_number(tmp_path: Path):
     # Check that it works from a different path
     (tmp_path / "src").mkdir()
     test_adb = test_adb.rename(tmp_path / "src" / "some_name.adb")
-    loc = Location(path=test_adb.relative_to(tmp_path), subprogram_name="Some_Name")
+    loc.path = test_adb.relative_to(tmp_path)
     assert loc.find_line_number(tmp_path) == 10
     # Check that procedures are also recognised as subprograms
     new_content = re.sub(

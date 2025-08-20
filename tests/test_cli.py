@@ -70,12 +70,14 @@ def test_generate(capsys):
         mock_tool.apply_to_directory.assert_not_called()
 
         # Test with various valid argument combinations
+        mock_cpu_count = Mock(return_value=8)
+        cpu_count_patch = patch("ada_eval.cli.cpu_count", mock_cpu_count)
         for tool, dataset, jobs in itertools.product(
             ["shell_script", "SHELL_SCRIPT", "ShElL_ScRiPt"],
             [None, "path/to/dataset"],
             [None, "2", "4"],
         ):
-            with patch_args(tool, "path/to/config", dataset, jobs):
+            with patch_args(tool, "path/to/config", dataset, jobs), cpu_count_patch:
                 main()
             output = capsys.readouterr()
             assert output.err == ""
@@ -87,7 +89,7 @@ def test_generate(capsys):
             mock_tool.apply_to_directory.assert_called_once_with(
                 path=dataset_path,
                 output_dir=GENERATED_DATASETS_DIR,
-                jobs=1 if jobs is None else int(jobs),
+                jobs=8 if jobs is None else int(jobs),
             )
             mock_create_tool.reset_mock()
 
@@ -148,19 +150,19 @@ def test_evaluate(capsys):
                 )
             )
             if canonical:
-                dataset_path = (
+                expected_dataset_path = (
                     EXPANDED_DATASETS_DIR if dataset is None else Path(dataset)
                 )
-                output_dir = dataset_path
+                expected_output_dir = expected_dataset_path
             else:
-                dataset_path = (
+                expected_dataset_path = (
                     GENERATED_DATASETS_DIR if dataset is None else Path(dataset)
                 )
-                output_dir = EVALUATED_DATASETS_DIR
+                expected_output_dir = EVALUATED_DATASETS_DIR
             mock_evaluate_directory.assert_called_once_with(
                 evals=expected_evals,
-                path=dataset_path,
-                output_dir=output_dir,
+                path=expected_dataset_path,
+                output_dir=expected_output_dir,
                 jobs=8 if jobs is None else int(jobs),
                 canonical_evaluation=canonical,
             )

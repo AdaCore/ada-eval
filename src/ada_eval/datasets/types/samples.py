@@ -224,7 +224,7 @@ class AdaSample(Sample):
     unit_tests: DirectoryContents
 
     def unpack(self, dataset_root: Path, other_data: dict[str, object] | None = None):
-        super().unpack(dataset_root, other_data=(other_data or {}))
+        super().unpack(dataset_root, other_data=other_data)
         dest_dir = self.working_dir_in(dataset_root)
         self.canonical_solution.unpack_to(dest_dir / SOLUTION_DIR_NAME)
         self.unit_tests.unpack_to(dest_dir / UNIT_TEST_DIR_NAME)
@@ -256,8 +256,9 @@ class ExplainSample(Sample):
         } | (other_data or {})
         super().unpack(dataset_root, other_data=other_data)
         dest_dir = self.working_dir_in(dataset_root)
-        with (dest_dir / REFERENCE_ANSWER_FILE_NAME).open("w") as f:
-            f.write(self.canonical_solution.reference_answer)
+        (dest_dir / REFERENCE_ANSWER_FILE_NAME).write_text(
+            self.canonical_solution.reference_answer
+        )
 
     @classmethod
     def load_unpacked_sample(cls, sample_dir: Path):
@@ -299,8 +300,9 @@ class GeneratedSample(Sample):
         """
         Return this sample as an evaluated sample.
 
-        Returns this sample promoted to an `EvaluatedSample` if necessary, or
-        unmodified if it is already an `EvaluatedSample`.
+        Returns this sample promoted to an `EvaluatedSample` (with an empty
+        `evaluation_results`) if necessary, or unmodified if it is already an
+        `EvaluatedSample`.
         """
         if isinstance(self, EvaluatedSample):
             return self
@@ -312,14 +314,14 @@ class GeneratedSample(Sample):
 
 
 class GeneratedAdaSample(AdaSample, GeneratedSample):
-    # Note that `AdaSample` must be before `GeneratedSample`, so that the
-    # `canonical_solution` field has type `DirectoryContents`, not `object`.
+    # Note that `AdaSample` must be inherited before `GeneratedSample`, so that
+    # the `canonical_solution` field has type `DirectoryContents`, not `object`.
     generated_solution: DirectoryContents
 
 
 class GeneratedExplainSample(ExplainSample, GeneratedSample):
-    # Note that `ExplainSample` must be before `GeneratedSample`, so that the
-    # `canonical_solution` field has type `ExplainSolution`, not `object`.
+    # Note that `ExplainSample` must be inherited before `GeneratedSample`, so
+    # the `canonical_solution` field has type `ExplainSolution`, not `object`.
     generated_solution: str
 
 

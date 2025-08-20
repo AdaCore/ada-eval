@@ -178,7 +178,7 @@ def get_packed_dataset_files(path: Path) -> list[Path]:
     return []
 
 
-def save_to_dir(
+def save_datasets(
     datasets: Iterable[Dataset[Sample]], output_dir: Path, *, unpacked: bool = False
 ) -> None:
     """

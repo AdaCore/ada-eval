@@ -6,7 +6,7 @@ from .datasets import (
     get_unpacked_dataset_dirs,
     is_packed_data,
     is_unpacked_data,
-    save_to_dir,
+    save_datasets,
 )
 from .directory_contents import get_contents
 from .samples import (
@@ -65,5 +65,5 @@ __all__ = [
     "get_unpacked_dataset_dirs",
     "is_packed_data",
     "is_unpacked_data",
-    "save_to_dir",
+    "save_datasets",
 ]

@@ -7,8 +7,8 @@ from typing import Generic, TypeVar
 
 from tqdm import tqdm
 
-from .loader import load_dir
-from .types import Dataset, Sample, dataset_has_sample_type, save_to_dir
+from .loader import load_datasets
+from .types import Dataset, Sample, dataset_has_sample_type, save_datasets
 
 logger = logging.getLogger(__name__)
 
@@ -88,10 +88,10 @@ class SampleOperation(ABC, Generic[InputType, OutputType]):
         total_samples = sum(len(dataset.samples) for dataset in compatible_datasets)
 
         # Apply to each sample
-        dataset_results: dict[Dataset[InputType], list[OutputType]] = {
+        results_by_dataset: dict[Dataset[InputType], list[OutputType]] = {
             dataset: [] for dataset in compatible_datasets
         }
-        failures: dict[Dataset[InputType], list[InputType]] = {
+        failures_by_dataset: dict[Dataset[InputType], list[InputType]] = {
             dataset: [] for dataset in compatible_datasets
         }
         with ThreadPoolExecutor(max_workers=jobs) as executor:
@@ -108,22 +108,21 @@ class SampleOperation(ABC, Generic[InputType, OutputType]):
                 for future in as_completed(future_to_input.keys()):
                     dataset, sample = future_to_input[future]
                     try:
-                        result = future.result()
-                        dataset_results[dataset].append(result)
+                        results_by_dataset[dataset].append(future.result())
                     except Exception:
                         logging.exception(
                             "Error processing sample %s from dataset %s",
                             sample.name,
                             dataset.dirname(),
                         )
-                        failures[dataset].append(sample)
+                        failures_by_dataset[dataset].append(sample)
                     finally:
                         pbar.update(1)
 
         # Sort samples by name within each dataset for consistent output when
         # running in parallel
-        for sample_dict in (dataset_results, failures):
-            for sample_list in sample_dict.values():
+        for outcome_dict in (results_by_dataset, failures_by_dataset):
+            for sample_list in outcome_dict.values():
                 sample_list.sort(key=lambda s: s.name)
 
         # Create new datasets for the transformed and failed samples
@@ -133,26 +132,21 @@ class SampleOperation(ABC, Generic[InputType, OutputType]):
                 sample_type=self.type_map[old_dataset.sample_type],
                 samples=results,
             )
-            for old_dataset, results in dataset_results.items()
+            for old_dataset, results in results_by_dataset.items()
             if len(results) > 0
         ]
         failed_datasets: list[Dataset[InputType]] = [
             Dataset(
                 name=old_dataset.name,
                 sample_type=old_dataset.sample_type,
-                samples=failed_samples,
+                samples=failures,
             )
-            for old_dataset, failed_samples in failures.items()
-            if len(failed_samples) > 0
+            for old_dataset, failures in failures_by_dataset.items()
+            if len(failures) > 0
         ]
         return new_datasets, failed_datasets, incompatible_datasets
 
-    def apply_to_directory(
-        self,
-        path: Path,
-        output_dir: Path,
-        jobs: int,
-    ) -> None:
+    def apply_to_directory(self, path: Path, output_dir: Path, jobs: int) -> None:
         """
         Apply to all samples in a file/directory and write the results to another.
 
@@ -166,7 +160,7 @@ class SampleOperation(ABC, Generic[InputType, OutputType]):
 
         """
         # Load from `path`
-        datasets = load_dir(path)
+        datasets = load_datasets(path)
         # Apply to all compatible datasets
         results, failures, incompatible = self.apply_to_datasets(datasets, jobs=jobs)
         if len(incompatible) > 0:
@@ -192,4 +186,4 @@ class SampleOperation(ABC, Generic[InputType, OutputType]):
                 path,
             )
         # Save any results to `output_dir`
-        save_to_dir(results, output_dir)
+        save_datasets(results, output_dir)

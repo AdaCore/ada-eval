@@ -63,6 +63,8 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="CLI for Eval Framework")
     subparsers = parser.add_subparsers(required=True)
 
+    default_num_jobs = cpu_count() or 1
+
     # Unpack datasets subcommand
     unpack_parser = subparsers.add_parser(
         "unpack",
@@ -136,7 +138,7 @@ def main() -> None:
         "--jobs",
         type=int,
         help="Number of samples to generate completions for in parallel",
-        default=1,
+        default=default_num_jobs,
     )
     generate_parser.add_argument(
         "--tool",
@@ -172,8 +174,8 @@ def main() -> None:
         "--dataset",
         type=Path,
         help=(
-            "Path to packed dataset or dir of packed datasets. (Default: "
-            f"'{GENERATED_DATASETS_DIR}', or '{COMPACTED_DATASETS_DIR}' if "
+            "Path to a dataset or a directory of datasets. (Default: "
+            f"'{GENERATED_DATASETS_DIR}', or '{EXPANDED_DATASETS_DIR}' if "
             "'--canonical' is set)"
         ),
         default=None,
@@ -185,7 +187,6 @@ def main() -> None:
         nargs="*",
         help="Names of the evals to run. (Default: all)",
     )
-    default_num_jobs = cpu_count() or 1
     evaluation_parser.add_argument(
         "-j",
         "--jobs",

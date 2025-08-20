@@ -38,10 +38,9 @@ def run_cmd_with_timeout(
             encoding="utf-8",
             timeout=timeout,
         )
-        end = time.monotonic_ns()
     except subprocess.TimeoutExpired:
         result = None
-        end = time.monotonic_ns()
+    end = time.monotonic_ns()
     return result, (end - start) // 1_000_000
 
 

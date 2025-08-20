@@ -164,7 +164,7 @@ def load_packed_dataset(path: Path) -> Dataset[Sample]:
     return Dataset(name=dataset_name, samples=samples, sample_type=sample_class)
 
 
-def load_dir(path: Path) -> list[Dataset[Sample]]:
+def load_datasets(path: Path) -> list[Dataset[Sample]]:
     """
     Load all datasets in a file/directory.
 
@@ -181,9 +181,9 @@ def load_dir(path: Path) -> list[Dataset[Sample]]:
         MixedDatasetFormatsError: If `path` contains a mixture of packed and
             unpacked datasets.
         InvalidDatasetNameError: If a dataset file has an invalid name format.
+        UnknownDatasetKindError: If a dataset kind is not recognized.
         DuplicateSampleNameError: If a sample name is duplicated within a dataset
             (should only be possible for packed datasets on most file systems).
-        UnknownDatasetKindError: If a dataset kind is not recognized.
         PathMustBeRelativeError: If a sample's `Location` is not relative.
         json.decoder.JSONDecodeError: If a sample contains invalid JSON.
         pydantic.ValidationError: If a sample is invalid in some other way.

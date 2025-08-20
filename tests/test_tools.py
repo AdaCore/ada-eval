@@ -10,7 +10,7 @@ from helpers import (
     generated_test_datasets,  # noqa: F401  # Fixtures used implicitly
 )
 
-from ada_eval.datasets.loader import load_dir
+from ada_eval.datasets.loader import load_datasets
 from ada_eval.datasets.types.datasets import (
     Dataset,
     DatasetKind,
@@ -31,6 +31,14 @@ from ada_eval.datasets.types.samples import (
 )
 from ada_eval.tools import Tool, create_tool
 from ada_eval.tools.generic_tool import BaseConfig, GenericTool
+from ada_eval.tools.shell_script import ShellScriptConfig
+
+
+def check_progress_bar(capsys: pytest.CaptureFixture[str], total: int, tool_name: str):
+    output = capsys.readouterr()
+    assert f"Generating completions with {tool_name}: 100%" in output.err
+    assert f" {total}/{total} " in output.err
+    assert output.out == ""
 
 
 def test_generic_tool(
@@ -59,17 +67,14 @@ def test_generic_tool(
 
         def apply(self, sample: Sample) -> GeneratedSample:
             if isinstance(sample, ExplainSample):
-                return GeneratedExplainSample(
-                    **sample.model_dump(),
-                    generation_stats=mock_generation_stats,
-                    generated_solution=mock_explain_solution,
-                )
+                generated_solution: object = mock_explain_solution
             else:
-                return BASE_TYPE_TO_GENERATED[type(sample)](
-                    **sample.model_dump(),
-                    generation_stats=mock_generation_stats,
-                    generated_solution=mock_ada_solution,
-                )
+                generated_solution = mock_ada_solution
+            return BASE_TYPE_TO_GENERATED[type(sample)](
+                **sample.model_dump(),
+                generation_stats=mock_generation_stats,
+                generated_solution=generated_solution,
+            )
 
     # Instantiate the mock tool from a config file
     tmp_config_file = tmp_path / "mock_tool_config.json"
@@ -77,13 +82,11 @@ def test_generic_tool(
     tool = MockTool0.from_config_file(tmp_config_file)
 
     # Test applying the tool to the test datasets
-    base_datasets = load_dir(compacted_test_datasets)
+    base_datasets = load_datasets(compacted_test_datasets)
     generated_datasets_0, failed_datasets_0, incompatible_datasets_0 = (
         tool.apply_to_datasets(base_datasets, jobs=8)
     )
-    output = capsys.readouterr()
-    assert "Generating completions with mock_tool_0:" in output.err
-    assert output.out == ""
+    check_progress_bar(capsys, 5, "mock_tool_0")
 
     def check_generated_datasets(generated_datasets: list[Dataset[GeneratedSample]]):
         for dataset in generated_datasets:
@@ -119,11 +122,11 @@ def test_generic_tool(
             shutil.rmtree(out_dir)
         assert not out_dir.exists()
         tool.apply_to_directory(in_dir, out_dir, jobs=8)
-        output = capsys.readouterr()
-        assert "Generating completions with mock_tool_0:" in output.err
-        assert output.out == ""
-        generated_datasets = [  # Mypy-friendly check that all have generated type
-            d for d in load_dir(out_dir) if dataset_has_sample_type(d, GeneratedSample)
+        check_progress_bar(capsys, 5, "mock_tool_0")
+        generated_datasets = [  # Mypy-friendly check that all are `GeneratedSample`s
+            d
+            for d in load_datasets(out_dir)
+            if dataset_has_sample_type(d, GeneratedSample)
         ]
         assert len(generated_datasets) == 3
         check_generated_datasets(generated_datasets)
@@ -158,9 +161,7 @@ def test_generic_tool(
     generated_datasets_1, failed_datasets_1, incompatible_datasets_1 = (
         tool1.apply_to_datasets(base_datasets, jobs=8)
     )
-    output = capsys.readouterr()
-    assert "Generating completions with mock_tool_1:" in output.err
-    assert output.out == ""
+    check_progress_bar(capsys, 4, "mock_tool_1")  # 4 because Explain sample is excluded
 
     # The failure should have been logged with a full stack trace
     failure_log_substrs = [
@@ -192,13 +193,13 @@ def test_generic_tool(
     base_spark_sample_0 = next(
         s
         for d in base_datasets
-        if d.kind() == DatasetKind.SPARK
+        if d.dirname() == "spark_test"
         for s in d.samples
         if s.name == "test_sample_0"
     )
     assert failed_sample == base_spark_sample_0
 
-    # Check that the other datasets have been generated correctly
+    # Check that the other samples have been generated correctly
     assert len(generated_datasets_1) == 2
     assert sum(len(d.samples) for d in generated_datasets_1) == 3
     check_generated_datasets(list(generated_datasets_1))
@@ -208,9 +209,7 @@ def test_generic_tool(
     assert (out_dir / "explain_test.jsonl").is_file()
     tool1.apply_to_directory(compacted_test_datasets, out_dir, jobs=8)
     assert not (out_dir / "explain_test.jsonl").exists()
-    output = capsys.readouterr()
-    assert "Generating completions with mock_tool_1:" in output.err
-    assert output.out == ""
+    check_progress_bar(capsys, 4, "mock_tool_1")
 
     # The failure should have been logged again, and there should also be
     # warnings about the omissions from the output
@@ -228,7 +227,7 @@ def test_generic_tool(
 
     # Check that the generated datasets are as expected
     generated_datasets = [
-        d for d in load_dir(out_dir) if dataset_has_sample_type(d, GeneratedSample)
+        d for d in load_datasets(out_dir) if dataset_has_sample_type(d, GeneratedSample)
     ]
     assert len(generated_datasets) == 2
     assert sum(len(d.samples) for d in generated_datasets) == 3
@@ -248,6 +247,7 @@ def test_generic_tool(
     ) in caplog.text
 
 
+@pytest.mark.skipif(not shutil.which("sh"), reason="sh not available")
 def test_shell_script(
     tmp_path: Path,
     compacted_test_datasets: Path,  # noqa: F811  # pytest fixture
@@ -279,16 +279,15 @@ def test_shell_script(
     )
 
     # Run the tool on the test datasets
-    base_datasets = load_dir(compacted_test_datasets)
+    base_datasets = load_datasets(compacted_test_datasets)
     tool = create_tool(Tool.SHELL_SCRIPT, config_file)
+    assert isinstance(tool.config, ShellScriptConfig)
     generated_datasets, failed_datasets, incompatible_datasets = tool.apply_to_datasets(
         base_datasets, jobs=8
     )
-    output = capsys.readouterr()
-    assert "Generating completions with shell_script:" in output.err
-    assert output.out == ""
 
     # Only the Spark dataset should be compatible
+    check_progress_bar(capsys, 3, "shell_script")
     assert len(failed_datasets) == 0
     assert len(incompatible_datasets) == 2
     assert set(incompatible_datasets) == {  # Hash/Equality ignores `samples`
@@ -299,7 +298,7 @@ def test_shell_script(
     # The generated `spark_test` dataset should match that in the
     # `generated_test_datasets` fixture, with the sole exception of the
     # `generation_stats`'s `runtime_ms`, which may be non-zero.
-    generated_datasets_fixture = load_dir(generated_test_datasets)
+    generated_datasets_fixture = load_datasets(generated_test_datasets)
     generated_spark_dataset_fixture = next(
         d for d in generated_datasets_fixture if d.kind() == DatasetKind.SPARK
     )

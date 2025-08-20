@@ -8,8 +8,8 @@ from ada_eval.datasets import (
     GeneratedSample,
     Sample,
     dataset_has_sample_type,
-    load_dir,
-    save_to_dir,
+    load_datasets,
+    save_datasets,
 )
 from ada_eval.datasets.types import (
     BASE_TYPE_TO_GENERATED,
@@ -147,7 +147,7 @@ def evaluate_directory(
 
     """
     # Load datasets
-    datasets_unchecked = load_dir(path)
+    datasets_unchecked = load_datasets(path)
     # Evaluate datasets
     evaluated_datasets: Sequence[Dataset[Sample]]
     if canonical_evaluation:
@@ -175,4 +175,4 @@ def evaluate_directory(
             return
     # Save results to `output_dir` (avoiding overwriting unpacked data with
     # packed data, e.g. if running canonical evaluation on the unpacked base dir)
-    save_to_dir(evaluated_datasets, output_dir, unpacked=is_unpacked_data(output_dir))
+    save_datasets(evaluated_datasets, output_dir, unpacked=is_unpacked_data(output_dir))

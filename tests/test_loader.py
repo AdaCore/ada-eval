@@ -22,7 +22,7 @@ from ada_eval.datasets.loader import (
     InvalidDatasetNameError,
     MixedDatasetFormatsError,
     UnknownDatasetKindError,
-    load_dir,
+    load_datasets,
     load_packed_dataset,
     load_unpacked_dataset,
 )
@@ -248,21 +248,23 @@ def check_loaded_datasets(datasets: list[Dataset[Sample]], *, generated: bool = 
     }
 
 
-def test_load_dir_valid_unpacked_datasets(expanded_test_datasets: Path):  # noqa: F811  # pytest fixture
-    check_loaded_datasets(load_dir(expanded_test_datasets))
+def test_load_valid_unpacked_datasets(expanded_test_datasets: Path):  # noqa: F811  # pytest fixture
+    """Check that loading unpacked datasets works correctly."""
+    check_loaded_datasets(load_datasets(expanded_test_datasets))
 
 
-def test_load_dir_valid_packed_datasets(compacted_test_datasets: Path):  # noqa: F811  # pytest fixture
-    check_loaded_datasets(load_dir(compacted_test_datasets))
+def test_load_valid_packed_datasets(compacted_test_datasets: Path):  # noqa: F811  # pytest fixture
+    """Check that loading packed datasets works correctly."""
+    check_loaded_datasets(load_datasets(compacted_test_datasets))
 
 
-def test_load_dir_valid_packed_generated_datasets(generated_test_datasets: Path):  # noqa: F811  # pytest fixture
-    """Check that loading a packed generated dataset works correctly."""
-    check_loaded_datasets(load_dir(generated_test_datasets), generated=True)
+def test_load_valid_packed_generated_datasets(generated_test_datasets: Path):  # noqa: F811  # pytest fixture
+    """Check that loading packed generated datasets works correctly."""
+    check_loaded_datasets(load_datasets(generated_test_datasets), generated=True)
 
 
-def test_load_dir_valid_unpacked_datasets_with_gitignore(expanded_test_datasets: Path):  # noqa: F811  # pytest fixture
-    """Check loading an unpacked dataset with a `.gitignore` file works correctly."""
+def test_load_valid_unpacked_datasets_with_gitignore(expanded_test_datasets: Path):  # noqa: F811  # pytest fixture
+    """Check loading unpacked datasets with `.gitignore` files works correctly."""
     # Create a `.gitignore` file which ignores any `obj/` directories
     gitignore_path = expanded_test_datasets / ".gitignore"
     gitignore_path.write_text("obj/\n")
@@ -277,7 +279,7 @@ def test_load_dir_valid_unpacked_datasets_with_gitignore(expanded_test_datasets:
         (source_dir / "obj" / "some_file").write_text("This is a test file.\n")
 
     # Load and check the datasets
-    datasets = load_dir(expanded_test_datasets)
+    datasets = load_datasets(expanded_test_datasets)
 
     # Check that the `obj/some_file` files are present in the loaded datasets
     # because `expanded_test_dataset` is not in a Git worktree.
@@ -302,7 +304,7 @@ def test_load_dir_valid_unpacked_datasets_with_gitignore(expanded_test_datasets:
 
     # Initialise a Git repository in the dataset directory and reload
     setup_git_repo(expanded_test_datasets)
-    datasets = load_dir(expanded_test_datasets)
+    datasets = load_datasets(expanded_test_datasets)
 
     # Check that this time the `obj/some_file` files are not present in the
     # loaded datasets
@@ -315,7 +317,7 @@ def test_load_dir_valid_unpacked_datasets_with_gitignore(expanded_test_datasets:
     check_loaded_datasets(datasets)
 
 
-def test_load_dir_no_valid_samples(
+def test_load_no_valid_samples(
     compacted_test_datasets,  # noqa: F811  # pytest fixture
     expanded_test_datasets,  # noqa: F811  # pytest fixture
     caplog: pytest.LogCaptureFixture,
@@ -325,19 +327,19 @@ def test_load_dir_no_valid_samples(
     # them issues a warning
     for packed_dataset in compacted_test_datasets.iterdir():
         packed_dataset.rename(packed_dataset.with_suffix(""))
-    datasets = load_dir(compacted_test_datasets)
+    datasets = load_datasets(compacted_test_datasets)
     assert len(datasets) == 0
     assert f"No datasets could be found at: {compacted_test_datasets}" in caplog.text
     # Remove the `other.json` file from all unpacked datasets and check that
     # loading them issues a warning
     for other_json in expanded_test_datasets.glob("**/other.json"):
         other_json.unlink()
-    datasets = load_dir(expanded_test_datasets)
+    datasets = load_datasets(expanded_test_datasets)
     assert len(datasets) == 0
     assert f"No datasets could be found at: {expanded_test_datasets}" in caplog.text
 
 
-def test_load_dir_mixed_datasets(
+def test_load_mixed_datasets(
     tmp_path: Path,
     compacted_test_datasets,  # noqa: F811  # pytest fixture
     expanded_test_datasets,  # noqa: F811  # pytest fixture
@@ -350,10 +352,10 @@ def test_load_dir_mixed_datasets(
             shutil.move(dataset, mixed_dir / (dataset.relative_to(fixture_dir)))
     error_msg = f"'{mixed_dir}' contains a mixture of packed and unpacked datasets."
     with pytest.raises(MixedDatasetFormatsError, match=re.escape(error_msg)):
-        load_dir(mixed_dir)
+        load_datasets(mixed_dir)
 
 
-def test_load_dir_invalid_samples(
+def test_load_invalid_samples(
     compacted_test_datasets,  # noqa: F811  # pytest fixture
     expanded_test_datasets,  # noqa: F811  # pytest fixture
 ):
@@ -369,7 +371,7 @@ def test_load_dir_invalid_samples(
         f"This error occurred while parsing line 2 of '{spark_test_path}'"
     )
     with pytest.raises(pydantic.ValidationError, match=error_msg):
-        load_dir(compacted_test_datasets)
+        load_datasets(compacted_test_datasets)
 
     # Make an `other.json` file invalid JSON and check the resulting error
     sample_dir = expanded_test_datasets / "explain_test" / "test_sample_0"
@@ -381,7 +383,7 @@ def test_load_dir_invalid_samples(
     )
     error_msg = "Expecting value: line 1 column 1 (char 0)" + location_note
     with pytest.raises(json.decoder.JSONDecodeError, match=re.escape(error_msg)):
-        load_dir(expanded_test_datasets)
+        load_datasets(expanded_test_datasets)
     # Restore the `other.json` file, but with an invalid `Location`
     other_json_invalid_location = json.loads(original_other_json)
     other_json_invalid_location["location"].pop("path")
@@ -389,10 +391,10 @@ def test_load_dir_invalid_samples(
     error_msg = r"^1 validation error for Location\npath\n  Field required .*\n.*"
     error_msg += re.escape(location_note)
     with pytest.raises(pydantic.ValidationError, match=error_msg):
-        load_dir(expanded_test_datasets)
+        load_datasets(expanded_test_datasets)
 
 
-def test_load_dir_invalid_sample_name(
+def test_load_invalid_sample_name(
     compacted_test_datasets,  # noqa: F811  # pytest fixture
     expanded_test_datasets,  # noqa: F811  # pytest fixture
 ):
@@ -413,7 +415,7 @@ def test_load_dir_invalid_sample_name(
         f"This error occurred while parsing line 2 of '{spark_test_path}'"
     )
     with pytest.raises(pydantic.ValidationError, match=error_msg):
-        load_dir(compacted_test_datasets)
+        load_datasets(compacted_test_datasets)
 
     # Check unpacked
     ada_sample_path = expanded_test_datasets / "ada_test" / "test_sample_0"
@@ -428,10 +430,10 @@ def test_load_dir_invalid_sample_name(
         f"This exception occurred while loading the sample at: {ada_sample_path}"
     )
     with pytest.raises(pydantic.ValidationError, match=error_msg):
-        load_dir(expanded_test_datasets)
+        load_datasets(expanded_test_datasets)
 
 
-def test_load_dir_non_sample_warning(
+def test_load_non_sample_warning(
     expanded_test_datasets: Path,  # noqa: F811  # pytest fixture
     caplog: pytest.LogCaptureFixture,
 ):
@@ -440,13 +442,13 @@ def test_load_dir_non_sample_warning(
     # loading the dataset issues a warning
     spark_sample_path = expanded_test_datasets / "spark_test" / "test_sample_0"
     (spark_sample_path / "other.json").unlink()
-    datasets = load_dir(expanded_test_datasets)
+    datasets = load_datasets(expanded_test_datasets)
     spark_dataset = next(d for d in datasets if dataset_has_sample_type(d, SparkSample))
     assert len(spark_dataset.samples) == 2
     assert f"Skipping non-sample directory: {spark_sample_path}" in caplog.text
 
 
-def test_load_dir_invalid_dataset_name(compacted_test_datasets, expanded_test_datasets):  # noqa: F811  # pytest fixtures
+def test_load_invalid_dataset_name(compacted_test_datasets, expanded_test_datasets):  # noqa: F811  # pytest fixtures
     """Check that loading a dataset with an invalid name format raises an error."""
     shutil.move(
         compacted_test_datasets / "ada_test.jsonl",
@@ -454,17 +456,17 @@ def test_load_dir_invalid_dataset_name(compacted_test_datasets, expanded_test_da
     )
     error_msg = "Expected packed dataset filename to contain an underscore:"
     with pytest.raises(InvalidDatasetNameError, match=error_msg):
-        load_dir(compacted_test_datasets)
+        load_datasets(compacted_test_datasets)
     shutil.move(
         expanded_test_datasets / "ada_test",
         expanded_test_datasets / "ada test",
     )
     error_msg = "Expected unpacked dataset dir name to contain an underscore:"
     with pytest.raises(InvalidDatasetNameError, match=error_msg):
-        load_dir(expanded_test_datasets)
+        load_datasets(expanded_test_datasets)
 
 
-def test_load_dir_invalid_dataset_kind(compacted_test_datasets, expanded_test_datasets):  # noqa: F811  # pytest fixtures
+def test_load_invalid_dataset_kind(compacted_test_datasets, expanded_test_datasets):  # noqa: F811  # pytest fixtures
     """Check that loading a dataset with an invalid kind raises an error."""
     shutil.move(
         compacted_test_datasets / "ada_test.jsonl",
@@ -472,17 +474,17 @@ def test_load_dir_invalid_dataset_kind(compacted_test_datasets, expanded_test_da
     )
     error_msg = "Unknown dataset type: unknown"
     with pytest.raises(UnknownDatasetKindError, match=re.escape(error_msg)):
-        load_dir(compacted_test_datasets)
+        load_datasets(compacted_test_datasets)
     shutil.move(
         expanded_test_datasets / "ada_test",
         expanded_test_datasets / "unknown_test",
     )
     error_msg = "Unknown dataset type: unknown"
     with pytest.raises(UnknownDatasetKindError, match=re.escape(error_msg)):
-        load_dir(expanded_test_datasets)
+        load_datasets(expanded_test_datasets)
 
 
-def test_load_dir_duplicate_sample_names(compacted_test_datasets):  # noqa: F811  # pytest fixture
+def test_load_duplicate_sample_names(compacted_test_datasets):  # noqa: F811  # pytest fixture
     """Check that loading a dataset with duplicate sample names raises an error."""
     spark_dataset_file = compacted_test_datasets / "spark_test.jsonl"
     spark_dataset_packed_content = spark_dataset_file.read_text()
@@ -492,7 +494,7 @@ def test_load_dir_duplicate_sample_names(compacted_test_datasets):  # noqa: F811
     spark_dataset_file.write_text(spark_dataset_packed_content)
     error_msg = f"Duplicate sample name 'test_sample_1' found in '{spark_dataset_file}'"
     with pytest.raises(DuplicateSampleNameError, match=re.escape(error_msg)):
-        load_dir(compacted_test_datasets)
+        load_datasets(compacted_test_datasets)
 
 
 def test_load_unpacked_dataset_invalid(expanded_test_datasets: Path):  # noqa: F811  # pytest fixture

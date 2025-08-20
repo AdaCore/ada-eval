@@ -9,12 +9,12 @@ from helpers import (
     setup_git_repo,
 )
 
-from ada_eval.datasets.loader import load_dir
+from ada_eval.datasets.loader import load_datasets
 from ada_eval.datasets.types.datasets import (
     Dataset,
     DatasetKind,
     dataset_has_sample_type,
-    save_to_dir,
+    save_datasets,
 )
 from ada_eval.datasets.types.samples import (
     AdaSample,
@@ -91,7 +91,7 @@ def test_dataset_types():
     )
 
 
-def test_save_to_dir_packed(tmp_path: Path, generated_test_datasets: Path):  # noqa: F811  # pytest fixture
+def test_save_datasets_packed(tmp_path: Path, generated_test_datasets: Path):  # noqa: F811  # pytest fixture
     # Initialise a Git repository to track changes
     setup_git_repo(tmp_path)
     subprocess.run(["git", "add", "."], cwd=tmp_path, check=True)
@@ -99,7 +99,7 @@ def test_save_to_dir_packed(tmp_path: Path, generated_test_datasets: Path):  # n
     assert_git_status(tmp_path, expect_dirty=False)
 
     # Load the dataset files
-    datasets = load_dir(generated_test_datasets)
+    datasets = load_datasets(generated_test_datasets)
 
     # Delete the dataset files
     for file in generated_test_datasets.iterdir():
@@ -107,14 +107,14 @@ def test_save_to_dir_packed(tmp_path: Path, generated_test_datasets: Path):  # n
     assert len(list(generated_test_datasets.iterdir())) == 0
     assert_git_status(tmp_path, expect_dirty=True)
 
-    # `save_to_dir()` should overwrite anything present, so add a file
+    # `save_datasets()` should overwrite anything present, so add a file
     # which we expect to be removed
     test_file = generated_test_datasets / "test_file.txt"
     test_file.write_text("This file should be removed.")
     assert test_file.exists()
 
-    # Save the datasets with `save_to_dir()`
-    save_to_dir(datasets, generated_test_datasets)
+    # Save the datasets with `save_datasets()`
+    save_datasets(datasets, generated_test_datasets)
 
     # This should have regenerated the original dataset files and removed
     # `test_file`
@@ -126,12 +126,12 @@ def test_save_to_dir_packed(tmp_path: Path, generated_test_datasets: Path):  # n
     shutil.rmtree(generated_test_datasets)
     assert not generated_test_datasets.exists()
     assert_git_status(tmp_path, expect_dirty=True)
-    save_to_dir(datasets, generated_test_datasets)
+    save_datasets(datasets, generated_test_datasets)
     assert generated_test_datasets.exists()
     assert_git_status(tmp_path, expect_dirty=False)
 
 
-def test_save_to_dir_unpacked(tmp_path: Path, expanded_test_datasets: Path):  # noqa: F811  # pytest fixture
+def test_save_datasets_unpacked(tmp_path: Path, expanded_test_datasets: Path):  # noqa: F811  # pytest fixture
     # Initialise a Git repository to track changes
     setup_git_repo(tmp_path)
     subprocess.run(["git", "add", "."], cwd=tmp_path, check=True)
@@ -139,7 +139,7 @@ def test_save_to_dir_unpacked(tmp_path: Path, expanded_test_datasets: Path):  # 
     assert_git_status(tmp_path, expect_dirty=False)
 
     # Load the dataset files
-    datasets = load_dir(expanded_test_datasets)
+    datasets = load_datasets(expanded_test_datasets)
 
     # Delete the dataset files
     for path in expanded_test_datasets.iterdir():
@@ -147,14 +147,14 @@ def test_save_to_dir_unpacked(tmp_path: Path, expanded_test_datasets: Path):  # 
     assert len(list(expanded_test_datasets.iterdir())) == 0
     assert_git_status(tmp_path, expect_dirty=True)
 
-    # `save_to_dir()` should overwrite anything present, so add a file
+    # `save_datasets()` should overwrite anything present, so add a file
     # which we expect to be removed
     test_file = expanded_test_datasets / "test_file.txt"
     test_file.write_text("This file should be removed.")
     assert test_file.exists()
 
-    # Save the datasets with `save_to_dir()`
-    save_to_dir(datasets, expanded_test_datasets, unpacked=True)
+    # Save the datasets with `save_datasets()`
+    save_datasets(datasets, expanded_test_datasets, unpacked=True)
 
     # This should have regenerated the original dataset files and removed
     # `test_file`.
@@ -179,7 +179,7 @@ def test_save_to_dir_unpacked(tmp_path: Path, expanded_test_datasets: Path):  # 
     shutil.rmtree(expanded_test_datasets)
     assert not expanded_test_datasets.exists()
     assert_git_status(tmp_path, expect_dirty=True)
-    save_to_dir(datasets, expanded_test_datasets, unpacked=True)
+    save_datasets(datasets, expanded_test_datasets, unpacked=True)
     assert expanded_test_datasets.exists()
     (spark_sample_2_dir / "comments.md").unlink()
     (spark_sample_2_dir / "prompt.md").unlink()
