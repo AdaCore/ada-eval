@@ -151,7 +151,7 @@ def main() -> None:
         "-j",
         "--jobs",
         type=int,
-        help=f"Number of evaluations to run in parallel. (Default: {default_num_jobs})",
+        help="Number of evaluations to run in parallel.",
         default=default_num_jobs,
     )
 
