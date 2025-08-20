@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import ClassVar, Self
+from typing import ClassVar, Literal, Self
 
 from ada_eval.datasets import GeneratedSparkSample, SparkSample, get_contents
 from ada_eval.datasets.types import GenerationStats
@@ -9,9 +9,6 @@ from ada_eval.utils import run_cmd_with_timeout
 from .generic_tool import BaseConfig, GenericTool
 
 logger = logging.getLogger(__name__)
-
-
-SHELL_SCRIPT_TOOL_NAME = "shell_script"
 
 
 class ShellScriptConfig(BaseConfig):
@@ -26,7 +23,7 @@ class ShellScriptConfig(BaseConfig):
 
 
 class ShellScript(GenericTool[ShellScriptConfig, SparkSample, GeneratedSparkSample]):
-    name: ClassVar = SHELL_SCRIPT_TOOL_NAME
+    name: ClassVar[Literal["shell_script"]] = "shell_script"
     type_map: ClassVar = {SparkSample: GeneratedSparkSample}
     config_type = ShellScriptConfig
 

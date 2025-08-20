@@ -1,11 +1,11 @@
 from enum import Enum
 from pathlib import Path
 
-from .shell_script import SHELL_SCRIPT_TOOL_NAME, ShellScript
+from .shell_script import ShellScript
 
 
 class Tool(Enum):
-    SHELL_SCRIPT = SHELL_SCRIPT_TOOL_NAME
+    SHELL_SCRIPT = ShellScript.name
 
     def __str__(self):
         return self.value

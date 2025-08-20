@@ -15,13 +15,10 @@ from .generic_eval import GenericEval
 logger = logging.getLogger(__name__)
 
 
-DUMMY_GPRBUILD_EVAL_NAME: Literal["dummy_gprbuild"] = "dummy_gprbuild"
-
-
 class DummyGprBuild(GenericEval[GeneratedAdaSample, EvaluatedAdaSample]):
     """A dummy `gprbuild` evaluation that pretends compilation was successful."""
 
-    name: ClassVar = DUMMY_GPRBUILD_EVAL_NAME
+    name: ClassVar[Literal["dummy_gprbuild"]] = "dummy_gprbuild"
     supported_types: ClassVar = {
         GeneratedAdaSample: EvaluatedAdaSample,
         GeneratedSparkSample: EvaluatedSparkSample,

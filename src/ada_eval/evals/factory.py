@@ -1,12 +1,12 @@
 from enum import Enum
 
-from .dummy_gprbuild import DUMMY_GPRBUILD_EVAL_NAME, DummyGprBuild
-from .gnatprove import GNATPROVE_EVAL_NAME, GnatProve
+from .dummy_gprbuild import DummyGprBuild
+from .gnatprove import GnatProve
 
 
 class Eval(Enum):
-    GNATPROVE = GNATPROVE_EVAL_NAME
-    DUMMY_GPRBUILD = DUMMY_GPRBUILD_EVAL_NAME
+    GNATPROVE = GnatProve.name
+    DUMMY_GPRBUILD = DummyGprBuild.name
 
     def __str__(self):
         return self.value
