@@ -8,13 +8,13 @@ from ada_eval.datasets import (
     GeneratedSample,
     Sample,
     dataset_has_sample_type,
+    load_dir,
+    save_to_dir,
 )
-from ada_eval.datasets.loader import load_dir
 from ada_eval.datasets.types import (
     BASE_TYPE_TO_GENERATED,
     GenerationStats,
     is_unpacked_data,
-    save_to_dir,
 )
 from ada_eval.evals import Eval, create_eval
 

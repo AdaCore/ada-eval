@@ -1,12 +1,10 @@
 import sys
 from pathlib import Path
 
-from ada_eval.datasets.loader import load_packed_dataset, load_unpacked_dataset
-from ada_eval.datasets.types.datasets import (
-    get_packed_dataset_files,
-    get_unpacked_dataset_dirs,
-)
 from ada_eval.datasets.utils import is_git_up_to_date
+
+from .loader import load_packed_dataset, load_unpacked_dataset
+from .types import get_packed_dataset_files, get_unpacked_dataset_dirs
 
 
 def unpack_datasets(src: Path, dest_dir: Path, *, force: bool = False):

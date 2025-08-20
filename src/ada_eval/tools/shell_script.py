@@ -2,8 +2,8 @@ import logging
 from pathlib import Path
 from typing import ClassVar, Self
 
-from ada_eval.datasets.types import GenerationStats, SparkSample
-from ada_eval.datasets.types.samples import GeneratedSparkSample, get_contents
+from ada_eval.datasets import GeneratedSparkSample, SparkSample, get_contents
+from ada_eval.datasets.types import GenerationStats
 from ada_eval.utils import run_cmd_with_timeout
 
 from .generic_tool import BaseConfig, GenericTool

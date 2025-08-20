@@ -4,7 +4,7 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
-from ada_eval.datasets.types import (
+from .types import (
     AdaSample,
     Dataset,
     DatasetKind,
@@ -13,17 +13,15 @@ from ada_eval.datasets.types import (
     GeneratedExplainSample,
     GeneratedSample,
     GeneratedSparkSample,
+    Sample,
     SparkSample,
     get_packed_dataset_files,
-)
-from ada_eval.datasets.types.datasets import (
     get_unpacked_dataset_dirs,
     is_packed_data,
-    is_packed_dataset,
     is_unpacked_data,
-    is_unpacked_dataset,
 )
-from ada_eval.datasets.types.samples import Sample, is_unpacked_sample
+from .types.datasets import is_packed_dataset, is_unpacked_dataset
+from .types.samples import is_unpacked_sample
 
 logger = logging.getLogger(__name__)
 

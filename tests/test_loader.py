@@ -14,10 +14,6 @@ from helpers import (
 
 from ada_eval.datasets import (
     Dataset,
-    EvaluationStatsFailed,
-    EvaluationStatsGnatProve,
-    EvaluationStatsGprBuild,
-    Location,
     dataset_has_sample_type,
 )
 from ada_eval.datasets.loader import (
@@ -33,6 +29,9 @@ from ada_eval.datasets.loader import (
 from ada_eval.datasets.types.samples import (
     AdaSample,
     DirectoryContents,
+    EvaluationStatsFailed,
+    EvaluationStatsGnatProve,
+    EvaluationStatsGprBuild,
     ExplainSample,
     ExplainSolution,
     GeneratedAdaSample,
@@ -40,6 +39,7 @@ from ada_eval.datasets.types.samples import (
     GeneratedSample,
     GeneratedSparkSample,
     GenerationStats,
+    Location,
     Sample,
     SparkSample,
 )

@@ -7,15 +7,26 @@ from enum import Enum
 from pathlib import Path
 from typing import Generic, TypeGuard, TypeVar
 
-from ada_eval.datasets.types.samples import is_unpacked_sample
 from ada_eval.utils import UnexpectedTypeError
 
-from .samples import AdaSample, ExplainSample, GeneratedSample, Sample, SparkSample
+from .samples import (
+    AdaSample,
+    ExplainSample,
+    GeneratedSample,
+    Sample,
+    SparkSample,
+    is_unpacked_sample,
+)
 
 
-# Enum that specifies the kind of dataset (in terms of the base sample type,
-# making no distinction between base, generated, or evaluated samples).
 class DatasetKind(Enum):
+    """
+    Enum for the 'kind' of a sample/dataset.
+
+    This is the base type of the sample, making no distinction between
+    base, generated, or evaluated types.
+    """
+
     ADA = "ada"
     EXPLAIN = "explain"
     SPARK = "spark"

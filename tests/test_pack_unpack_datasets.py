@@ -9,7 +9,6 @@ from helpers import (
     setup_git_repo,
 )
 
-from ada_eval.datasets import OTHER_JSON_NAME, SparkSample
 from ada_eval.datasets.loader import load_unpacked_dataset
 from ada_eval.datasets.pack_unpack import pack_datasets, unpack_datasets
 from ada_eval.datasets.types.datasets import (
@@ -20,7 +19,11 @@ from ada_eval.datasets.types.datasets import (
     is_packed_dataset,
     is_unpacked_dataset,
 )
-from ada_eval.datasets.types.samples import is_unpacked_sample
+from ada_eval.datasets.types.samples import (
+    OTHER_JSON_NAME,
+    SparkSample,
+    is_unpacked_sample,
+)
 from ada_eval.datasets.utils import git_ls_files, is_git_up_to_date
 
 

@@ -2,7 +2,7 @@ import logging
 from time import sleep
 from typing import ClassVar, Literal
 
-from ada_eval.datasets.types import (
+from ada_eval.datasets import (
     EvaluatedAdaSample,
     EvaluatedSparkSample,
     EvaluationStatsGprBuild,
