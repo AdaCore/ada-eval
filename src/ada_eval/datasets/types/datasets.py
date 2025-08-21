@@ -36,15 +36,14 @@ class DatasetKind(Enum):
 
     @classmethod
     def from_type(cls, sample_type: type[Sample]) -> DatasetKind:
-        """Get the DatasetKind from a sample type."""
+        """Get the `DatasetKind` from a sample type."""
         if issubclass(sample_type, SparkSample):
             return DatasetKind.SPARK
-        elif issubclass(sample_type, AdaSample):
+        if issubclass(sample_type, AdaSample):
             return DatasetKind.ADA
-        elif issubclass(sample_type, ExplainSample):
+        if issubclass(sample_type, ExplainSample):
             return DatasetKind.EXPLAIN
-        else:
-            raise UnexpectedTypeError(expected_type=Sample, actual_type=sample_type)
+        raise UnexpectedTypeError(expected_type=Sample, actual_type=sample_type)
 
 
 SampleType_co = TypeVar("SampleType_co", bound=Sample, covariant=True)
@@ -110,8 +109,7 @@ def dataset_has_sample_type(
     """
     if isinstance(sample_types, Sequence):
         return issubclass(dataset.sample_type, tuple(sample_types))
-    else:
-        return issubclass(dataset.sample_type, sample_types)
+    return issubclass(dataset.sample_type, sample_types)
 
 
 def is_unpacked_dataset(path: Path) -> bool:
