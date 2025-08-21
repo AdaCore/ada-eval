@@ -111,13 +111,20 @@ def evaluate_datasets_canonical(
     # of the original `Sample`s.
     for dataset in evaluated_datasets:
         for evaluated_sample in dataset.samples:
-            original_sample = original_samples.get(
+            original_sample = original_samples[
                 (dataset.name, dataset.kind(), evaluated_sample.name)
+            ]
+            # Merge new results with existing, overwriting only when we have
+            # re-run the same eval.
+            combined_results = {
+                es.eval_name: es for es in original_sample.canonical_evaluation_results
+            }
+            combined_results.update(
+                {es.eval_name: es for es in evaluated_sample.evaluation_results}
             )
-            if original_sample is not None:
-                original_sample.canonical_evaluation_results = (
-                    evaluated_sample.evaluation_results
-                )
+            original_sample.canonical_evaluation_results = list(
+                combined_results.values()
+            )
     # Return the updated (original) `datasets`
     return datasets
 
