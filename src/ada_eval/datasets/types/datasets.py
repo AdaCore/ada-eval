@@ -36,7 +36,7 @@ class DatasetKind(Enum):
 
     @classmethod
     def from_type(cls, sample_type: type[Sample]) -> DatasetKind:
-        """Get the DatasetType from a sample type."""
+        """Get the DatasetKind from a sample type."""
         if issubclass(sample_type, SparkSample):
             return DatasetKind.SPARK
         elif issubclass(sample_type, AdaSample):

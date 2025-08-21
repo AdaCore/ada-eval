@@ -1,6 +1,6 @@
 import argparse
 import logging
-from multiprocessing import cpu_count
+from os import cpu_count
 from pathlib import Path
 
 from ada_eval.datasets.pack_unpack import pack_datasets, unpack_datasets
