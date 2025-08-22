@@ -306,11 +306,10 @@ class GeneratedSample(Sample):
         """
         if isinstance(self, EvaluatedSample):
             return self
-        else:
-            return GENERATED_TYPE_TO_EVALUATED[type(self)](
-                **self.model_dump(),  # Copy all fields from the original sample
-                evaluation_results=[],
-            )
+        return GENERATED_TYPE_TO_EVALUATED[type(self)](
+            **self.model_dump(),  # Copy all fields from the original sample
+            evaluation_results=[],
+        )
 
 
 class GeneratedAdaSample(AdaSample, GeneratedSample):
