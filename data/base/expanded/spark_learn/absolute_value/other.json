@@ -7,8 +7,13 @@
         {
             "eval_name": "GNATprove",
             "successfully_proven": true,
-            "subprogram_found": true,
-            "timed_out": false
+            "subprogram_found": true
+        },
+        {
+            "eval_name": "gprbuild",
+            "compiled": true,
+            "has_pre_format_compile_warnings": false,
+            "has_post_format_compile_warnings": false
         }
     ]
 }

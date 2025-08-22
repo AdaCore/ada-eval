@@ -37,9 +37,7 @@ class GnatProve(GenericEval[GeneratedSparkSample, EvaluatedSparkSample]):
                 subp_lineno = sample.location.find_line_number(working_dir)
             except SubprogramNotFoundError:
                 return EvaluationStatsGnatProve(
-                    successfully_proven=False,
-                    subprogram_found=False,
-                    timed_out=False,
+                    successfully_proven=False, subprogram_found=False
                 )
             # Run `gnatprove`, specifying the unit and subprogram to analyze,
             # and ensuring that all kinds of proof failure yield a non-zero exit
@@ -61,7 +59,5 @@ class GnatProve(GenericEval[GeneratedSparkSample, EvaluatedSparkSample]):
             )
             # Return the `EvaluationStats`
             return EvaluationStatsGnatProve(
-                successfully_proven=(result is not None and result.returncode == 0),
-                subprogram_found=True,
-                timed_out=(result is None),
+                successfully_proven=(result.returncode == 0), subprogram_found=True
             )

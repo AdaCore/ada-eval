@@ -130,7 +130,7 @@ def test_evaluate(capsys):
 
         # Test with various valid argument combinations
         for evals, dataset, jobs, canonical in itertools.product(
-            [None, ["GNATprove", "dummy_gprbuild"], ["gnatprove"]],
+            [None, ["GNATprove", "gprbuild"], ["gnatprove"]],
             [None, "path/to/dataset"],
             [None, "2", "4"],
             [False, True],
@@ -144,8 +144,8 @@ def test_evaluate(capsys):
                 list(Eval)
                 if evals is None
                 else (
-                    [Eval.GNATPROVE, Eval.DUMMY_GPRBUILD]
-                    if "dummy_gprbuild" in evals
+                    [Eval.GNATPROVE, Eval.GPRBUILD]
+                    if "gprbuild" in evals
                     else [Eval.GNATPROVE]
                 )
             )

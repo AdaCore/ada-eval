@@ -11,7 +11,7 @@ def make_files_relative_to(path: Path, files: list[Path]) -> list[Path]:
 
 def run_cmd_with_timeout(
     cmd: list[str], working_dir: Path, timeout: int
-) -> tuple[subprocess.CompletedProcess[str] | None, int]:
+) -> tuple[subprocess.CompletedProcess[str], int]:
     """
     Run a command with a timeout and return the result.
 
@@ -23,23 +23,22 @@ def run_cmd_with_timeout(
         timeout (int): The timeout in seconds.
 
     Returns:
-        result (subprocess.CompletedProcess | None): The completed process
-            object, or `None` if the process timed out.
+        result (subprocess.CompletedProcess): The completed process object.
         runtime_ms (int): The runtime of the process in milliseconds.
+
+    Raises:
+        subprocess.TimeoutExpired: If the timeout is exceeded.
 
     """
     start = time.monotonic_ns()
-    try:
-        result = subprocess.run(
-            cmd,
-            check=False,
-            cwd=working_dir,
-            capture_output=True,
-            encoding="utf-8",
-            timeout=timeout,
-        )
-    except subprocess.TimeoutExpired:
-        result = None
+    result = subprocess.run(
+        cmd,
+        check=False,
+        cwd=working_dir,
+        capture_output=True,
+        encoding="utf-8",
+        timeout=timeout,
+    )
     end = time.monotonic_ns()
     return result, (end - start) // 1_000_000
 

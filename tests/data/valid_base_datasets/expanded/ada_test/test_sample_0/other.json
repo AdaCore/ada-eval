@@ -8,8 +8,7 @@
             "eval_name": "gprbuild",
             "compiled": true,
             "has_pre_format_compile_warnings": true,
-            "has_post_format_compile_warnings": false,
-            "timed_out": false
+            "has_post_format_compile_warnings": false
         }
     ]
 }

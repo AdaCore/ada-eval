@@ -1,12 +1,12 @@
 from enum import Enum
 
-from .dummy_gprbuild import DummyGprBuild
 from .gnatprove import GnatProve
+from .gprbuild import GprBuild
 
 
 class Eval(Enum):
     GNATPROVE = GnatProve.name
-    DUMMY_GPRBUILD = DummyGprBuild.name
+    GPRBUILD = GprBuild.name
 
     def __str__(self):
         return self.value
@@ -17,11 +17,11 @@ class UnsupportedEvalError(Exception):
         super().__init__(f"Unsupported eval: {evaluation}")
 
 
-def create_eval(evaluation: Eval) -> GnatProve | DummyGprBuild:
+def create_eval(evaluation: Eval) -> GnatProve | GprBuild:
     match evaluation:
         case Eval.GNATPROVE:
             return GnatProve()
-        case Eval.DUMMY_GPRBUILD:
-            return DummyGprBuild()
+        case Eval.GPRBUILD:
+            return GprBuild()
         case _:
             raise UnsupportedEvalError(evaluation)

@@ -336,23 +336,30 @@ class EvaluationStatsFailed(EvaluationStatsBase):
     exception: str
 
 
+class EvaluationStatsTimedOut(EvaluationStatsBase):
+    eval_name: str
+    cmd_timed_out: list[str]
+    timeout: float
+
+
 class EvaluationStatsGprBuild(EvaluationStatsBase):
     eval_name: Literal["gprbuild"] = "gprbuild"
     compiled: bool
     has_pre_format_compile_warnings: bool
     has_post_format_compile_warnings: bool
-    timed_out: bool
 
 
 class EvaluationStatsGnatProve(EvaluationStatsBase):
     eval_name: Literal["GNATprove"] = "GNATprove"
     successfully_proven: bool
     subprogram_found: bool
-    timed_out: bool
 
 
 EvaluationStats = (
-    EvaluationStatsFailed | EvaluationStatsGprBuild | EvaluationStatsGnatProve
+    EvaluationStatsGprBuild
+    | EvaluationStatsGnatProve
+    | EvaluationStatsFailed
+    | EvaluationStatsTimedOut
 )
 
 _evaluation_results_adapter = TypeAdapter(list[EvaluationStats])

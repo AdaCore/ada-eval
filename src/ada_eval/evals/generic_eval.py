@@ -1,4 +1,5 @@
 import logging
+import subprocess
 from abc import abstractmethod
 from typing import Generic, TypeVar
 
@@ -6,6 +7,7 @@ from ada_eval.datasets import (
     EvaluatedSample,
     EvaluationStats,
     EvaluationStatsFailed,
+    EvaluationStatsTimedOut,
     GeneratedSample,
     SampleOperation,
 )
@@ -72,6 +74,15 @@ class GenericEval(
         # Evaluate the sample and add the results to the `EvaluatedSample`
         try:
             eval_stats = self.evaluate(sample)
+        except subprocess.TimeoutExpired as e:
+            logger.warning(
+                "Evaluation of %s failed due to a subprocess timeout (%d seconds)",
+                sample.name,
+                e.timeout,
+            )
+            eval_stats = EvaluationStatsTimedOut(
+                eval_name=self.name, cmd_timed_out=e.cmd, timeout=e.timeout
+            )
         except Exception as e:
             logger.exception("Error during evaluation of %s", sample.name)
             eval_stats = EvaluationStatsFailed(eval_name=self.name, exception=repr(e))
