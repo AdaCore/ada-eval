@@ -147,14 +147,13 @@ def test_generic_tool(
         def apply(self, sample: AdaSample) -> GeneratedAdaSample:
             if isinstance(sample, SparkSample) and sample.name == "test_sample_0":
                 raise RuntimeError("Mock failure on test_sample_0")
-            else:
-                gen_sample = BASE_TYPE_TO_GENERATED[type(sample)](
-                    **sample.model_dump(),
-                    generation_stats=mock_generation_stats,
-                    generated_solution=mock_ada_solution,
-                )
-                assert isinstance(gen_sample, GeneratedAdaSample)
-                return gen_sample
+            gen_sample = BASE_TYPE_TO_GENERATED[type(sample)](
+                **sample.model_dump(),
+                generation_stats=mock_generation_stats,
+                generated_solution=mock_ada_solution,
+            )
+            assert isinstance(gen_sample, GeneratedAdaSample)
+            return gen_sample
 
     # Test applying the new mock tool to the test datasets
     tool1 = MockTool1.from_config_file(tmp_config_file)
