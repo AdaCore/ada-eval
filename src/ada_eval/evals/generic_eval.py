@@ -81,11 +81,11 @@ class GenericEval(
                 e.timeout,
             )
             eval_stats = EvaluationStatsTimedOut(
-                eval_name=self.name, cmd_timed_out=e.cmd, timeout=e.timeout
+                eval=self.name, cmd_timed_out=e.cmd, timeout=e.timeout
             )
         except Exception as e:
             logger.exception("Error during evaluation of %s", sample.name)
-            eval_stats = EvaluationStatsFailed(eval_name=self.name, exception=repr(e))
+            eval_stats = EvaluationStatsFailed(eval=self.name, exception=repr(e))
         evaluated_sample.evaluation_results.append(eval_stats)
         return evaluated_sample
 

@@ -7,7 +7,13 @@ import re
 from pathlib import Path
 from typing import Literal, Self
 
-from pydantic import BaseModel, TypeAdapter, field_serializer, field_validator
+from pydantic import (
+    BaseModel,
+    TypeAdapter,
+    field_serializer,
+    field_validator,
+    model_serializer,
+)
 
 from ada_eval.datasets.utils import get_file_or_empty
 
@@ -329,7 +335,13 @@ class GeneratedSparkSample(SparkSample, GeneratedAdaSample):
 
 
 class EvaluationStatsBase(BaseModel):
-    eval_name: str
+    eval: str
+
+    # Ensure `eval` is always serialised (so that union discrimination is
+    # predictable even when `exclude_defaults=True`)
+    @model_serializer(mode="wrap")
+    def serialize_eval(self, next_):
+        return {"eval": self.eval} | next_(self)
 
 
 class EvaluationStatsFailed(EvaluationStatsBase):
@@ -337,20 +349,19 @@ class EvaluationStatsFailed(EvaluationStatsBase):
 
 
 class EvaluationStatsTimedOut(EvaluationStatsBase):
-    eval_name: str
     cmd_timed_out: list[str]
     timeout: float
 
 
 class EvaluationStatsBuild(EvaluationStatsBase):
-    eval_name: Literal["build"] = "build"
+    eval: Literal["build"] = "build"
     compiled: bool
     has_pre_format_compile_warnings: bool
     has_post_format_compile_warnings: bool
 
 
 class EvaluationStatsProve(EvaluationStatsBase):
-    eval_name: Literal["prove"] = "prove"
+    eval: Literal["prove"] = "prove"
     successfully_proven: bool
     subprogram_found: bool
 

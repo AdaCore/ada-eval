@@ -195,9 +195,9 @@ def check_loaded_datasets(datasets: list[Dataset[Sample]], *, generated: bool = 
     expected_spark_sample_0 = expected_spark_sample("test_sample_0", "spark_test")
     expected_spark_sample_0.canonical_evaluation_results = [
         EvaluationStatsTimedOut(
-            eval_name="prove", cmd_timed_out=["cmd", "arg0", "arg1"], timeout=12.34
+            eval="prove", cmd_timed_out=["cmd", "arg0", "arg1"], timeout=12.34
         ),
-        EvaluationStatsFailed(eval_name="build", exception='SomeError("Some message")'),
+        EvaluationStatsFailed(eval="build", exception='SomeError("Some message")'),
     ]
     expected_spark_sample_1 = expected_spark_sample("test_sample_1", "spark_test")
     expected_spark_sample_1.sources.files[Path("source_dir_0/source_file_1")] = (

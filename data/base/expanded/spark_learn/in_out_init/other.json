@@ -5,12 +5,12 @@
     },
     "canonical_evaluation_results": [
         {
-            "eval_name": "prove",
+            "eval": "prove",
             "successfully_proven": true,
             "subprogram_found": true
         },
         {
-            "eval_name": "build",
+            "eval": "build",
             "compiled": true,
             "has_pre_format_compile_warnings": false,
             "has_post_format_compile_warnings": false

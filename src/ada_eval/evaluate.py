@@ -117,10 +117,10 @@ def evaluate_datasets_canonical(
             # Merge new results with existing, overwriting only when we have
             # re-run the same eval.
             combined_results = {
-                es.eval_name: es for es in original_sample.canonical_evaluation_results
+                es.eval: es for es in original_sample.canonical_evaluation_results
             }
             combined_results.update(
-                {es.eval_name: es for es in evaluated_sample.evaluation_results}
+                {es.eval: es for es in evaluated_sample.evaluation_results}
             )
             original_sample.canonical_evaluation_results = list(
                 combined_results.values()
