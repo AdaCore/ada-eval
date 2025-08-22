@@ -29,9 +29,9 @@ from ada_eval.datasets.loader import (
 from ada_eval.datasets.types.directory_contents import DirectoryContents
 from ada_eval.datasets.types.samples import (
     AdaSample,
+    EvaluationStatsBuild,
     EvaluationStatsFailed,
-    EvaluationStatsGnatProve,
-    EvaluationStatsGprBuild,
+    EvaluationStatsProve,
     EvaluationStatsTimedOut,
     ExplainSample,
     ExplainSolution,
@@ -176,7 +176,7 @@ def check_loaded_datasets(datasets: list[Dataset[Sample]], *, generated: bool = 
     # `expected_ada_sample()`, except with some `canonical_evaluation_results`)
     expected_ada_sample_0 = expected_ada_sample("test_sample_0", "ada_test")
     expected_ada_sample_0.canonical_evaluation_results = [
-        EvaluationStatsGprBuild(
+        EvaluationStatsBuild(
             compiled=True,
             has_pre_format_compile_warnings=True,
             has_post_format_compile_warnings=False,
@@ -195,11 +195,9 @@ def check_loaded_datasets(datasets: list[Dataset[Sample]], *, generated: bool = 
     expected_spark_sample_0 = expected_spark_sample("test_sample_0", "spark_test")
     expected_spark_sample_0.canonical_evaluation_results = [
         EvaluationStatsTimedOut(
-            eval_name="GNATprove", cmd_timed_out=["cmd", "arg0", "arg1"], timeout=12.34
+            eval_name="prove", cmd_timed_out=["cmd", "arg0", "arg1"], timeout=12.34
         ),
-        EvaluationStatsFailed(
-            eval_name="gprbuild", exception='SomeError("Some message")'
-        ),
+        EvaluationStatsFailed(eval_name="build", exception='SomeError("Some message")'),
     ]
     expected_spark_sample_1 = expected_spark_sample("test_sample_1", "spark_test")
     expected_spark_sample_1.sources.files[Path("source_dir_0/source_file_1")] = (
@@ -212,8 +210,8 @@ def check_loaded_datasets(datasets: list[Dataset[Sample]], *, generated: bool = 
         "The addition of this file is part of the canonical solution.\n"
     )
     expected_spark_sample_1.canonical_evaluation_results = [
-        EvaluationStatsGnatProve(successfully_proven=True, subprogram_found=True),
-        EvaluationStatsGprBuild(
+        EvaluationStatsProve(successfully_proven=True, subprogram_found=True),
+        EvaluationStatsBuild(
             compiled=True,
             has_pre_format_compile_warnings=False,
             has_post_format_compile_warnings=False,

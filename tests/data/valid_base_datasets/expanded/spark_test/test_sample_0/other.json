@@ -5,7 +5,7 @@
     },
     "canonical_evaluation_results": [
         {
-            "eval_name": "GNATprove",
+            "eval_name": "prove",
             "cmd_timed_out": [
                 "cmd",
                 "arg0",
@@ -14,7 +14,7 @@
             "timeout": 12.34
         },
         {
-            "eval_name": "gprbuild",
+            "eval_name": "build",
             "exception": "SomeError(\"Some message\")"
         }
     ]

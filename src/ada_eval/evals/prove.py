@@ -3,7 +3,7 @@ from typing import ClassVar, Literal
 
 from ada_eval.datasets import (
     EvaluatedSparkSample,
-    EvaluationStatsGnatProve,
+    EvaluationStatsProve,
     GeneratedSparkSample,
     SubprogramNotFoundError,
 )
@@ -18,10 +18,10 @@ logger = logging.getLogger(__name__)
 PROVE_TIMEOUT_S = 60
 
 
-class GnatProve(GenericEval[GeneratedSparkSample, EvaluatedSparkSample]):
+class Prove(GenericEval[GeneratedSparkSample, EvaluatedSparkSample]):
     """An evaluation that runs GNATprove and checks for any proof failures."""
 
-    name: ClassVar[Literal["gnatprove"]] = "gnatprove"
+    name: ClassVar[Literal["prove"]] = "prove"
     supported_types: ClassVar = {GeneratedSparkSample: EvaluatedSparkSample}
 
     def __init__(self) -> None:
@@ -29,14 +29,14 @@ class GnatProve(GenericEval[GeneratedSparkSample, EvaluatedSparkSample]):
         # cleaner error output.
         check_on_path("gnatprove")
 
-    def evaluate(self, sample: GeneratedSparkSample) -> EvaluationStatsGnatProve:
+    def evaluate(self, sample: GeneratedSparkSample) -> EvaluationStatsProve:
         with sample.generated_solution.unpacked() as working_dir:
             logger.debug("Evaluating %s with GNATprove in %s", sample.name, working_dir)
             # Search for the subprogram of interest.
             try:
                 subp_lineno = sample.location.find_line_number(working_dir)
             except SubprogramNotFoundError:
-                return EvaluationStatsGnatProve(
+                return EvaluationStatsProve(
                     successfully_proven=False, subprogram_found=False
                 )
             # Run `gnatprove`, specifying the unit and subprogram to analyze,
@@ -58,6 +58,6 @@ class GnatProve(GenericEval[GeneratedSparkSample, EvaluatedSparkSample]):
                 PROVE_TIMEOUT_S,
             )
             # Return the `EvaluationStats`
-            return EvaluationStatsGnatProve(
+            return EvaluationStatsProve(
                 successfully_proven=(result.returncode == 0), subprogram_found=True
             )

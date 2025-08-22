@@ -1,4 +1,4 @@
 from .factory import Eval, create_eval
-from .gnatprove import GnatProve
+from .prove import Prove
 
-__all__ = ["Eval", "GnatProve", "create_eval"]
+__all__ = ["Eval", "Prove", "create_eval"]

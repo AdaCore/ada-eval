@@ -5,7 +5,7 @@
     },
     "canonical_evaluation_results": [
         {
-            "eval_name": "gprbuild",
+            "eval_name": "build",
             "compiled": true,
             "has_pre_format_compile_warnings": true,
             "has_post_format_compile_warnings": false

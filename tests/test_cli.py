@@ -130,7 +130,7 @@ def test_evaluate(capsys):
 
         # Test with various valid argument combinations
         for evals, dataset, jobs, canonical in itertools.product(
-            [None, ["GNATprove", "gprbuild"], ["gnatprove"]],
+            [None, ["PrOvE", "build"], ["prove"]],
             [None, "path/to/dataset"],
             [None, "2", "4"],
             [False, True],
@@ -141,13 +141,9 @@ def test_evaluate(capsys):
             assert output.err == ""
             assert output.out == ""
             expected_evals = (
-                list(Eval)
+                [Eval.PROVE, Eval.BUILD]
                 if evals is None
-                else (
-                    [Eval.GNATPROVE, Eval.GPRBUILD]
-                    if "gprbuild" in evals
-                    else [Eval.GNATPROVE]
-                )
+                else ([Eval.PROVE, Eval.BUILD] if "build" in evals else [Eval.PROVE])
             )
             if canonical:
                 expected_dataset_path = (

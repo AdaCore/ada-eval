@@ -6,7 +6,7 @@ from typing import ClassVar, Literal
 from ada_eval.datasets import (
     EvaluatedAdaSample,
     EvaluatedSparkSample,
-    EvaluationStatsGprBuild,
+    EvaluationStatsBuild,
     GeneratedAdaSample,
     GeneratedSparkSample,
 )
@@ -43,10 +43,10 @@ def _run_gprbuild(
     return run_cmd_with_timeout(args, working_dir, BUILD_TIMEOUT_S)[0]
 
 
-class GprBuild(GenericEval[GeneratedAdaSample, EvaluatedAdaSample]):
+class Build(GenericEval[GeneratedAdaSample, EvaluatedAdaSample]):
     """An evaluation that runs GPRbuild and checks if compilation succeeds."""
 
-    name: ClassVar[Literal["gprbuild"]] = "gprbuild"
+    name: ClassVar[Literal["build"]] = "build"
     supported_types: ClassVar = {
         GeneratedAdaSample: EvaluatedAdaSample,
         GeneratedSparkSample: EvaluatedSparkSample,
@@ -58,11 +58,11 @@ class GprBuild(GenericEval[GeneratedAdaSample, EvaluatedAdaSample]):
         check_on_path("gprbuild")
         check_on_path("gnatformat")
 
-    def evaluate(self, sample: GeneratedAdaSample) -> EvaluationStatsGprBuild:
+    def evaluate(self, sample: GeneratedAdaSample) -> EvaluationStatsBuild:
         with sample.generated_solution.unpacked() as working_dir:
             logger.debug("Evaluating %s with GPRbuild in %s", sample.name, working_dir)
             # Initialise values to success
-            eval_stats = EvaluationStatsGprBuild(
+            eval_stats = EvaluationStatsBuild(
                 compiled=True,
                 has_pre_format_compile_warnings=False,
                 has_post_format_compile_warnings=False,

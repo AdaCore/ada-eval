@@ -342,22 +342,22 @@ class EvaluationStatsTimedOut(EvaluationStatsBase):
     timeout: float
 
 
-class EvaluationStatsGprBuild(EvaluationStatsBase):
-    eval_name: Literal["gprbuild"] = "gprbuild"
+class EvaluationStatsBuild(EvaluationStatsBase):
+    eval_name: Literal["build"] = "build"
     compiled: bool
     has_pre_format_compile_warnings: bool
     has_post_format_compile_warnings: bool
 
 
-class EvaluationStatsGnatProve(EvaluationStatsBase):
-    eval_name: Literal["GNATprove"] = "GNATprove"
+class EvaluationStatsProve(EvaluationStatsBase):
+    eval_name: Literal["prove"] = "prove"
     successfully_proven: bool
     subprogram_found: bool
 
 
 EvaluationStats = (
-    EvaluationStatsGprBuild
-    | EvaluationStatsGnatProve
+    EvaluationStatsBuild
+    | EvaluationStatsProve
     | EvaluationStatsFailed
     | EvaluationStatsTimedOut
 )
