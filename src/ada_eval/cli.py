@@ -1,17 +1,20 @@
 import argparse
+import logging
+from os import cpu_count
 from pathlib import Path
 
-# from ada_eval.datasets.evaluate import evaluate_completions
-from ada_eval.datasets.evaluate import evaluate_completions
-from ada_eval.datasets.generate import generate_completions
 from ada_eval.datasets.pack_unpack import pack_datasets, unpack_datasets
 from ada_eval.paths import (
     COMPACTED_DATASETS_DIR,
-    EVALUATED_DATASETS_DIR,
     EXPANDED_DATASETS_DIR,
     GENERATED_DATASETS_DIR,
 )
-from ada_eval.tools.factory import Tool, create_tool
+from ada_eval.tools import Tool, create_tool
+
+
+def tool(tool_name: str) -> Tool:
+    """Case-insensitive `Tool` constructor."""
+    return Tool(tool_name.lower())
 
 
 def call_unpack_datasets(args):
@@ -22,27 +25,25 @@ def call_pack_datasets(args):
     pack_datasets(src_dir=args.src, dest_dir=args.dest, force=args.force)
 
 
-def call_generate_completions(args):
+def generate(args):
     tool = create_tool(args.tool, args.tool_config_file)
-    generate_completions(
-        packed_dataset_or_dir=args.dataset,
-        jobs=args.jobs,
-        tool=tool,
+    tool.apply_to_directory(
+        path=args.dataset,
         output_dir=GENERATED_DATASETS_DIR,
-    )
-
-
-def call_evaluate_completions(args):
-    evaluate_completions(
-        packed_dataset_or_dir=args.dataset,
         jobs=args.jobs,
-        output_dir=EVALUATED_DATASETS_DIR,
     )
 
 
-def main():
+def call_evaluate_completions(_):
+    raise NotImplementedError
+
+
+def main() -> None:
+    logging.basicConfig(level=logging.INFO)
     parser = argparse.ArgumentParser(description="CLI for Eval Framework")
-    subparsers = parser.add_subparsers()
+    subparsers = parser.add_subparsers(required=True)
+
+    default_num_jobs = cpu_count() or 1
 
     # Unpack datasets subcommand
     unpack_parser = subparsers.add_parser(
@@ -102,7 +103,7 @@ def main():
         help="Generate completions",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    generate_parser.set_defaults(func=call_generate_completions)
+    generate_parser.set_defaults(func=generate)
     generate_parser.add_argument(
         "--dataset",
         type=Path,
@@ -117,18 +118,20 @@ def main():
         "--jobs",
         type=int,
         help="Number of samples to generate completions for in parallel",
-        default=1,
+        default=default_num_jobs,
     )
     generate_parser.add_argument(
         "--tool",
-        type=Tool,
+        type=tool,
         choices=list(Tool),
         help="Name of tool to use for generation",
+        required=True,
     )
     generate_parser.add_argument(
-        "--tool_config_file",
+        "--tool-config-file",
         type=Path,
         help="Path to tool configuration file",
+        required=True,
     )
 
     # Evaluate completions for a dataset
@@ -148,8 +151,8 @@ def main():
         "-j",
         "--jobs",
         type=int,
-        help="Number of samples to generate in parallel",
-        default=1,
+        help="Number of evaluations to run in parallel.",
+        default=default_num_jobs,
     )
 
     args = parser.parse_args()

@@ -1,4 +1,4 @@
-from .generic_tool import GenericTool
+from .factory import Tool, create_tool
 from .shell_script import ShellScript
 
-__all__ = ["GenericTool", "ShellScript"]
+__all__ = ["ShellScript", "Tool", "create_tool"]
