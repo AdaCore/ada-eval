@@ -10,7 +10,7 @@ def make_files_relative_to(path: Path, files: list[Path]) -> list[Path]:
 
 
 def run_cmd_with_timeout(
-    cmd: list[str], working_dir: Path, timeout: int
+    cmd: list[str], working_dir: Path, timeout: int, *, check: bool = False
 ) -> tuple[subprocess.CompletedProcess[str], int]:
     """
     Run a command with a timeout and return the result.
@@ -21,6 +21,8 @@ def run_cmd_with_timeout(
         cmd (list[str]): The command to run.
         working_dir (Path): The directory to run the command in.
         timeout (int): The timeout in seconds.
+        check (bool): Whether to raise a `subprocess.CalledProcessError` if the
+            command returns a non-zero exit code.
 
     Returns:
         result (subprocess.CompletedProcess): The completed process object.
@@ -33,7 +35,7 @@ def run_cmd_with_timeout(
     start = time.monotonic_ns()
     result = subprocess.run(
         cmd,
-        check=False,
+        check=check,
         cwd=working_dir,
         capture_output=True,
         encoding="utf-8",

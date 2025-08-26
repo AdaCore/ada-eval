@@ -84,6 +84,9 @@ class GenericEval(
                 eval=self.name, cmd_timed_out=e.cmd, timeout=e.timeout
             )
         except Exception as e:
+            if isinstance(e, subprocess.CalledProcessError):
+                e.add_note(f"stdout: {e.stdout!r}")
+                e.add_note(f"stderr: {e.stderr!r}")
             logger.exception("Error during evaluation of %s", sample.name)
             eval_stats = EvaluationStatsFailed(eval=self.name, exception=repr(e))
         evaluated_sample.evaluation_results.append(eval_stats)
