@@ -8,6 +8,10 @@ from .types import (
     AdaSample,
     Dataset,
     DatasetKind,
+    EvaluatedAdaSample,
+    EvaluatedExplainSample,
+    EvaluatedSample,
+    EvaluatedSparkSample,
     ExplainSample,
     GeneratedAdaSample,
     GeneratedExplainSample,
@@ -128,38 +132,50 @@ def load_packed_dataset(path: Path) -> Dataset[Sample]:
     dataset_type, dataset_name = _parse_dataset_dirname(path, "packed dataset filename")
     sample_class: type[Sample]
     generated_sample_class: type[GeneratedSample]
+    evaluated_sample_class: type[EvaluatedSample]
     match dataset_type:
         case DatasetKind.ADA:
             sample_class = AdaSample
             generated_sample_class = GeneratedAdaSample
+            evaluated_sample_class = EvaluatedAdaSample
         case DatasetKind.EXPLAIN:
             sample_class = ExplainSample
             generated_sample_class = GeneratedExplainSample
+            evaluated_sample_class = EvaluatedExplainSample
         case DatasetKind.SPARK:
             sample_class = SparkSample
             generated_sample_class = GeneratedSparkSample
+            evaluated_sample_class = EvaluatedSparkSample
         case _:
             raise UnknownDatasetKindError(dataset_type)
     with path.open() as f:
         lines = f.readlines()
-    # Try to load as `GeneratedSample`s first, but fall back to `Sample`s if that fails
+    # Load each sample as an `EvaluatedSample`, `GeneratedSample` or `Sample`
+    # (in that order).
     samples: list[Sample]
     try:
         samples = [
-            generated_sample_class.model_validate_json(x, strict=True) for x in lines
+            evaluated_sample_class.model_validate_json(x, strict=True) for x in lines
         ]
-        sample_class = generated_sample_class
+        sample_class = evaluated_sample_class
     except ValidationError:
-        samples = []
-        for line_num, line in enumerate(lines, start=1):
-            try:
-                sample = sample_class.model_validate_json(line, strict=True)
-            except Exception as e:
-                e.add_note(
-                    f"This error occurred while parsing line {line_num} of '{path}'"
-                )
-                raise
-            samples.append(sample)
+        try:
+            samples = [
+                generated_sample_class.model_validate_json(x, strict=True)
+                for x in lines
+            ]
+            sample_class = generated_sample_class
+        except ValidationError:
+            samples = []
+            for line_num, line in enumerate(lines, start=1):
+                try:
+                    sample = sample_class.model_validate_json(line, strict=True)
+                except Exception as e:
+                    e.add_note(
+                        f"This error occurred while parsing line {line_num} of '{path}'"
+                    )
+                    raise
+                samples.append(sample)
     check_no_duplicate_sample_names(samples, path)
     return Dataset(name=dataset_name, samples=samples, sample_type=sample_class)
 
