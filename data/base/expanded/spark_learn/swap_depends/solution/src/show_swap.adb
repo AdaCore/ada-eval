@@ -9,10 +9,8 @@ package body Show_Swap is
 
    procedure Identity (X, Y : in out Positive) is
    begin
-      Swap (X, Y);
-      pragma Warnings (Off, "actuals for this call may be in wrong order");
-      Swap (Y, X);
-      pragma Warnings (On, "actuals for this call may be in wrong order");
+      Swap (X => X, Y => Y);
+      Swap (X => Y, Y => X);
    end Identity;
 
 end Show_Swap;
