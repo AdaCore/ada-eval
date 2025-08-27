@@ -61,3 +61,14 @@ def generated_test_datasets(tmp_path: Path) -> Path:
     )
     shutil.copytree(generated_test_dataset_dir, dataset_path)
     return dataset_path
+
+
+@pytest.fixture
+def evaluated_test_datasets(tmp_path: Path) -> Path:
+    """Fixture to create a copy of the evaluated test dataset within `tmp_path`."""
+    dataset_path = tmp_path / "evaluated_datasets"
+    evaluated_test_dataset_dir = (
+        TEST_DATA_DIR / "valid_evaluated_datasets" / "compacted"
+    )
+    shutil.copytree(evaluated_test_dataset_dir, dataset_path)
+    return dataset_path

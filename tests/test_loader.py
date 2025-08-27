@@ -7,6 +7,7 @@ import pydantic
 import pytest
 from helpers import (
     compacted_test_datasets,  # noqa: F401  # Fixtures used implicitly
+    evaluated_test_datasets,  # noqa: F401  # Fixtures used implicitly
     expanded_test_datasets,  # noqa: F401  # Fixtures used implicitly
     generated_test_datasets,  # noqa: F401  # Fixtures used implicitly
     setup_git_repo,
@@ -30,6 +31,10 @@ from ada_eval.datasets.loader import (
 from ada_eval.datasets.types.directory_contents import DirectoryContents
 from ada_eval.datasets.types.samples import (
     AdaSample,
+    EvaluatedAdaSample,
+    EvaluatedExplainSample,
+    EvaluatedSample,
+    EvaluatedSparkSample,
     EvaluationStatsBuild,
     EvaluationStatsFailed,
     EvaluationStatsProve,
@@ -151,11 +156,38 @@ def expected_generated_sample(base_sample: Sample) -> GeneratedSample:
     )
 
 
-def check_loaded_datasets(datasets: list[Dataset[Sample]], *, generated: bool = False):
+def expected_evaluated_sample(base_sample: Sample) -> EvaluatedSample:
+    """Return the expected `EvaluatedSample` corresponding to a base sample."""
+    type_map: dict[type[Sample], type[EvaluatedSample]] = {
+        AdaSample: EvaluatedAdaSample,
+        ExplainSample: EvaluatedExplainSample,
+        SparkSample: EvaluatedSparkSample,
+    }
+    generated_sample = expected_generated_sample(base_sample)
+    return type_map[type(base_sample)](
+        **generated_sample.model_dump(),
+        evaluation_results=[
+            EvaluationStatsProve(successfully_proven=False, subprogram_found=True),
+            EvaluationStatsBuild(
+                compiled=False,
+                has_pre_format_compile_warnings=True,
+                has_post_format_compile_warnings=True,
+            ),
+        ],
+    )
+
+
+def check_loaded_datasets(
+    datasets: list[Dataset[Sample]], *, generated: bool = False, evaluated: bool = False
+) -> None:
     """Check that `datasets` matches `tests/data/valid_[base/generated]_datasets`."""
 
-    def generated_if_needed(sample: Sample) -> Sample:
-        return expected_generated_sample(sample) if generated else sample
+    def promoted_if_needed(sample: Sample) -> Sample:
+        return (
+            expected_evaluated_sample(sample)
+            if evaluated
+            else (expected_generated_sample(sample) if generated else sample)
+        )
 
     assert len(datasets) == 3
     datasets_by_name = {d.dirname(): d for d in datasets}
@@ -164,10 +196,12 @@ def check_loaded_datasets(datasets: list[Dataset[Sample]], *, generated: bool = 
     explain_dataset = datasets_by_name["explain_test"]
     assert explain_dataset.name == "test"
     assert explain_dataset.sample_type is (
-        GeneratedExplainSample if generated else ExplainSample
+        EvaluatedExplainSample
+        if evaluated
+        else (GeneratedExplainSample if generated else ExplainSample)
     )
     assert explain_dataset.samples == [
-        generated_if_needed(expected_explain_sample("test_sample_0", "explain_test"))
+        promoted_if_needed(expected_explain_sample("test_sample_0", "explain_test"))
     ]
 
     # Construct the expected sample for the Ada dataset (i.e. that returned by
@@ -183,8 +217,12 @@ def check_loaded_datasets(datasets: list[Dataset[Sample]], *, generated: bool = 
     # Check the Ada dataset
     ada_dataset = datasets_by_name["ada_test"]
     assert ada_dataset.name == "test"
-    assert ada_dataset.sample_type is (GeneratedAdaSample if generated else AdaSample)
-    assert ada_dataset.samples == [generated_if_needed(expected_ada_sample_0)]
+    assert ada_dataset.sample_type is (
+        EvaluatedAdaSample
+        if evaluated
+        else (GeneratedAdaSample if generated else AdaSample)
+    )
+    assert ada_dataset.samples == [promoted_if_needed(expected_ada_sample_0)]
 
     # Construct expected samples for the Spark dataset (sample_0 is mostly
     # as returned by `expected_spark_sample()`, sample_1 has some extra files,
@@ -231,13 +269,15 @@ def check_loaded_datasets(datasets: list[Dataset[Sample]], *, generated: bool = 
     spark_dataset = datasets_by_name["spark_test"]
     assert spark_dataset.name == "test"
     assert spark_dataset.sample_type is (
-        GeneratedSparkSample if generated else SparkSample
+        EvaluatedSparkSample
+        if evaluated
+        else (GeneratedSparkSample if generated else SparkSample)
     )
     spark_samples_by_name = {s.name: s for s in spark_dataset.samples}
     assert spark_samples_by_name == {
-        "test_sample_0": generated_if_needed(expected_spark_sample_0),
-        "test_sample_1": generated_if_needed(expected_spark_sample_1),
-        "test_sample_2": generated_if_needed(expected_spark_sample_2),
+        "test_sample_0": promoted_if_needed(expected_spark_sample_0),
+        "test_sample_1": promoted_if_needed(expected_spark_sample_1),
+        "test_sample_2": promoted_if_needed(expected_spark_sample_2),
     }
 
 
@@ -254,6 +294,11 @@ def test_load_valid_packed_datasets(compacted_test_datasets: Path):  # noqa: F81
 def test_load_valid_packed_generated_datasets(generated_test_datasets: Path):  # noqa: F811  # pytest fixture
     """Check that loading packed generated datasets works correctly."""
     check_loaded_datasets(load_datasets(generated_test_datasets), generated=True)
+
+
+def test_load_valid_packed_evaluated_datasets(evaluated_test_datasets: Path):  # noqa: F811  # pytest fixture
+    """Check that loading packed generated datasets works correctly."""
+    check_loaded_datasets(load_datasets(evaluated_test_datasets), evaluated=True)
 
 
 def test_load_valid_unpacked_datasets_with_gitignore(expanded_test_datasets: Path):  # noqa: F811  # pytest fixture
