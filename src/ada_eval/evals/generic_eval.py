@@ -76,7 +76,7 @@ class GenericEval(
             eval_stats = self.evaluate(sample)
         except subprocess.TimeoutExpired as e:
             logger.warning(
-                "Evaluation of %s failed due to a subprocess timeout (%d seconds)",
+                "Evaluation of sample %s failed due to subprocess timeout (%s seconds)",
                 sample.name,
                 e.timeout,
             )
@@ -87,7 +87,7 @@ class GenericEval(
             if isinstance(e, subprocess.CalledProcessError):
                 e.add_note(f"stdout: {e.stdout!r}")
                 e.add_note(f"stderr: {e.stderr!r}")
-            logger.exception("Error during evaluation of %s", sample.name)
+            logger.exception("Error during evaluation of sample %s", sample.name)
             eval_stats = EvaluationStatsFailed(eval=self.name, exception=repr(e))
         evaluated_sample.evaluation_results.append(eval_stats)
         return evaluated_sample
@@ -108,10 +108,11 @@ class WrongEvalOutputTypeError(TypeError):
         evaluation: GenericEval[GeneratedSampleType, EvaluatedSampleType],
         gen_sample: GeneratedSample,
     ) -> None:
+        output_types = sorted({t.__name__ for t in evaluation.type_map.values()})
+        # (use set to avoid repetition; sorted to make testing deterministic)
         super().__init__(
-            f"Eval '{evaluation.name}' accepted a `GeneratedSample` of type "
+            f"Eval '{evaluation.name}' accepted a GeneratedSample of type "
             f"{type(gen_sample).__name__}, but the corresponding evaluated sample "
             f"type ({type(gen_sample.to_evaluated_sample()).__name__}) is not "
-            "compatible with the eval's output types "
-            f"({[t.__name__ for t in evaluation.type_map.values()]})."
+            f"compatible with the eval's output types ({', '.join(output_types)})."
         )
