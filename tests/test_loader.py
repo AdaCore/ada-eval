@@ -21,6 +21,7 @@ from ada_eval.datasets.loader import (
     InvalidDatasetError,
     InvalidDatasetNameError,
     MixedDatasetFormatsError,
+    MixedSampleTypesError,
     UnknownDatasetKindError,
     load_datasets,
     load_packed_dataset,
@@ -487,6 +488,25 @@ def test_load_duplicate_sample_names(compacted_test_datasets):  # noqa: F811  # 
     error_msg = f"Duplicate sample name 'test_sample_1' found in '{spark_dataset_file}'"
     with pytest.raises(DuplicateSampleNameError, match=re.escape(error_msg)):
         load_datasets(compacted_test_datasets)
+
+
+def test_load_mixed_sample_types(generated_test_datasets: Path):  # noqa: F811  # pytest fixture
+    """Check that loading a dataset with mixed sample types raises an error."""
+    spark_dataset_file = generated_test_datasets / "spark_test.jsonl"
+    spark_dataset_content = spark_dataset_file.read_text()
+    # Change one of the generated samples to an evaluated one
+    spark_dataset_content = spark_dataset_content.replace(
+        '"name":"test_sample_2"',
+        '"name":"test_sample_2","evaluation_results":[]',
+    )
+    spark_dataset_file.write_text(spark_dataset_content)
+    error_msg = (
+        f"Dataset at '{spark_dataset_file}' contains mixed sample types:\n"
+        f"'test_sample_0' is GeneratedSparkSample "
+        f"but 'test_sample_2' is EvaluatedSparkSample"
+    )
+    with pytest.raises(MixedSampleTypesError, match=re.escape(error_msg)):
+        load_datasets(generated_test_datasets)
 
 
 def test_load_unpacked_dataset_invalid(expanded_test_datasets: Path):  # noqa: F811  # pytest fixture
