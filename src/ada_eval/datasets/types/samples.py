@@ -118,12 +118,6 @@ class Location(BaseModel):
         return find_subprogram_line(full_path, self.subprogram_name)
 
 
-class ExplainSolution(BaseModel):
-    reference_answer: str
-    correct_statements: list[str]
-    incorrect_statements: list[str]
-
-
 VALID_SAMPLE_NAME_PATTERN = re.compile(r"^[\w-]+$")
 
 
@@ -253,18 +247,18 @@ class AdaSample(Sample):
 
 
 class ExplainSample(Sample):
-    canonical_solution: ExplainSolution
+    canonical_solution: str
+    correct_statements: list[str]
+    incorrect_statements: list[str]
 
     def unpack(self, dataset_root: Path, other_data: dict[str, object] | None = None):
         other_data = {
-            CORRECT_STATEMENTS_KEY: self.canonical_solution.correct_statements,
-            INCORRECT_STATEMENTS_KEY: self.canonical_solution.incorrect_statements,
+            CORRECT_STATEMENTS_KEY: self.correct_statements,
+            INCORRECT_STATEMENTS_KEY: self.incorrect_statements,
         } | (other_data or {})
         super().unpack(dataset_root, other_data=other_data)
         dest_dir = self.working_dir_in(dataset_root)
-        (dest_dir / REFERENCE_ANSWER_FILE_NAME).write_text(
-            self.canonical_solution.reference_answer
-        )
+        (dest_dir / REFERENCE_ANSWER_FILE_NAME).write_text(self.canonical_solution)
 
     @classmethod
     def load_unpacked_sample(cls, sample_dir: Path):
@@ -277,11 +271,9 @@ class ExplainSample(Sample):
             prompt=base_sample.prompt,
             comments=base_sample.comments,
             sources=base_sample.sources,
-            canonical_solution=ExplainSolution(
-                reference_answer=reference_answer,
-                correct_statements=other_data.get(CORRECT_STATEMENTS_KEY, []),
-                incorrect_statements=other_data.get(INCORRECT_STATEMENTS_KEY, []),
-            ),
+            canonical_solution=reference_answer,
+            correct_statements=other_data.get(CORRECT_STATEMENTS_KEY, []),
+            incorrect_statements=other_data.get(INCORRECT_STATEMENTS_KEY, []),
             canonical_evaluation_results=base_sample.canonical_evaluation_results,
         )
 

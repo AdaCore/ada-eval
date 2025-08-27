@@ -34,7 +34,6 @@ from ada_eval.datasets.types.samples import (
     EvaluationStatsProve,
     EvaluationStatsTimedOut,
     ExplainSample,
-    ExplainSolution,
     GeneratedAdaSample,
     GeneratedExplainSample,
     GeneratedSample,
@@ -79,20 +78,18 @@ def expected_explain_sample(sample_name: str, dataset_dirname: str) -> ExplainSa
     """Return an `ExplainSample` matching that expected from the test datasets."""
     return ExplainSample(
         **expected_base_sample_fields(sample_name, dataset_dirname),
-        canonical_solution=ExplainSolution(
-            reference_answer=(
-                f"This is the reference answer for sample '{sample_name}' from "
-                f"dataset '{dataset_dirname}'.\n"
-            ),
-            correct_statements=[
-                "This is a correct statement.",
-                "This is another correct statement.",
-            ],
-            incorrect_statements=[
-                "This is an incorrect statement.",
-                "This is another incorrect statement.",
-            ],
+        canonical_solution=(
+            f"This is the reference answer for sample '{sample_name}' from "
+            f"dataset '{dataset_dirname}'.\n"
         ),
+        correct_statements=[
+            "This is a correct statement.",
+            "This is another correct statement.",
+        ],
+        incorrect_statements=[
+            "This is an incorrect statement.",
+            "This is another incorrect statement.",
+        ],
     )
 
 
