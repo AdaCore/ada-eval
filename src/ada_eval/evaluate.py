@@ -40,14 +40,12 @@ def evaluate_datasets(
     """
     evaluations = [create_eval(e) for e in evals]
     for evaluation in evaluations:
-        evaluated_datasets, failed_datasets, incompatible_datasets = (
-            evaluation.apply_to_datasets(datasets, jobs=jobs)
+        # `GenericEval` should catch exceptions raised during evaluation and
+        # convert them to `EvaluationStatsFailed`, so any other exceptions
+        # are unexpected and should propagate.
+        evaluated_datasets, _, incompatible_datasets = evaluation.apply_to_datasets(
+            datasets, jobs=jobs, catch_exceptions=False
         )
-        if len(failed_datasets) > 0:
-            # `GenericEval` should catch exceptions and convert them to
-            # `EvaluationStatsFailed`, so this should be unreachable.
-            msg = f"Unhandled exception during evaluation with {evaluation.name}."
-            raise RuntimeError(msg)
         if len(evaluated_datasets) > 0:
             # Recombine all datasets for the next eval (those incompatible with
             # this eval may be compatible with others).

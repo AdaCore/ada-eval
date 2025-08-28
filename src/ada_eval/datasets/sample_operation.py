@@ -49,7 +49,11 @@ class SampleOperation(ABC, Generic[InputType, OutputType]):
         """Apply the operation to a sample."""
 
     def apply_to_datasets(
-        self, datasets: Iterable[Dataset[DatasetSampleType]], jobs: int
+        self,
+        datasets: Iterable[Dataset[DatasetSampleType]],
+        jobs: int,
+        *,
+        catch_exceptions=True,
     ) -> tuple[
         list[Dataset[OutputType]],
         list[Dataset[InputType]],
@@ -61,6 +65,10 @@ class SampleOperation(ABC, Generic[InputType, OutputType]):
         Args:
             datasets: Iterable of datasets to apply the operation to.
             jobs: Number of parallel jobs to run.
+            catch_exceptions: If `True` (default), any exceptions raised during
+                application will be caught and logged, with those samples being
+                returned in `failed_datasets`. If `False`, exceptions will
+                propagate as normal (and `failed_datasets` will always be empty).
 
         Returns:
             transformed_datasets: New datasets with samples transformed by the
@@ -110,6 +118,8 @@ class SampleOperation(ABC, Generic[InputType, OutputType]):
                     try:
                         results_by_dataset[dataset].append(future.result())
                     except Exception:
+                        if not catch_exceptions:
+                            raise
                         logging.exception(
                             "Error processing sample %s from dataset %s",
                             sample.name,
@@ -146,7 +156,9 @@ class SampleOperation(ABC, Generic[InputType, OutputType]):
         ]
         return new_datasets, failed_datasets, incompatible_datasets
 
-    def apply_to_directory(self, path: Path, output_dir: Path, jobs: int) -> None:
+    def apply_to_directory(
+        self, path: Path, output_dir: Path, jobs: int, *, catch_exceptions=True
+    ) -> None:
         """
         Apply to all samples in a file/directory and write the results to another.
 
@@ -157,12 +169,18 @@ class SampleOperation(ABC, Generic[InputType, OutputType]):
                 packed or unpacked dataset(s).
             output_dir: Directory where the results will be saved.
             jobs: Number of parallel jobs to run.
+            catch_exceptions: If `True` (default), any exceptions raised during
+                application will be caught and logged, with those samples being
+                omitted from the output. If `False`, exceptions will propagate
+                as normal.
 
         """
         # Load from `path`
         datasets = load_datasets(path)
         # Apply to all compatible datasets
-        results, failures, incompatible = self.apply_to_datasets(datasets, jobs=jobs)
+        results, failures, incompatible = self.apply_to_datasets(
+            datasets, jobs=jobs, catch_exceptions=catch_exceptions
+        )
         if len(incompatible) > 0:
             logger.warning(
                 "'%s' is incompatible with %d datasets found at '%s'. "

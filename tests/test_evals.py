@@ -27,7 +27,7 @@ from ada_eval.datasets.types.samples import (
     GeneratedSparkSample,
     Sample,
 )
-from ada_eval.evals.generic_eval import GenericEval
+from ada_eval.evals.generic_eval import GenericEval, WrongEvalOutputTypeError
 from ada_eval.evaluate import evaluate_datasets, evaluate_datasets_canonical
 
 
@@ -233,7 +233,10 @@ def test_generic_eval(
 def test_generic_eval_wrong_output_type(
     generated_test_datasets: Path,  # noqa: F811  # pytest fixture
     caplog: pytest.LogCaptureFixture,
+    capsys: pytest.CaptureFixture[str],
 ):
+    """Test that an exception is raised if `supported_types` is misconfigured."""
+
     # Create a mock eval with a misconfigured `supported_types` (mapping
     # `AdaSample` to `ExplainSample`).
     class MockEval(GenericEval[GeneratedSample, EvaluatedSample]):
@@ -249,9 +252,14 @@ def test_generic_eval_wrong_output_type(
 
     # Check that running this eval on datasets including an `AdaSample` raises
     # a `WrongEvalOutputTypeError`.
-    error_msg = "Unhandled exception during evaluation with mock_eval."
+    error_msg = (
+        "Eval 'mock_eval' accepted a GeneratedSample of type GeneratedAdaSample, "
+        "but the corresponding evaluated sample type (EvaluatedAdaSample) is "
+        "not compatible with the eval's output types "
+        "(EvaluatedExplainSample, EvaluatedSparkSample)."
+    )
     with (
-        pytest.raises(RuntimeError, match=re.escape(error_msg)),
+        pytest.raises(WrongEvalOutputTypeError, match=re.escape(error_msg)),
         patch("ada_eval.evaluate.create_eval", return_value=MockEval()),
     ):
         evaluate_datasets(
@@ -262,16 +270,8 @@ def test_generic_eval_wrong_output_type(
             jobs=8,
         )
 
-    # The error should have been logged with a full stack trace
-    assert "ERROR" in caplog.text
-    assert (
-        "Error processing sample test_sample_0 from dataset ada_test\n"
-        "Traceback (most recent call last):\n"
-    ) in caplog.text
-    assert "raise WrongEvalOutputTypeError(" in caplog.text
-    assert (
-        "WrongEvalOutputTypeError: Eval 'mock_eval' accepted a GeneratedSample "
-        "of type GeneratedAdaSample, but the corresponding evaluated sample "
-        "type (EvaluatedAdaSample) is not compatible with the eval's output "
-        "types (EvaluatedExplainSample, EvaluatedSparkSample)."
-    ) in caplog.text
+    # Nothing else should have been logged
+    assert caplog.text == ""
+    output = capsys.readouterr()
+    assert output.out == ""
+    assert "Evaluating with mock_eval:" in output.err
