@@ -275,3 +275,18 @@ def test_generic_eval_wrong_output_type(
     output = capsys.readouterr()
     assert output.out == ""
     assert "Evaluating with mock_eval:" in output.err
+
+
+def test_evaluate_datasets_no_evals(
+    generated_test_datasets: Path,  # noqa: F811  # pytest fixture
+    caplog: pytest.LogCaptureFixture,
+):
+    """Test that `evaluate_datasets()` warns when no `Eval`s are provided."""
+    with patch("ada_eval.evaluate.create_eval") as mock_create_eval:
+        datasets = cast(
+            list[Dataset[GeneratedSample]], load_datasets(generated_test_datasets)
+        )
+        returned_datasets = evaluate_datasets(evals=[], datasets=datasets, jobs=8)
+    assert returned_datasets == []
+    assert not mock_create_eval.called
+    assert "No evals provided; skipping evaluation." in caplog.text

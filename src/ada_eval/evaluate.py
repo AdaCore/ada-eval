@@ -38,6 +38,9 @@ def evaluate_datasets(
         jobs: Number of parallel jobs to run.
 
     """
+    if len(evals) == 0:
+        logger.warning("No evals provided; skipping evaluation.")
+        return []
     evaluations = [create_eval(e) for e in evals]
     for evaluation in evaluations:
         # `GenericEval` should catch exceptions raised during evaluation and
