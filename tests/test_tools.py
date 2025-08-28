@@ -1,10 +1,12 @@
 import shutil
 import textwrap
+from logging import ERROR, WARN
 from pathlib import Path
 from typing import ClassVar
 
 import pytest
 from helpers import (
+    assert_log,
     compacted_test_datasets,  # noqa: F401  # Fixtures used implicitly
     expanded_test_datasets,  # noqa: F401  # Fixtures used implicitly
     generated_test_datasets,  # noqa: F401  # Fixtures used implicitly
@@ -163,17 +165,12 @@ def test_generic_tool(
     check_progress_bar(capsys, 4, "mock_tool_1")  # 4 because Explain sample is excluded
 
     # The failure should have been logged with a full stack trace
-    failure_log_substrs = [
-        "ERROR",
-        (
-            "Error processing sample test_sample_0 from dataset spark_test\n"
-            "Traceback (most recent call last):\n"
-        ),
-        'raise RuntimeError("Mock failure on test_sample_0")',  # From stack trace
-        "RuntimeError: Mock failure on test_sample_0",  # Actual exception message
-    ]
-    for substr in failure_log_substrs:
-        assert substr in caplog.text
+    def check_fail_log() -> None:
+        msg = "Error processing sample test_sample_0 from dataset spark_test"
+        fail_log = assert_log(caplog, ERROR, msg)
+        assert fail_log.exc_text.endswith("RuntimeError: Mock failure on test_sample_0")
+
+    check_fail_log()
     caplog.clear()
 
     # Check that the explain dataset is recognised as incompatible
@@ -212,16 +209,17 @@ def test_generic_tool(
 
     # The failure should have been logged again, and there should also be
     # warnings about the omissions from the output
-    for substr in failure_log_substrs:
-        assert substr in caplog.text
-    assert (
+    check_fail_log()
+    msg = (
         "'mock_tool_1' is incompatible with 1 datasets found at "
         f"'{compacted_test_datasets}'. These datasets will be omitted from the results."
-    ) in caplog.text
-    assert (
+    )
+    assert_log(caplog, WARN, msg)
+    msg = (
         "'mock_tool_1' failed on 1 samples found at "
         f"'{compacted_test_datasets}'. These samples will be omitted from the results."
-    ) in caplog.text
+    )
+    assert_log(caplog, WARN, msg)
     caplog.clear()
 
     # Check that the generated datasets are as expected
@@ -239,11 +237,12 @@ def test_generic_tool(
     output = capsys.readouterr()
     assert output.err == ""
     assert output.out == ""
-    assert ("No datasets compatible with mock_tool_1 found.") in caplog.text
-    assert (
+    assert_log(caplog, WARN, "No datasets compatible with mock_tool_1 found.")
+    msg = (
         "'mock_tool_1' could not be applied to any samples found at "
         f"'{compacted_test_datasets}'."
-    ) in caplog.text
+    )
+    assert_log(caplog, WARN, msg)
 
 
 @pytest.mark.skipif(not shutil.which("sh"), reason="sh not available")

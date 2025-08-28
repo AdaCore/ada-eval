@@ -1,11 +1,13 @@
 import json
 import re
 import shutil
+from logging import WARN
 from pathlib import Path
 
 import pydantic
 import pytest
 from helpers import (
+    assert_log,
     compacted_test_datasets,  # noqa: F401  # Fixtures used implicitly
     evaluated_test_datasets,  # noqa: F401  # Fixtures used implicitly
     expanded_test_datasets,  # noqa: F401  # Fixtures used implicitly
@@ -367,14 +369,16 @@ def test_load_no_valid_samples(
         packed_dataset.rename(packed_dataset.with_suffix(""))
     datasets = load_datasets(compacted_test_datasets)
     assert len(datasets) == 0
-    assert f"No datasets could be found at: {compacted_test_datasets}" in caplog.text
+    assert_log(
+        caplog, WARN, f"No datasets could be found at: {compacted_test_datasets}"
+    )
     # Remove the `other.json` file from all unpacked datasets and check that
     # loading them issues a warning
     for other_json in expanded_test_datasets.glob("**/other.json"):
         other_json.unlink()
     datasets = load_datasets(expanded_test_datasets)
     assert len(datasets) == 0
-    assert f"No datasets could be found at: {expanded_test_datasets}" in caplog.text
+    assert_log(caplog, WARN, f"No datasets could be found at: {expanded_test_datasets}")
 
 
 def test_load_mixed_datasets(
@@ -483,7 +487,7 @@ def test_load_non_sample_warning(
     datasets = load_datasets(expanded_test_datasets)
     spark_dataset = next(d for d in datasets if dataset_has_sample_type(d, SparkSample))
     assert len(spark_dataset.samples) == 2
-    assert f"Skipping non-sample directory: {spark_sample_path}" in caplog.text
+    assert_log(caplog, WARN, f"Skipping non-sample directory: {spark_sample_path}")
 
 
 def test_load_invalid_dataset_name(compacted_test_datasets, expanded_test_datasets):  # noqa: F811  # pytest fixtures

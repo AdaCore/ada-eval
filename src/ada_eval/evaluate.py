@@ -184,7 +184,7 @@ def evaluate_directory(
             else:
                 logger.warning(
                     "Dataset '%s' does not contain generations; Skipping evaluation.",
-                    dataset.name,
+                    dataset.dirname(),
                 )
         # Evaluate all datasets
         evaluated_datasets = evaluate_datasets(evals, datasets, jobs=jobs)

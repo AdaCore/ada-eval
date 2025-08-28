@@ -1,3 +1,4 @@
+import logging
 import shutil
 import subprocess
 from pathlib import Path
@@ -7,8 +8,13 @@ import pytest
 from ada_eval.paths import TEST_DATA_DIR
 
 
-def setup_git_repo(repo_path: Path):
+def setup_git_repo(repo_path: Path, *, initial_commit: bool = False):
     subprocess.run(["git", "init"], cwd=repo_path, check=True)
+    if initial_commit:
+        subprocess.run(["git", "add", "."], cwd=repo_path, check=True)
+        subprocess.run(
+            ["git", "commit", "-m", "Initial commit"], cwd=repo_path, check=True
+        )
 
 
 def assert_git_status(cwd: Path, *, expect_dirty: bool):
@@ -32,6 +38,28 @@ def assert_git_status(cwd: Path, *, expect_dirty: bool):
             )
             print(dbg.stdout)
         assert res.stdout.strip() == ""
+
+
+def assert_log(caplog: pytest.LogCaptureFixture, level: int, message: str):
+    """
+    Assert that a message was logged.
+
+    Args:
+        caplog: The `LogCaptureFixture` to check.
+        level: The log level (e.g., `logging.INFO`).
+        message: The log message.
+
+    Returns:
+        The first matching log record.
+
+    Raises:
+        ValueError: If no matching log record is found.
+
+    """
+    for record in caplog.records:
+        if record.levelno == level and record.message == message:
+            return record
+    raise ValueError(f"'{logging.getLevelName(level)}' message not found: {message}")
 
 
 @pytest.fixture

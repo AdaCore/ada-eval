@@ -1,24 +1,33 @@
 import re
+import shutil
 import subprocess
+from logging import ERROR, WARN
 from pathlib import Path
 from typing import Any, ClassVar, Literal, cast
 from unittest.mock import patch
 
 import pytest
 from helpers import (
-    compacted_test_datasets,  # noqa: F401  # pytest fixture
+    assert_git_status,
+    assert_log,
+    evaluated_test_datasets,  # noqa: F401  # pytest fixture
+    expanded_test_datasets,  # noqa: F401  # pytest fixture
     generated_test_datasets,  # noqa: F401  # pytest fixture
+    setup_git_repo,
 )
 
 from ada_eval.datasets import Dataset, dataset_has_sample_type
 from ada_eval.datasets.loader import load_datasets
 from ada_eval.datasets.types.samples import (
+    GENERATED_TYPE_TO_EVALUATED,
     EvaluatedAdaSample,
     EvaluatedExplainSample,
     EvaluatedSample,
     EvaluatedSparkSample,
     EvaluationStatsBase,
+    EvaluationStatsBuild,
     EvaluationStatsFailed,
+    EvaluationStatsProve,
     EvaluationStatsTimedOut,
     ExplainSample,
     GeneratedAdaSample,
@@ -27,8 +36,13 @@ from ada_eval.datasets.types.samples import (
     GeneratedSparkSample,
     Sample,
 )
+from ada_eval.evals import Eval
 from ada_eval.evals.generic_eval import GenericEval, WrongEvalOutputTypeError
-from ada_eval.evaluate import evaluate_datasets, evaluate_datasets_canonical
+from ada_eval.evaluate import (
+    evaluate_datasets,
+    evaluate_datasets_canonical,
+    evaluate_directory,
+)
 
 
 def check_progress_bar(output: Any, total: int, eval_name: str):
@@ -171,24 +185,22 @@ def test_generic_eval(
 
     # The failure should have been logged with a full stack trace, with
     # additional notes containing the stdout and stderr.
-    assert "ERROR" in caplog.text
-    assert (
-        "Error during evaluation of sample test_sample_2\n"
-        "Traceback (most recent call last):\n"
-    ) in caplog.text
-    assert "raise subprocess.CalledProcessError(" in caplog.text
-    assert (
+    fail_log = assert_log(
+        caplog, ERROR, "Error during evaluation of sample test_sample_2"
+    )
+    assert fail_log.exc_text.endswith(
         "subprocess.CalledProcessError: "
         "Command '['cmd', 'fail-arg']' returned non-zero exit status 42.\n"
-        r"stdout: 'This is a\nmulti-line\nstdout'"
-        "\nstderr: 'This is the stderr'"
-    ) in caplog.text
+        "stdout: 'This is a\\nmulti-line\\nstdout'\n"
+        "stderr: 'This is the stderr'"
+    )
     # The timeout should have been logged with a warning but no stack trace
-    assert (
-        "Evaluation of sample test_sample_1 failed "
-        "due to subprocess timeout (1.2 seconds)"
-    ) in caplog.text
-    assert "test_sample_1\nTraceback" not in caplog.text
+    warning = (
+        "Evaluation of sample test_sample_1 failed due to subprocess timeout "
+        "(1.2 seconds)"
+    )
+    timeout_log = assert_log(caplog, WARN, warning)
+    assert timeout_log.exc_text is None
 
     # Run the mock evals as a canonical evaluation on the evaluated datasets
     # (canonical evaluations would usually be run on base datasets, but this
@@ -232,8 +244,8 @@ def test_generic_eval(
 
 def test_generic_eval_wrong_output_type(
     generated_test_datasets: Path,  # noqa: F811  # pytest fixture
-    caplog: pytest.LogCaptureFixture,
     capsys: pytest.CaptureFixture[str],
+    caplog: pytest.LogCaptureFixture,
 ):
     """Test that an exception is raised if `supported_types` is misconfigured."""
 
@@ -289,4 +301,194 @@ def test_evaluate_datasets_no_evals(
         returned_datasets = evaluate_datasets(evals=[], datasets=datasets, jobs=8)
     assert returned_datasets == []
     assert not mock_create_eval.called
-    assert "No evals provided; skipping evaluation." in caplog.text
+    assert_log(caplog, WARN, "No evals provided; skipping evaluation.")
+
+
+def test_evaluate_directory(
+    tmp_path: Path,
+    evaluated_test_datasets: Path,  # noqa: F811  # pytest fixture
+    generated_test_datasets: Path,  # noqa: F811  # pytest fixture
+    capsys: pytest.CaptureFixture[str],
+    caplog: pytest.LogCaptureFixture,
+):
+    # Define mock evals which reproduce the evaluation results from
+    # `evaluated_test_datasets`.
+    class MockBuildEval(GenericEval[GeneratedSample, EvaluatedSample]):
+        name: ClassVar[Literal["build"]] = "build"
+        supported_types: ClassVar = GENERATED_TYPE_TO_EVALUATED
+
+        def evaluate(self, _: GeneratedSample) -> EvaluationStatsBuild:
+            return EvaluationStatsBuild(
+                compiled=False,
+                has_pre_format_compile_warnings=True,
+                has_post_format_compile_warnings=True,
+            )
+
+    class MockProveEval(GenericEval[GeneratedSample, EvaluatedSample]):
+        name: ClassVar[Literal["prove"]] = "prove"
+        supported_types: ClassVar = GENERATED_TYPE_TO_EVALUATED
+
+        def evaluate(self, _: GeneratedSample) -> EvaluationStatsProve:
+            return EvaluationStatsProve(
+                successfully_proven=False, subprogram_found=True
+            )
+
+    def mock_create_eval(eval_: Eval) -> MockBuildEval | MockProveEval:
+        match eval_:
+            case Eval.BUILD:
+                return MockBuildEval()
+            case Eval.PROVE:
+                return MockProveEval()
+            case _:
+                raise ValueError(f"Unknown mock eval {eval_}")
+
+    # Init a Git repo to track changes.
+    setup_git_repo(tmp_path, initial_commit=True)
+    assert_git_status(tmp_path, expect_dirty=False)
+
+    # Delete the contents of the evaluated datasets directory.
+    assert (evaluated_test_datasets / "spark_test.jsonl").is_file()
+    shutil.rmtree(evaluated_test_datasets)
+    assert not evaluated_test_datasets.exists()
+    assert_git_status(tmp_path, expect_dirty=True)
+
+    # Run the evals on the generated test datasets and check this regenerates
+    # the evaluated datasets.
+    with patch("ada_eval.evaluate.create_eval", mock_create_eval):
+        evaluate_directory(
+            [Eval.PROVE, Eval.BUILD],
+            path=generated_test_datasets,
+            output_dir=evaluated_test_datasets,
+            jobs=8,
+        )
+    assert (evaluated_test_datasets / "spark_test.jsonl").is_file()
+    assert_git_status(tmp_path, expect_dirty=False)
+
+    # Only the progress bars should be output.
+    assert caplog.text == ""
+    output = capsys.readouterr()
+    check_progress_bar(output, 5, "build")
+    check_progress_bar(output, 5, "prove")
+
+    # Run the evals as a canonical evaluation on the generated datasets
+    original_generated_datasets = load_datasets(generated_test_datasets)
+    with patch("ada_eval.evaluate.create_eval", mock_create_eval):
+        evaluate_directory(
+            [Eval.BUILD, Eval.PROVE],
+            path=generated_test_datasets,
+            output_dir=generated_test_datasets,
+            jobs=8,
+            canonical_evaluation=True,
+        )
+
+    # The output should be saved in packed format
+    assert (generated_test_datasets / "spark_test.jsonl").is_file()
+    assert not (generated_test_datasets / "spark_test").exists()
+
+    # Check that the `canonical_evaluation_results` have been updated correctly:
+    # the mock results should replace the existing ones, as they have the same
+    # `eval` field values.
+    canonically_evaluated_datasets = load_datasets(generated_test_datasets)
+    assert all(
+        dataset_has_sample_type(d, GeneratedSample)
+        for d in canonically_evaluated_datasets
+    )
+    for dataset in canonically_evaluated_datasets:
+        original_dataset = next(
+            d for d in original_generated_datasets if d.dirname() == dataset.dirname()
+        )
+        for sample in dataset.samples:
+            original_sample = next(
+                s for s in original_dataset.samples if s.name == sample.name
+            )
+            assert isinstance(sample, GeneratedSample)
+            # The existing ordering will be preserved (which makes the diff
+            # cleaner)
+            assert all(
+                es1.eval == es2.eval
+                for es1, es2 in zip(
+                    sample.canonical_evaluation_results,
+                    original_sample.canonical_evaluation_results,
+                    strict=False,  # Not all original samples have both eval results
+                )
+            )
+            assert sorted(
+                sample.canonical_evaluation_results, key=lambda x: x.eval
+            ) == [
+                EvaluationStatsBuild(
+                    compiled=False,
+                    has_pre_format_compile_warnings=True,
+                    has_post_format_compile_warnings=True,
+                ),
+                EvaluationStatsProve(successfully_proven=False, subprogram_found=True),
+            ]
+            # The remaining fields should be unchanged
+            assert sample.model_dump(
+                exclude={"canonical_evaluation_results"}
+            ) == original_sample.model_dump(exclude={"canonical_evaluation_results"})
+
+    # The output should be the same as before
+    assert caplog.text == ""
+    output = capsys.readouterr()
+    check_progress_bar(output, 5, "build")
+    check_progress_bar(output, 5, "prove")
+
+
+def test_evaluate_directory_no_generations(
+    tmp_path: Path,
+    expanded_test_datasets: Path,  # noqa: F811  # pytest fixture
+    caplog: pytest.LogCaptureFixture,
+    capsys: pytest.CaptureFixture[str],
+):
+    """Test that `evaluate_datasets()` warns when run on base datasets."""
+    output_dir = tmp_path / "output"
+    evaluate_directory(
+        [Eval.BUILD],
+        path=expanded_test_datasets,
+        output_dir=output_dir,
+        jobs=8,
+    )
+    assert not output_dir.exists()
+    for name in ["ada_test", "explain_test", "spark_test"]:
+        msg = f"Dataset '{name}' does not contain generations; Skipping evaluation."
+        assert_log(caplog, WARN, msg)
+    assert_log(caplog, WARN, "No datasets compatible with build found.")
+    assert_log(
+        caplog, WARN, "No datasets were compatible with any eval; no results to save."
+    )
+    output = capsys.readouterr()
+    assert output.out == ""
+    assert output.err == ""
+
+
+def test_evaluate_directory_save_unpacked(
+    tmp_path: Path,
+    expanded_test_datasets: Path,  # noqa: F811  # pytest fixture
+):
+    """Test that `evaluate_datasets()` saves in unpacked format when appropriate."""
+    # Output should be saved in packed format by default
+    output_dir = tmp_path / "output"
+    assert not output_dir.exists()
+    evaluate_directory(
+        [Eval.BUILD],
+        path=expanded_test_datasets,
+        output_dir=output_dir,
+        jobs=8,
+        canonical_evaluation=True,
+    )
+    assert (output_dir / "spark_test.jsonl").is_file()
+    assert not (output_dir / "spark_test").exists()
+    # If saving to a directory already containing unpacked datasets, output
+    # should be saved in unpacked format
+    shutil.rmtree(output_dir)
+    output_dir.mkdir()
+    shutil.copytree(expanded_test_datasets / "ada_test", output_dir / "ada_test")
+    evaluate_directory(
+        [Eval.BUILD],
+        path=expanded_test_datasets,
+        output_dir=output_dir,
+        jobs=8,
+        canonical_evaluation=True,
+    )
+    assert (output_dir / "spark_test").is_dir()
+    assert not (output_dir / "spark_test.jsonl").exists()

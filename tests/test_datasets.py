@@ -1,5 +1,4 @@
 import shutil
-import subprocess
 from pathlib import Path
 
 from helpers import (
@@ -93,9 +92,7 @@ def test_dataset_types():
 
 def test_save_datasets_packed(tmp_path: Path, generated_test_datasets: Path):  # noqa: F811  # pytest fixture
     # Initialise a Git repository to track changes
-    setup_git_repo(tmp_path)
-    subprocess.run(["git", "add", "."], cwd=tmp_path, check=True)
-    subprocess.run(["git", "commit", "-m", "msg"], cwd=tmp_path, check=True)
+    setup_git_repo(tmp_path, initial_commit=True)
     assert_git_status(tmp_path, expect_dirty=False)
 
     # Load the dataset files
@@ -133,9 +130,7 @@ def test_save_datasets_packed(tmp_path: Path, generated_test_datasets: Path):  #
 
 def test_save_datasets_unpacked(tmp_path: Path, expanded_test_datasets: Path):  # noqa: F811  # pytest fixture
     # Initialise a Git repository to track changes
-    setup_git_repo(tmp_path)
-    subprocess.run(["git", "add", "."], cwd=tmp_path, check=True)
-    subprocess.run(["git", "commit", "-m", "msg"], cwd=tmp_path, check=True)
+    setup_git_repo(tmp_path, initial_commit=True)
     assert_git_status(tmp_path, expect_dirty=False)
 
     # Load the dataset files
