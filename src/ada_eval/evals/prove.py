@@ -31,7 +31,9 @@ class Prove(GenericEval[GeneratedSparkSample, EvaluatedSparkSample]):
 
     def evaluate(self, sample: GeneratedSparkSample) -> EvaluationStatsProve:
         with sample.generated_solution.unpacked() as working_dir:
-            logger.debug("Evaluating %s with GNATprove in %s", sample.name, working_dir)
+            logger.debug(
+                "Evaluating '%s' with GNATprove in %s", sample.name, working_dir
+            )
             # Search for the subprogram of interest.
             try:
                 subp_lineno = sample.location.find_line_number(working_dir)

@@ -513,24 +513,23 @@ def test_build(
     capsys: pytest.CaptureFixture[str],
     caplog: pytest.LogCaptureFixture,
 ):
-    # Build eval should support both ada and spark datasets
+    # Build eval should support both ada and spark datasets (and treat them
+    # identically)
     ada_dataset_dir = eval_test_datasets / "ada_build"
     spark_dataset_dir = eval_test_datasets / "spark_build"
     shutil.copytree(ada_dataset_dir, spark_dataset_dir)
 
-    # Load the datasets
+    # Apply the build eval to the eval test datasets (for simplicity, they
+    # contain initial samples defining only a canonical solution)
     test_datasets = load_datasets(eval_test_datasets)
-    build_test_datasets = [d for d in test_datasets if d.name == "build"]
-    assert len(build_test_datasets) == 2
-
-    # Apply the build eval (for simplicity, the eval test samples are initial
-    # stage samples defining only a canonical solution)
     test_datasets = evaluate_datasets_canonical([Eval.BUILD], test_datasets, jobs=8)
     assert caplog.text == ""
-    check_progress_bar(capsys.readouterr(), 8, "build")  # 2x4
+    check_progress_bar(capsys.readouterr(), 11, "build")  # 2x4 (build) + 3 (prove)
 
     # Verify that the evaluation results are as expected for the build test
     # datasets
+    build_test_datasets = [d for d in test_datasets if d.name == "build"]
+    assert len(build_test_datasets) == 2
     for dataset in build_test_datasets:
         samples = {s.name: s for s in dataset.samples}
         assert samples["correct"].canonical_evaluation_results == [
@@ -561,3 +560,51 @@ def test_build(
                 has_post_format_compile_warnings=True,
             )
         ]
+
+    # Verify that all the spark samples in the prove dataset compiled without
+    # issue.
+    prove_test_datasets = [d for d in test_datasets if d.name == "prove"]
+    assert len(prove_test_datasets) == 1
+    for sample in prove_test_datasets[0].samples:
+        assert sample.canonical_evaluation_results == [
+            EvaluationStatsBuild(
+                compiled=True,
+                has_pre_format_compile_warnings=False,
+                has_post_format_compile_warnings=False,
+            )
+        ]
+
+
+@pytest.mark.skipif(not shutil.which("gnatprove"), reason="gnatprove not available")
+def test_prove(
+    eval_test_datasets: Path,  # noqa: F811  # pytest fixture
+    capsys: pytest.CaptureFixture[str],
+    caplog: pytest.LogCaptureFixture,
+):
+    # Apply the prove eval to the eval test datasets (for simplicity, they
+    # contain initial samples defining only a canonical solution)
+    test_datasets = load_datasets(eval_test_datasets)
+    test_datasets = evaluate_datasets_canonical([Eval.PROVE], test_datasets, jobs=8)
+    assert caplog.text == ""
+    check_progress_bar(capsys.readouterr(), 3, "prove")  # 3 spark samples
+
+    # Verify that the evaluation results are as expected for the build dataset
+    # (only spark samples are compatible with prove)
+    build_test_datasets = [d for d in test_datasets if d.name == "build"]
+    assert len(build_test_datasets) == 1
+    for sample in build_test_datasets[0].samples:
+        assert sample.canonical_evaluation_results == []
+
+    # Verify that the evaluation results are as expected for the prove dataset
+    prove_test_datasets = [d for d in test_datasets if d.name == "prove"]
+    assert len(prove_test_datasets) == 1
+    samples = {s.name: s for s in prove_test_datasets[0].samples}
+    assert samples["proves"].canonical_evaluation_results == [
+        EvaluationStatsProve(successfully_proven=True, subprogram_found=True)
+    ]
+    assert samples["fails"].canonical_evaluation_results == [
+        EvaluationStatsProve(successfully_proven=False, subprogram_found=True)
+    ]
+    assert samples["not_found"].canonical_evaluation_results == [
+        EvaluationStatsProve(successfully_proven=False, subprogram_found=False)
+    ]

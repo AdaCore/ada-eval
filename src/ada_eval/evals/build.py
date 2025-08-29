@@ -48,7 +48,9 @@ class Build(GenericEval[GeneratedAdaSample, EvaluatedAdaSample]):
 
     def evaluate(self, sample: GeneratedAdaSample) -> EvaluationStatsBuild:
         with sample.generated_solution.unpacked() as working_dir:
-            logger.debug("Evaluating %s with GPRbuild in %s", sample.name, working_dir)
+            logger.debug(
+                "Evaluating '%s' with GPRbuild in %s", sample.name, working_dir
+            )
             # Initialise values to success
             eval_stats = EvaluationStatsBuild(
                 compiled=True,
