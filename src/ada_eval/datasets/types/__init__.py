@@ -1,6 +1,5 @@
 from .datasets import (
     Dataset,
-    DatasetKind,
     dataset_has_sample_type,
     get_packed_dataset_files,
     get_unpacked_dataset_dirs,
@@ -10,7 +9,9 @@ from .datasets import (
 )
 from .directory_contents import get_contents
 from .samples import (
-    BASE_TYPE_TO_GENERATED,
+    EVALUATED_SAMPLE_TYPES,
+    GENERATED_SAMPLE_TYPES,
+    INITIAL_SAMPLE_TYPES,
     AdaSample,
     EvaluatedAdaSample,
     EvaluatedExplainSample,
@@ -29,16 +30,19 @@ from .samples import (
     GenerationStats,
     Location,
     Sample,
+    SampleKind,
+    SampleStage,
     SparkSample,
     SubprogramNotFoundError,
 )
 
 __all__ = [
-    "BASE_TYPE_TO_GENERATED",
+    "EVALUATED_SAMPLE_TYPES",
+    "GENERATED_SAMPLE_TYPES",
+    "INITIAL_SAMPLE_TYPES",
     "AdaDataset",
     "AdaSample",
     "Dataset",
-    "DatasetKind",
     "EvaluatedAdaSample",
     "EvaluatedExplainSample",
     "EvaluatedSample",
@@ -56,7 +60,9 @@ __all__ = [
     "GenerationStats",
     "Location",
     "Sample",
+    "SampleKind",
     "SampleOperation",
+    "SampleStage",
     "SparkSample",
     "SubprogramNotFoundError",
     "dataset_has_sample_type",

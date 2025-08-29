@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import json
 import re
+from enum import Enum
 from pathlib import Path
-from typing import Literal, Self
+from typing import ClassVar, Literal, Self
 
 from pydantic import (
     BaseModel,
@@ -118,6 +119,41 @@ class Location(BaseModel):
         return find_subprogram_line(full_path, self.subprogram_name)
 
 
+class SampleKind(Enum):
+    """
+    Enum for the 'kind' of a sample/dataset.
+
+    This is the kind of problem the sample represents, making no distinction
+    between initial, generated, or evaluated types.
+    """
+
+    ADA = "ada"
+    EXPLAIN = "explain"
+    SPARK = "spark"
+
+    def __str__(self) -> str:
+        return self.name.lower()
+
+
+class SampleStage(Enum):
+    """
+    Enum for the 'stage' of a sample/dataset.
+
+    This is the stage of the evaluation pipeline the sample has reached, making
+    no distinction between different kinds of problems.
+    """
+
+    INITIAL = "initial"
+    """An initial problem statement; the input to the evaluation pipeline."""
+    GENERATED = "generated"
+    """A problem and a generated solution thereto, which has not yet been evaluated."""
+    EVALUATED = "evaluated"
+    """A problem, a generated solution thereto, and an evaluation thereof."""
+
+    def __str__(self) -> str:
+        return self.value
+
+
 VALID_SAMPLE_NAME_PATTERN = re.compile(r"^[\w-]+$")
 
 
@@ -139,6 +175,9 @@ class Sample(BaseModel):
         comments (str): Any comments about the sample by the author. May be empty.
 
     """
+
+    kind: ClassVar[SampleKind]
+    stage: ClassVar[SampleStage] = SampleStage.INITIAL
 
     name: str
     location: Location
@@ -220,6 +259,8 @@ class AdaSample(Sample):
 
     """
 
+    kind: ClassVar = SampleKind.ADA
+
     canonical_solution: DirectoryContents
     unit_tests: DirectoryContents
 
@@ -247,6 +288,8 @@ class AdaSample(Sample):
 
 
 class ExplainSample(Sample):
+    kind: ClassVar = SampleKind.EXPLAIN
+
     canonical_solution: str
     correct_statements: list[str]
     incorrect_statements: list[str]
@@ -279,7 +322,7 @@ class ExplainSample(Sample):
 
 
 class SparkSample(AdaSample):
-    pass
+    kind: ClassVar = SampleKind.SPARK
 
 
 class GenerationStats(BaseModel):
@@ -291,6 +334,8 @@ class GenerationStats(BaseModel):
 
 
 class GeneratedSample(Sample):
+    stage: ClassVar = SampleStage.GENERATED
+
     generation_stats: GenerationStats
     generated_solution: object
 
@@ -304,7 +349,7 @@ class GeneratedSample(Sample):
         """
         if isinstance(self, EvaluatedSample):
             return self
-        return GENERATED_TYPE_TO_EVALUATED[type(self)](
+        return EVALUATED_SAMPLE_TYPES[self.kind](
             **self.model_dump(),  # Copy all fields from the original sample
             evaluation_results=[],
         )
@@ -369,6 +414,8 @@ _evaluation_results_adapter = TypeAdapter(list[EvaluationStats])
 
 
 class EvaluatedSample(GeneratedSample):
+    stage: ClassVar = SampleStage.EVALUATED
+
     evaluation_results: list[EvaluationStats]
 
 
@@ -384,15 +431,23 @@ class EvaluatedSparkSample(GeneratedSparkSample, EvaluatedAdaSample):
     pass
 
 
-# Type mappings for promoting `Sample` -> `GeneratedSample` and
-# `GeneratedSample` -> `EvaluatedSample`
-BASE_TYPE_TO_GENERATED: dict[type[Sample], type[GeneratedSample]] = {
-    AdaSample: GeneratedAdaSample,
-    ExplainSample: GeneratedExplainSample,
-    SparkSample: GeneratedSparkSample,
+INITIAL_SAMPLE_TYPES = {
+    sample_type.kind: sample_type
+    for sample_type in (AdaSample, ExplainSample, SparkSample)
 }
-GENERATED_TYPE_TO_EVALUATED: dict[type[GeneratedSample], type[EvaluatedSample]] = {
-    GeneratedAdaSample: EvaluatedAdaSample,
-    GeneratedExplainSample: EvaluatedExplainSample,
-    GeneratedSparkSample: EvaluatedSparkSample,
+GENERATED_SAMPLE_TYPES = {
+    sample_type.kind: sample_type
+    for sample_type in (
+        GeneratedAdaSample,
+        GeneratedExplainSample,
+        GeneratedSparkSample,
+    )
+}
+EVALUATED_SAMPLE_TYPES = {
+    sample_type.kind: sample_type
+    for sample_type in (
+        EvaluatedAdaSample,
+        EvaluatedExplainSample,
+        EvaluatedSparkSample,
+    )
 }

@@ -19,7 +19,8 @@ from helpers import (
 from ada_eval.datasets import Dataset, dataset_has_sample_type
 from ada_eval.datasets.loader import load_datasets
 from ada_eval.datasets.types.samples import (
-    GENERATED_TYPE_TO_EVALUATED,
+    EVALUATED_SAMPLE_TYPES,
+    GENERATED_SAMPLE_TYPES,
     EvaluatedAdaSample,
     EvaluatedExplainSample,
     EvaluatedSample,
@@ -35,6 +36,7 @@ from ada_eval.datasets.types.samples import (
     GeneratedSample,
     GeneratedSparkSample,
     Sample,
+    SampleKind,
 )
 from ada_eval.evals import Eval
 from ada_eval.evals.generic_eval import GenericEval, WrongEvalOutputTypeError
@@ -43,6 +45,10 @@ from ada_eval.evaluate import (
     evaluate_datasets_canonical,
     evaluate_directory,
 )
+
+GENERATED_TYPE_TO_EVALUATED = {
+    GENERATED_SAMPLE_TYPES[k]: EVALUATED_SAMPLE_TYPES[k] for k in SampleKind
+}
 
 
 def check_progress_bar(output: Any, total: int, eval_name: str):

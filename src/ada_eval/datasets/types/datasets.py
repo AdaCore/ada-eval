@@ -3,48 +3,16 @@ from __future__ import annotations
 import shutil
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
-from enum import Enum
 from pathlib import Path
 from typing import Generic, TypeGuard, TypeVar
 
-from ada_eval.utils import UnexpectedTypeError
-
 from .samples import (
-    AdaSample,
-    ExplainSample,
     GeneratedSample,
     Sample,
-    SparkSample,
+    SampleKind,
+    SampleStage,
     is_unpacked_sample,
 )
-
-
-class DatasetKind(Enum):
-    """
-    Enum for the 'kind' of a sample/dataset.
-
-    This is the base type of the sample, making no distinction between
-    base, generated, or evaluated types.
-    """
-
-    ADA = "ada"
-    EXPLAIN = "explain"
-    SPARK = "spark"
-
-    def __str__(self) -> str:
-        return self.name.lower()
-
-    @classmethod
-    def from_type(cls, sample_type: type[Sample]) -> DatasetKind:
-        """Get the `DatasetKind` from a sample type."""
-        if issubclass(sample_type, SparkSample):
-            return DatasetKind.SPARK
-        if issubclass(sample_type, AdaSample):
-            return DatasetKind.ADA
-        if issubclass(sample_type, ExplainSample):
-            return DatasetKind.EXPLAIN
-        raise UnexpectedTypeError(expected_type=Sample, actual_type=sample_type)
-
 
 SampleType_co = TypeVar("SampleType_co", bound=Sample, covariant=True)
 TargetSampleType = TypeVar("TargetSampleType", bound=Sample)
@@ -76,13 +44,19 @@ class Dataset(Generic[SampleType_co]):
             return False
         return self.name == other.name and self.sample_type is other.sample_type
 
-    def kind(self) -> DatasetKind:
+    @property
+    def kind(self) -> SampleKind:
         """Return the kind of this dataset."""
-        return DatasetKind.from_type(self.sample_type)
+        return self.sample_type.kind
+
+    @property
+    def stage(self) -> SampleStage:
+        """Return the stage of this dataset."""
+        return self.sample_type.stage
 
     def dirname(self) -> str:
         """Return the stem of this dataset's file or directory name."""
-        return f"{self.kind()}_{self.name}"
+        return f"{self.kind}_{self.name}"
 
     def save_unpacked(self, unpacked_datasets_root: Path):
         dataset_root = unpacked_datasets_root / self.dirname()

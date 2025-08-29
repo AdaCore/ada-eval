@@ -11,7 +11,6 @@ from helpers import (
 from ada_eval.datasets.loader import load_datasets
 from ada_eval.datasets.types.datasets import (
     Dataset,
-    DatasetKind,
     dataset_has_sample_type,
     save_datasets,
 )
@@ -27,19 +26,16 @@ from ada_eval.datasets.types.samples import (
     GeneratedSample,
     GeneratedSparkSample,
     Sample,
+    SampleKind,
+    SampleStage,
     SparkSample,
 )
 
 
-def test_dataset_kind_str():
-    assert str(DatasetKind.ADA) == "ada"
-    assert str(DatasetKind.EXPLAIN) == "explain"
-    assert str(DatasetKind.SPARK) == "spark"
-
-
 def test_dataset_types():
     base_ada_dataset = Dataset(name="test_0", sample_type=AdaSample, samples=[])
-    assert base_ada_dataset.kind() is DatasetKind.ADA
+    assert base_ada_dataset.kind is SampleKind.ADA
+    assert base_ada_dataset.stage is SampleStage.INITIAL
     assert base_ada_dataset.dirname() == "ada_test_0"
     assert dataset_has_sample_type(base_ada_dataset, Sample)
     assert dataset_has_sample_type(base_ada_dataset, AdaSample)
@@ -53,7 +49,8 @@ def test_dataset_types():
     generated_explain_dataset = Dataset(
         name="test_1", sample_type=GeneratedExplainSample, samples=[]
     )
-    assert generated_explain_dataset.kind() is DatasetKind.EXPLAIN
+    assert generated_explain_dataset.kind is SampleKind.EXPLAIN
+    assert generated_explain_dataset.stage is SampleStage.GENERATED
     assert generated_explain_dataset.dirname() == "explain_test_1"
     assert dataset_has_sample_type(generated_explain_dataset, Sample)
     assert dataset_has_sample_type(generated_explain_dataset, ExplainSample)
@@ -69,7 +66,8 @@ def test_dataset_types():
     evaluated_spark_dataset = Dataset(
         name="test_2", sample_type=EvaluatedSparkSample, samples=[]
     )
-    assert evaluated_spark_dataset.kind() is DatasetKind.SPARK
+    assert evaluated_spark_dataset.kind is SampleKind.SPARK
+    assert evaluated_spark_dataset.stage is SampleStage.EVALUATED
     assert evaluated_spark_dataset.dirname() == "spark_test_2"
     assert dataset_has_sample_type(evaluated_spark_dataset, Sample)
     assert dataset_has_sample_type(evaluated_spark_dataset, AdaSample)

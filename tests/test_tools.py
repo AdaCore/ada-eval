@@ -15,12 +15,12 @@ from helpers import (
 from ada_eval.datasets.loader import load_datasets
 from ada_eval.datasets.types.datasets import (
     Dataset,
-    DatasetKind,
     dataset_has_sample_type,
 )
 from ada_eval.datasets.types.directory_contents import DirectoryContents
 from ada_eval.datasets.types.samples import (
-    BASE_TYPE_TO_GENERATED,
+    GENERATED_SAMPLE_TYPES,
+    INITIAL_SAMPLE_TYPES,
     AdaSample,
     ExplainSample,
     GeneratedAdaSample,
@@ -29,6 +29,7 @@ from ada_eval.datasets.types.samples import (
     GeneratedSparkSample,
     GenerationStats,
     Sample,
+    SampleKind,
     SparkSample,
 )
 from ada_eval.tools import Tool, create_tool
@@ -64,7 +65,9 @@ def test_generic_tool(
 
     class MockTool0(GenericTool[BaseConfig, Sample, GeneratedSample]):
         name: ClassVar = "mock_tool_0"
-        type_map: ClassVar = BASE_TYPE_TO_GENERATED
+        type_map: ClassVar = {
+            INITIAL_SAMPLE_TYPES[k]: GENERATED_SAMPLE_TYPES[k] for k in SampleKind
+        }
         config_type = BaseConfig
 
         def apply(self, sample: Sample) -> GeneratedSample:
@@ -72,7 +75,7 @@ def test_generic_tool(
                 generated_solution: object = mock_explain_solution
             else:
                 generated_solution = mock_ada_solution
-            return BASE_TYPE_TO_GENERATED[type(sample)](
+            return GENERATED_SAMPLE_TYPES[sample.kind](
                 **sample.model_dump(),
                 generation_stats=mock_generation_stats,
                 generated_solution=generated_solution,
@@ -101,7 +104,7 @@ def test_generic_tool(
                     s for s in base_dataset.samples if s.name == sample.name
                 )
                 assert sample.generation_stats == mock_generation_stats
-                if dataset.kind() == DatasetKind.EXPLAIN:
+                if dataset.kind == SampleKind.EXPLAIN:
                     assert isinstance(sample, GeneratedExplainSample)
                     assert sample.generated_solution == mock_explain_solution
                 else:
@@ -149,7 +152,7 @@ def test_generic_tool(
         def apply(self, sample: AdaSample) -> GeneratedAdaSample:
             if isinstance(sample, SparkSample) and sample.name == "test_sample_0":
                 raise RuntimeError("Mock failure on test_sample_0")
-            gen_sample = BASE_TYPE_TO_GENERATED[type(sample)](
+            gen_sample = GENERATED_SAMPLE_TYPES[sample.kind](
                 **sample.model_dump(),
                 generation_stats=mock_generation_stats,
                 generated_solution=mock_ada_solution,
@@ -298,7 +301,7 @@ def test_shell_script(
     # `generation_stats`'s `runtime_ms`, which may be non-zero.
     generated_datasets_fixture = load_datasets(generated_test_datasets)
     generated_spark_dataset_fixture = next(
-        d for d in generated_datasets_fixture if d.kind() == DatasetKind.SPARK
+        d for d in generated_datasets_fixture if d.kind == SampleKind.SPARK
     )
     assert len(generated_datasets) == 1
     generated_spark_dataset = generated_datasets[0]

@@ -13,11 +13,10 @@ from ada_eval.datasets import (
     save_datasets,
 )
 from ada_eval.datasets.types import (
-    BASE_TYPE_TO_GENERATED,
+    GENERATED_SAMPLE_TYPES,
     GenerationStats,
     is_unpacked_data,
 )
-from ada_eval.datasets.types.samples import GENERATED_TYPE_TO_EVALUATED
 from ada_eval.evals import Eval, create_eval
 
 logger = logging.getLogger(__name__)
@@ -84,7 +83,7 @@ def evaluate_datasets_canonical(
     # Create a mapping from `(dataset_name, dataset_kind, sample_name)`
     # to the original sample for future reference.
     original_samples = {
-        (dataset.name, dataset.kind(), sample.name): sample
+        (dataset.name, dataset.kind, sample.name): sample
         for dataset in datasets
         for sample in dataset.samples
     }
@@ -93,17 +92,9 @@ def evaluate_datasets_canonical(
     dummy_gen_stats = GenerationStats(exit_code=0, stdout="", stderr="", runtime_ms=0)
     generated_datasets: list[Dataset[GeneratedSample]] = []
     for dataset in datasets:
-        if dataset_has_sample_type(dataset, EvaluatedSample):
-            gen_sample_type = {v: k for k, v in GENERATED_TYPE_TO_EVALUATED.items()}[
-                dataset.sample_type
-            ]
-        elif dataset_has_sample_type(dataset, GeneratedSample):
-            gen_sample_type = dataset.sample_type
-        else:
-            gen_sample_type = BASE_TYPE_TO_GENERATED[dataset.sample_type]
-        gen_samples: list[GeneratedSample] = []
-        for sample in dataset.samples:
-            gen_sample = gen_sample_type(
+        sample_type = GENERATED_SAMPLE_TYPES[dataset.kind]
+        samples = [
+            sample_type(
                 **sample.model_dump(
                     exclude={
                         "generation_stats",
@@ -114,11 +105,11 @@ def evaluate_datasets_canonical(
                 generation_stats=dummy_gen_stats,
                 generated_solution=sample.canonical_solution,
             )
-            gen_samples.append(gen_sample)
-        generated_dataset = Dataset(
-            name=dataset.name, sample_type=gen_sample_type, samples=gen_samples
+            for sample in dataset.samples
+        ]
+        generated_datasets.append(
+            Dataset(name=dataset.name, sample_type=sample_type, samples=samples)
         )
-        generated_datasets.append(generated_dataset)
     # Evaluate the "generated" datasets
     evaluated_datasets = evaluate_datasets(evals, generated_datasets, jobs=jobs)
     # Record the evaluation results in the `canonical_evaluation_results` field
@@ -126,7 +117,7 @@ def evaluate_datasets_canonical(
     for eval_dataset in evaluated_datasets:
         for evaluated_sample in eval_dataset.samples:
             original_sample = original_samples[
-                (eval_dataset.name, eval_dataset.kind(), evaluated_sample.name)
+                (eval_dataset.name, eval_dataset.kind, evaluated_sample.name)
             ]
             # Merge new results with existing, overwriting only when we have
             # re-run the same eval.
