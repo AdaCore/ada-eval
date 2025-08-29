@@ -59,11 +59,20 @@ def evaluate(args):
 
 
 def main() -> None:
-    logging.basicConfig(level=logging.INFO)
     parser = argparse.ArgumentParser(description="CLI for Eval Framework")
     subparsers = parser.add_subparsers(required=True)
 
     default_num_jobs = cpu_count() or 1
+
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        help=(
+            "Enable verbose logging "
+            "(--jobs=1 is recommended to avoid interleaved output)"
+        ),
+    )
 
     # Unpack datasets subcommand
     unpack_parser = subparsers.add_parser(
@@ -196,6 +205,7 @@ def main() -> None:
     )
 
     args = parser.parse_args()
+    logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO)
     args.func(args)
 
 
