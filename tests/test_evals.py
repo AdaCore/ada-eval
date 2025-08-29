@@ -515,9 +515,9 @@ def test_build(
 ):
     # Build eval should support both ada and spark datasets (and treat them
     # identically)
-    ada_dataset_dir = eval_test_datasets / "ada_build"
-    spark_dataset_dir = eval_test_datasets / "spark_build"
-    shutil.copytree(ada_dataset_dir, spark_dataset_dir)
+    ada_dataset_file = eval_test_datasets / "ada_build.jsonl"
+    spark_dataset_file = eval_test_datasets / "spark_build.jsonl"
+    shutil.copy(ada_dataset_file, spark_dataset_file)
 
     # Apply the build eval to the eval test datasets (for simplicity, they
     # contain initial samples defining only a canonical solution)
