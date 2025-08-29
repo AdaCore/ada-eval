@@ -51,6 +51,47 @@ GENERATED_TYPE_TO_EVALUATED = {
 }
 
 
+MOCK_BUILD_EVAL_STATS = EvaluationStatsBuild(
+    compiled=False,
+    has_pre_format_compile_warnings=True,
+    has_post_format_compile_warnings=True,
+)
+MOCK_PROVE_EVAL_STATS = EvaluationStatsProve(
+    successfully_proven=False, subprogram_found=True
+)
+
+
+class MockBuildEval(GenericEval[GeneratedSample, EvaluatedSample]):
+    """Mock build eval suitable for reproducing `evaluated_test_datasets`."""
+
+    name: ClassVar[Literal["build"]] = "build"
+    supported_types: ClassVar = GENERATED_TYPE_TO_EVALUATED
+
+    def evaluate(self, _: GeneratedSample) -> EvaluationStatsBuild:
+        return MOCK_BUILD_EVAL_STATS
+
+
+class MockProveEval(GenericEval[GeneratedSample, EvaluatedSample]):
+    """Mock prove eval suitable for reproducing `evaluated_test_datasets`."""
+
+    name: ClassVar[Literal["prove"]] = "prove"
+    supported_types: ClassVar = GENERATED_TYPE_TO_EVALUATED
+
+    def evaluate(self, _: GeneratedSample) -> EvaluationStatsProve:
+        return MOCK_PROVE_EVAL_STATS
+
+
+def mock_create_eval(eval_: Eval) -> MockBuildEval | MockProveEval:
+    """Mock `create_eval()` suitable for reproducing `evaluated_test_datasets`."""
+    match eval_:
+        case Eval.BUILD:
+            return MockBuildEval()
+        case Eval.PROVE:
+            return MockProveEval()
+        case _:
+            raise ValueError(f"Unknown mock eval {eval_}")
+
+
 def check_progress_bar(output: Any, total: int, eval_name: str):
     assert f"Evaluating with {eval_name}: 100%" in output.err
     assert f" {total}/{total} " in output.err
@@ -317,37 +358,6 @@ def test_evaluate_directory(
     capsys: pytest.CaptureFixture[str],
     caplog: pytest.LogCaptureFixture,
 ):
-    # Define mock evals which reproduce the evaluation results from
-    # `evaluated_test_datasets`.
-    class MockBuildEval(GenericEval[GeneratedSample, EvaluatedSample]):
-        name: ClassVar[Literal["build"]] = "build"
-        supported_types: ClassVar = GENERATED_TYPE_TO_EVALUATED
-
-        def evaluate(self, _: GeneratedSample) -> EvaluationStatsBuild:
-            return EvaluationStatsBuild(
-                compiled=False,
-                has_pre_format_compile_warnings=True,
-                has_post_format_compile_warnings=True,
-            )
-
-    class MockProveEval(GenericEval[GeneratedSample, EvaluatedSample]):
-        name: ClassVar[Literal["prove"]] = "prove"
-        supported_types: ClassVar = GENERATED_TYPE_TO_EVALUATED
-
-        def evaluate(self, _: GeneratedSample) -> EvaluationStatsProve:
-            return EvaluationStatsProve(
-                successfully_proven=False, subprogram_found=True
-            )
-
-    def mock_create_eval(eval_: Eval) -> MockBuildEval | MockProveEval:
-        match eval_:
-            case Eval.BUILD:
-                return MockBuildEval()
-            case Eval.PROVE:
-                return MockProveEval()
-            case _:
-                raise ValueError(f"Unknown mock eval {eval_}")
-
     # Init a Git repo to track changes.
     setup_git_repo(tmp_path, initial_commit=True)
     assert_git_status(tmp_path, expect_dirty=False)
@@ -420,14 +430,7 @@ def test_evaluate_directory(
             )
             assert sorted(
                 sample.canonical_evaluation_results, key=lambda x: x.eval
-            ) == [
-                EvaluationStatsBuild(
-                    compiled=False,
-                    has_pre_format_compile_warnings=True,
-                    has_post_format_compile_warnings=True,
-                ),
-                EvaluationStatsProve(successfully_proven=False, subprogram_found=True),
-            ]
+            ) == [MOCK_BUILD_EVAL_STATS, MOCK_PROVE_EVAL_STATS]
             # The remaining fields should be unchanged
             assert sample.model_dump(
                 exclude={"canonical_evaluation_results"}
@@ -448,12 +451,13 @@ def test_evaluate_directory_no_generations(
 ):
     """Test that `evaluate_datasets()` warns when run on base datasets."""
     output_dir = tmp_path / "output"
-    evaluate_directory(
-        [Eval.BUILD],
-        path=expanded_test_datasets,
-        output_dir=output_dir,
-        jobs=8,
-    )
+    with patch("ada_eval.evaluate.create_eval", mock_create_eval):
+        evaluate_directory(
+            [Eval.BUILD],
+            path=expanded_test_datasets,
+            output_dir=output_dir,
+            jobs=8,
+        )
     assert not output_dir.exists()
     for name in ["ada_test", "explain_test", "spark_test"]:
         msg = f"Dataset '{name}' does not contain generations; Skipping evaluation."
@@ -475,13 +479,14 @@ def test_evaluate_directory_save_unpacked(
     # Output should be saved in packed format by default
     output_dir = tmp_path / "output"
     assert not output_dir.exists()
-    evaluate_directory(
-        [Eval.BUILD],
-        path=expanded_test_datasets,
-        output_dir=output_dir,
-        jobs=8,
-        canonical_evaluation=True,
-    )
+    with patch("ada_eval.evaluate.create_eval", mock_create_eval):
+        evaluate_directory(
+            [Eval.BUILD],
+            path=expanded_test_datasets,
+            output_dir=output_dir,
+            jobs=8,
+            canonical_evaluation=True,
+        )
     assert (output_dir / "spark_test.jsonl").is_file()
     assert not (output_dir / "spark_test").exists()
     # If saving to a directory already containing unpacked datasets, output
@@ -489,12 +494,13 @@ def test_evaluate_directory_save_unpacked(
     shutil.rmtree(output_dir)
     output_dir.mkdir()
     shutil.copytree(expanded_test_datasets / "ada_test", output_dir / "ada_test")
-    evaluate_directory(
-        [Eval.BUILD],
-        path=expanded_test_datasets,
-        output_dir=output_dir,
-        jobs=8,
-        canonical_evaluation=True,
-    )
+    with patch("ada_eval.evaluate.create_eval", mock_create_eval):
+        evaluate_directory(
+            [Eval.BUILD],
+            path=expanded_test_datasets,
+            output_dir=output_dir,
+            jobs=8,
+            canonical_evaluation=True,
+        )
     assert (output_dir / "spark_test").is_dir()
     assert not (output_dir / "spark_test.jsonl").exists()
