@@ -10,6 +10,7 @@ import pytest
 from helpers import (
     assert_git_status,
     assert_log,
+    eval_test_datasets,  # noqa: F401  # pytest fixture
     evaluated_test_datasets,  # noqa: F401  # pytest fixture
     expanded_test_datasets,  # noqa: F401  # pytest fixture
     generated_test_datasets,  # noqa: F401  # pytest fixture
@@ -446,8 +447,8 @@ def test_evaluate_directory(
 def test_evaluate_directory_no_generations(
     tmp_path: Path,
     expanded_test_datasets: Path,  # noqa: F811  # pytest fixture
-    caplog: pytest.LogCaptureFixture,
     capsys: pytest.CaptureFixture[str],
+    caplog: pytest.LogCaptureFixture,
 ):
     """Test that `evaluate_datasets()` warns when run on base datasets."""
     output_dir = tmp_path / "output"
@@ -504,3 +505,59 @@ def test_evaluate_directory_save_unpacked(
         )
     assert (output_dir / "spark_test").is_dir()
     assert not (output_dir / "spark_test.jsonl").exists()
+
+
+@pytest.mark.skipif(not shutil.which("gprbuild"), reason="gprbuild not available")
+def test_build(
+    eval_test_datasets: Path,  # noqa: F811  # pytest fixture
+    capsys: pytest.CaptureFixture[str],
+    caplog: pytest.LogCaptureFixture,
+):
+    # Build eval should support both ada and spark datasets
+    ada_dataset_dir = eval_test_datasets / "ada_build"
+    spark_dataset_dir = eval_test_datasets / "spark_build"
+    shutil.copytree(ada_dataset_dir, spark_dataset_dir)
+
+    # Load the datasets
+    test_datasets = load_datasets(eval_test_datasets)
+    build_test_datasets = [d for d in test_datasets if d.name == "build"]
+    assert len(build_test_datasets) == 2
+
+    # Apply the build eval (for simplicity, the eval test samples are initial
+    # stage samples defining only a canonical solution)
+    test_datasets = evaluate_datasets_canonical([Eval.BUILD], test_datasets, jobs=8)
+    assert caplog.text == ""
+    check_progress_bar(capsys.readouterr(), 8, "build")  # 2x4
+
+    # Verify that the evaluation results are as expected for the build test
+    # datasets
+    for dataset in build_test_datasets:
+        samples = {s.name: s for s in dataset.samples}
+        assert samples["correct"].canonical_evaluation_results == [
+            EvaluationStatsBuild(
+                compiled=True,
+                has_pre_format_compile_warnings=False,
+                has_post_format_compile_warnings=False,
+            )
+        ]
+        assert samples["unformatted"].canonical_evaluation_results == [
+            EvaluationStatsBuild(
+                compiled=True,
+                has_pre_format_compile_warnings=True,
+                has_post_format_compile_warnings=False,
+            )
+        ]
+        assert samples["warns"].canonical_evaluation_results == [
+            EvaluationStatsBuild(
+                compiled=True,
+                has_pre_format_compile_warnings=True,
+                has_post_format_compile_warnings=True,
+            )
+        ]
+        assert samples["fails"].canonical_evaluation_results == [
+            EvaluationStatsBuild(
+                compiled=False,
+                has_pre_format_compile_warnings=True,
+                has_post_format_compile_warnings=True,
+            )
+        ]

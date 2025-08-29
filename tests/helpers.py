@@ -1,6 +1,7 @@
 import logging
 import shutil
 import subprocess
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -62,41 +63,36 @@ def assert_log(caplog: pytest.LogCaptureFixture, level: int, message: str):
     raise ValueError(f"'{logging.getLevelName(level)}' message not found: {message}")
 
 
-@pytest.fixture
-def expanded_test_datasets(tmp_path: Path) -> Path:
-    """Fixture to create a copy of the expanded test dataset within `tmp_path`."""
-    dataset_path = tmp_path / "unpacked_datasets"
-    expanded_test_dataset_dir = TEST_DATA_DIR / "valid_base_datasets" / "expanded"
-    shutil.copytree(expanded_test_dataset_dir, dataset_path)
-    return dataset_path
+def _create_test_data_fixture(rel_path: Path) -> Callable[[Path], Path]:
+    """
+    Create a pytest fixture that copies test data into `tmp_path`.
+
+    Args:
+        rel_path: The relative path within `tests/data` to copy.
+
+    Returns:
+        A pytest fixture function.
+
+    """
+    assert not rel_path.is_absolute()
+
+    @pytest.fixture
+    def _fixture(tmp_path: Path) -> Path:
+        dest = tmp_path / rel_path
+        shutil.copytree(TEST_DATA_DIR / rel_path, dest)
+        return dest
+
+    return _fixture
 
 
-@pytest.fixture
-def compacted_test_datasets(tmp_path: Path) -> Path:
-    """Fixture to create a copy of the compacted test dataset within `tmp_path`."""
-    dataset_path = tmp_path / "packed_datasets"
-    compacted_test_dataset_dir = TEST_DATA_DIR / "valid_base_datasets" / "compacted"
-    shutil.copytree(compacted_test_dataset_dir, dataset_path)
-    return dataset_path
-
-
-@pytest.fixture
-def generated_test_datasets(tmp_path: Path) -> Path:
-    """Fixture to create a copy of the generated test dataset within `tmp_path`."""
-    dataset_path = tmp_path / "generated_datasets"
-    generated_test_dataset_dir = (
-        TEST_DATA_DIR / "valid_generated_datasets" / "compacted"
-    )
-    shutil.copytree(generated_test_dataset_dir, dataset_path)
-    return dataset_path
-
-
-@pytest.fixture
-def evaluated_test_datasets(tmp_path: Path) -> Path:
-    """Fixture to create a copy of the evaluated test dataset within `tmp_path`."""
-    dataset_path = tmp_path / "evaluated_datasets"
-    evaluated_test_dataset_dir = (
-        TEST_DATA_DIR / "valid_evaluated_datasets" / "compacted"
-    )
-    shutil.copytree(evaluated_test_dataset_dir, dataset_path)
-    return dataset_path
+expanded_test_datasets = _create_test_data_fixture(Path("valid_base_datasets/expanded"))
+compacted_test_datasets = _create_test_data_fixture(
+    Path("valid_base_datasets/compacted")
+)
+generated_test_datasets = _create_test_data_fixture(
+    Path("valid_generated_datasets/compacted")
+)
+evaluated_test_datasets = _create_test_data_fixture(
+    Path("valid_evaluated_datasets/compacted")
+)
+eval_test_datasets = _create_test_data_fixture(Path("eval_test_datasets"))
