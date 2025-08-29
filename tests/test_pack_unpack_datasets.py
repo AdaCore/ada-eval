@@ -103,6 +103,10 @@ def test_get_unpacked_dataset_dirs_with_non_dataset_in_collection(
     assert len(datasets) == 3
 
 
+def test_git_ls_files_non_existent(tmp_path):
+    assert git_ls_files(tmp_path / "nonexistent") == []
+
+
 def test_git_ls_files_empty(tmp_path: Path):
     setup_git_repo(tmp_path)
     assert git_ls_files(tmp_path) == []

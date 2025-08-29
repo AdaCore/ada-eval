@@ -35,6 +35,7 @@ from ada_eval.datasets.types.samples import (
     EVALUATED_SAMPLE_TYPES,
     GENERATED_SAMPLE_TYPES,
     AdaSample,
+    EvaluatedAdaSample,
     EvaluatedSample,
     EvaluationStatsBuild,
     EvaluationStatsFailed,
@@ -336,6 +337,24 @@ def test_load_valid_unpacked_datasets_with_gitignore(expanded_test_datasets: Pat
     spark_sample_1 = next(s for s in spark_dataset.samples if s.name == "test_sample_1")
     assert spark_ignored_rel_path not in spark_sample_1.canonical_solution.files
     check_loaded_datasets(datasets)
+
+
+def test_load_empty_packed_dataset(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], caplog: pytest.LogCaptureFixture
+):
+    """Check that loading an empty jsonl file yields an appropriate empty dataset."""
+    empty_dataset_path = tmp_path / "ada_empty.jsonl"
+    empty_dataset_path.touch()
+    datasets = load_datasets(empty_dataset_path)
+    assert len(datasets) == 1
+    empty_dataset = datasets[0]
+    assert empty_dataset.name == "empty"
+    assert empty_dataset.sample_type is EvaluatedAdaSample
+    assert empty_dataset.samples == []
+    assert_log(caplog, WARN, f"Dataset at '{empty_dataset_path}' is empty.")
+    output = capsys.readouterr()
+    assert output.out == ""
+    assert output.err == ""
 
 
 def test_load_no_valid_samples(

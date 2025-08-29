@@ -1,3 +1,4 @@
+import os
 import re
 import shutil
 import subprocess
@@ -46,6 +47,7 @@ from ada_eval.evaluate import (
     evaluate_datasets_canonical,
     evaluate_directory,
 )
+from ada_eval.utils import ExecutableNotFoundError
 
 GENERATED_TYPE_TO_EVALUATED = {
     GENERATED_SAMPLE_TYPES[k]: EVALUATED_SAMPLE_TYPES[k] for k in SampleKind
@@ -608,3 +610,19 @@ def test_prove(
     assert samples["not_found"].canonical_evaluation_results == [
         EvaluationStatsProve(successfully_proven=False, subprogram_found=False)
     ]
+
+
+def test_eval_path_checks(
+    eval_test_datasets: Path,  # noqa: F811  # pytest fixture
+):
+    """Check that evals raise appropriate exceptions when tools are not available."""
+    test_datasets = load_datasets(eval_test_datasets)
+
+    with patch.dict(os.environ, clear=True):
+        error_msg = "'gnatformat' is not available in the PATH."
+        with pytest.raises(ExecutableNotFoundError, match=re.escape(error_msg)):
+            evaluate_datasets_canonical([Eval.BUILD], test_datasets, jobs=8)
+
+        error_msg = "'gnatprove' is not available in the PATH."
+        with pytest.raises(ExecutableNotFoundError, match=re.escape(error_msg)):
+            evaluate_datasets_canonical([Eval.PROVE], test_datasets, jobs=8)

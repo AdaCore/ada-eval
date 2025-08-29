@@ -154,7 +154,7 @@ def _load_packed_sample(
             raise
         else:
             return sample
-    raise RuntimeError("Unreachable")  # Ruff doesn't know loop always returns/raises
+    raise RuntimeError("Unreachable")  # Ruff can't tell that loop always returns/raises
 
 
 def load_packed_dataset(path: Path) -> Dataset[Sample]:
