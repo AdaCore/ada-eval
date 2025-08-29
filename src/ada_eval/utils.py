@@ -1,7 +1,10 @@
+import logging
 import shutil
 import subprocess
 import time
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 
 def make_files_relative_to(path: Path, files: list[Path]) -> list[Path]:
@@ -32,6 +35,7 @@ def run_cmd_with_timeout(
         subprocess.TimeoutExpired: If the timeout is exceeded.
 
     """
+    logger.debug("Running command: %s", cmd)
     start = time.monotonic_ns()
     result = subprocess.run(
         cmd,
@@ -42,6 +46,11 @@ def run_cmd_with_timeout(
         timeout=timeout,
     )
     end = time.monotonic_ns()
+    logger.debug("Return code: %d", result.returncode)
+    if result.stdout:
+        logger.debug("Stdout:\n%s", result.stdout)
+    if result.stderr:
+        logger.debug("Stderr:\n%s", result.stderr)
     return result, (end - start) // 1_000_000
 
 
