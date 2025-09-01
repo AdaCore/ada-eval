@@ -6,7 +6,7 @@ from unittest.mock import Mock, patch
 import pytest
 
 from ada_eval.cli import main
-from ada_eval.evals import Eval
+from ada_eval.datasets import Eval
 from ada_eval.paths import (
     COMPACTED_DATASETS_DIR,
     EVALUATED_DATASETS_DIR,

@@ -8,6 +8,14 @@ from .datasets import (
     save_datasets,
 )
 from .directory_contents import get_contents
+from .evaluation_stats import (
+    Eval,
+    EvaluationStats,
+    EvaluationStatsBuild,
+    EvaluationStatsFailed,
+    EvaluationStatsProve,
+    EvaluationStatsTimedOut,
+)
 from .samples import (
     EVALUATED_SAMPLE_TYPES,
     GENERATED_SAMPLE_TYPES,
@@ -17,11 +25,6 @@ from .samples import (
     EvaluatedExplainSample,
     EvaluatedSample,
     EvaluatedSparkSample,
-    EvaluationStats,
-    EvaluationStatsBuild,
-    EvaluationStatsFailed,
-    EvaluationStatsProve,
-    EvaluationStatsTimedOut,
     ExplainSample,
     GeneratedAdaSample,
     GeneratedExplainSample,
@@ -43,6 +46,7 @@ __all__ = [
     "AdaDataset",
     "AdaSample",
     "Dataset",
+    "Eval",
     "EvaluatedAdaSample",
     "EvaluatedExplainSample",
     "EvaluatedSample",

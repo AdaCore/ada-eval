@@ -3,6 +3,7 @@ from .sample_operation import SampleOperation
 from .types import (
     AdaSample,
     Dataset,
+    Eval,
     EvaluatedAdaSample,
     EvaluatedExplainSample,
     EvaluatedSample,
@@ -30,6 +31,7 @@ from .types import (
 __all__ = [
     "AdaSample",
     "Dataset",
+    "Eval",
     "EvaluatedAdaSample",
     "EvaluatedExplainSample",
     "EvaluatedSample",

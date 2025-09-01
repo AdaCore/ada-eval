@@ -1,14 +1,11 @@
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
 
 from .shell_script import ShellScript
 
 
-class Tool(Enum):
+class Tool(StrEnum):
     SHELL_SCRIPT = ShellScript.name
-
-    def __str__(self):
-        return self.value
 
 
 class UnsupportedToolError(Exception):

@@ -1,4 +1,4 @@
-from .factory import Eval, create_eval
+from .factory import create_eval
 from .prove import Prove
 
-__all__ = ["Eval", "Prove", "create_eval"]
+__all__ = ["Prove", "create_eval"]

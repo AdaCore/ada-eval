@@ -31,16 +31,18 @@ from ada_eval.datasets.loader import (
     load_unpacked_dataset,
 )
 from ada_eval.datasets.types.directory_contents import DirectoryContents
+from ada_eval.datasets.types.evaluation_stats import (
+    EvaluationStatsBuild,
+    EvaluationStatsFailed,
+    EvaluationStatsProve,
+    EvaluationStatsTimedOut,
+)
 from ada_eval.datasets.types.samples import (
     EVALUATED_SAMPLE_TYPES,
     GENERATED_SAMPLE_TYPES,
     AdaSample,
     EvaluatedAdaSample,
     EvaluatedSample,
-    EvaluationStatsBuild,
-    EvaluationStatsFailed,
-    EvaluationStatsProve,
-    EvaluationStatsTimedOut,
     ExplainSample,
     GeneratedSample,
     GenerationStats,

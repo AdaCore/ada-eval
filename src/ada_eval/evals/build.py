@@ -1,9 +1,10 @@
 import logging
 import subprocess
 from pathlib import Path
-from typing import ClassVar, Literal
+from typing import ClassVar
 
 from ada_eval.datasets import (
+    Eval,
     EvaluatedAdaSample,
     EvaluatedSparkSample,
     EvaluationStatsBuild,
@@ -33,7 +34,7 @@ def _run_gprbuild(
 class Build(GenericEval[GeneratedAdaSample, EvaluatedAdaSample]):
     """An evaluation that runs GPRbuild and checks if compilation succeeds."""
 
-    name: ClassVar[Literal["build"]] = "build"
+    eval: ClassVar = Eval.BUILD
     supported_types: ClassVar = {
         GeneratedAdaSample: EvaluatedAdaSample,
         GeneratedSparkSample: EvaluatedSparkSample,

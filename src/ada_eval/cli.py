@@ -4,7 +4,7 @@ from os import cpu_count
 from pathlib import Path
 
 from ada_eval.datasets.pack_unpack import pack_datasets, unpack_datasets
-from ada_eval.evals import Eval
+from ada_eval.datasets.types import Eval
 from ada_eval.evaluate import evaluate_directory
 from ada_eval.paths import (
     COMPACTED_DATASETS_DIR,

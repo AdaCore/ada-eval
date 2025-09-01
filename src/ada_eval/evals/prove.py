@@ -1,7 +1,8 @@
 import logging
-from typing import ClassVar, Literal
+from typing import ClassVar
 
 from ada_eval.datasets import (
+    Eval,
     EvaluatedSparkSample,
     EvaluationStatsProve,
     GeneratedSparkSample,
@@ -21,7 +22,7 @@ PROVE_TIMEOUT_S = 60
 class Prove(GenericEval[GeneratedSparkSample, EvaluatedSparkSample]):
     """An evaluation that runs GNATprove and checks for any proof failures."""
 
-    name: ClassVar[Literal["prove"]] = "prove"
+    eval: ClassVar = Eval.PROVE
     supported_types: ClassVar = {GeneratedSparkSample: EvaluatedSparkSample}
 
     def __init__(self) -> None:

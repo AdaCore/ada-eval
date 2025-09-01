@@ -4,6 +4,7 @@ from abc import abstractmethod
 from typing import Generic, TypeVar
 
 from ada_eval.datasets import (
+    Eval,
     EvaluatedSample,
     EvaluationStats,
     EvaluationStatsFailed,
@@ -32,6 +33,11 @@ class GenericEval(
 
     @property
     @abstractmethod
+    def eval(self) -> Eval:
+        """The `Eval` this evaluation implements."""
+
+    @property
+    @abstractmethod
     def supported_types(
         self,
     ) -> dict[type[GeneratedSampleType], type[EvaluatedSampleType]]:
@@ -44,8 +50,12 @@ class GenericEval(
         """Evaluate a generated sample and return the resulting `EvaluationStats`."""
 
     @property
+    def name(self) -> str:
+        return self.eval
+
+    @property
     def progress_bar_desc(self) -> str:
-        return f"Evaluating with {self.name}"
+        return f"Evaluating with {self.eval}"
 
     @property
     def type_map(
@@ -88,7 +98,7 @@ class GenericEval(
                 e.add_note(f"stdout: {e.stdout!r}")
                 e.add_note(f"stderr: {e.stderr!r}")
             logger.exception("Error during evaluation of sample %s", sample.name)
-            eval_stats = EvaluationStatsFailed(eval=self.name, exception=repr(e))
+            eval_stats = EvaluationStatsFailed(eval=self.eval, exception=repr(e))
         evaluated_sample.evaluation_results.append(eval_stats)
         return evaluated_sample
 

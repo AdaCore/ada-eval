@@ -6,19 +6,14 @@ import json
 import re
 from enum import Enum
 from pathlib import Path
-from typing import ClassVar, Literal, Self
+from typing import ClassVar, Self
 
-from pydantic import (
-    BaseModel,
-    TypeAdapter,
-    field_serializer,
-    field_validator,
-    model_serializer,
-)
+from pydantic import BaseModel, TypeAdapter, field_serializer, field_validator
 
 from ada_eval.datasets.utils import get_file_or_empty
 
 from .directory_contents import DirectoryContents, get_contents_git_aware
+from .evaluation_stats import EvaluationStats
 
 
 class InvalidSampleNameError(ValueError):
@@ -225,7 +220,8 @@ class Sample(BaseModel):
         base_files = get_contents_git_aware(sample_dir / BASE_DIR_NAME)
         prompt = get_file_or_empty(sample_dir / PROMPT_FILE_NAME)
         comments = get_file_or_empty(sample_dir / COMMENTS_FILE_NAME)
-        canonical_evaluation_results = _evaluation_results_adapter.validate_python(
+        eval_results_adapter = TypeAdapter(list[EvaluationStats])
+        canonical_evaluation_results = eval_results_adapter.validate_python(
             other_data.get(CANONICAL_EVAL_KEY, [])
         )
         return cls(
@@ -369,48 +365,6 @@ class GeneratedExplainSample(ExplainSample, GeneratedSample):
 
 class GeneratedSparkSample(SparkSample, GeneratedAdaSample):
     pass
-
-
-class EvaluationStatsBase(BaseModel):
-    eval: str
-
-    # Ensure `eval` is always serialised (so that union discrimination is
-    # predictable even when `exclude_defaults=True`)
-    @model_serializer(mode="wrap")
-    def serialize_eval(self, next_):
-        return {"eval": self.eval} | next_(self)
-
-
-class EvaluationStatsFailed(EvaluationStatsBase):
-    exception: str
-
-
-class EvaluationStatsTimedOut(EvaluationStatsBase):
-    cmd_timed_out: list[str]
-    timeout: float
-
-
-class EvaluationStatsBuild(EvaluationStatsBase):
-    eval: Literal["build"] = "build"
-    compiled: bool
-    has_pre_format_compile_warnings: bool
-    has_post_format_compile_warnings: bool
-
-
-class EvaluationStatsProve(EvaluationStatsBase):
-    eval: Literal["prove"] = "prove"
-    successfully_proven: bool
-    subprogram_found: bool
-
-
-EvaluationStats = (
-    EvaluationStatsBuild
-    | EvaluationStatsProve
-    | EvaluationStatsFailed
-    | EvaluationStatsTimedOut
-)
-
-_evaluation_results_adapter = TypeAdapter(list[EvaluationStats])
 
 
 class EvaluatedSample(GeneratedSample):

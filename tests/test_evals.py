@@ -4,7 +4,7 @@ import shutil
 import subprocess
 from logging import ERROR, WARN
 from pathlib import Path
-from typing import Any, ClassVar, Literal, cast
+from typing import Any, ClassVar, cast
 from unittest.mock import patch
 
 import pytest
@@ -20,6 +20,14 @@ from helpers import (
 
 from ada_eval.datasets import Dataset, dataset_has_sample_type
 from ada_eval.datasets.loader import load_datasets
+from ada_eval.datasets.types.evaluation_stats import (
+    Eval,
+    EvaluationStatsBase,
+    EvaluationStatsBuild,
+    EvaluationStatsFailed,
+    EvaluationStatsProve,
+    EvaluationStatsTimedOut,
+)
 from ada_eval.datasets.types.samples import (
     EVALUATED_SAMPLE_TYPES,
     GENERATED_SAMPLE_TYPES,
@@ -27,11 +35,6 @@ from ada_eval.datasets.types.samples import (
     EvaluatedExplainSample,
     EvaluatedSample,
     EvaluatedSparkSample,
-    EvaluationStatsBase,
-    EvaluationStatsBuild,
-    EvaluationStatsFailed,
-    EvaluationStatsProve,
-    EvaluationStatsTimedOut,
     ExplainSample,
     GeneratedAdaSample,
     GeneratedExplainSample,
@@ -40,7 +43,6 @@ from ada_eval.datasets.types.samples import (
     Sample,
     SampleKind,
 )
-from ada_eval.evals import Eval
 from ada_eval.evals.generic_eval import GenericEval, WrongEvalOutputTypeError
 from ada_eval.evaluate import (
     evaluate_datasets,
@@ -67,7 +69,7 @@ MOCK_PROVE_EVAL_STATS = EvaluationStatsProve(
 class MockBuildEval(GenericEval[GeneratedSample, EvaluatedSample]):
     """Mock build eval suitable for reproducing `evaluated_test_datasets`."""
 
-    name: ClassVar[Literal["build"]] = "build"
+    eval: ClassVar = Eval.BUILD
     supported_types: ClassVar = GENERATED_TYPE_TO_EVALUATED
 
     def evaluate(self, _: GeneratedSample) -> EvaluationStatsBuild:
@@ -77,7 +79,7 @@ class MockBuildEval(GenericEval[GeneratedSample, EvaluatedSample]):
 class MockProveEval(GenericEval[GeneratedSample, EvaluatedSample]):
     """Mock prove eval suitable for reproducing `evaluated_test_datasets`."""
 
-    name: ClassVar[Literal["prove"]] = "prove"
+    eval: ClassVar = Eval.PROVE
     supported_types: ClassVar = GENERATED_TYPE_TO_EVALUATED
 
     def evaluate(self, _: GeneratedSample) -> EvaluationStatsProve:
@@ -114,7 +116,7 @@ def test_generic_eval(
         pass
 
     class MockEval0(GenericEval[GeneratedSample, EvaluatedSample]):
-        name: ClassVar[Literal["mock_eval_0"]] = "mock_eval_0"
+        eval: ClassVar = Eval.BUILD
         supported_types: ClassVar = {
             GeneratedAdaSample: EvaluatedAdaSample,
             GeneratedExplainSample: EvaluatedExplainSample,
@@ -122,10 +124,10 @@ def test_generic_eval(
         }
 
         def evaluate(self, _: GeneratedSample) -> MockEvaluationStats:  # type: ignore[override]  # `MockEvaluationStats` is not a real `EvaluationStats`
-            return MockEvaluationStats(eval="mock_eval_0")
+            return MockEvaluationStats(eval=Eval.BUILD)
 
     class MockEval1(GenericEval[GeneratedAdaSample, EvaluatedAdaSample]):
-        name: ClassVar[Literal["mock_eval_1"]] = "mock_eval_1"
+        eval: ClassVar = Eval.PROVE
         supported_types: ClassVar = {
             GeneratedAdaSample: EvaluatedAdaSample,
             GeneratedSparkSample: EvaluatedSparkSample,
@@ -146,16 +148,16 @@ def test_generic_eval(
                     output="This is a\nmulti-line\nstdout",
                     stderr="This is the stderr",
                 )
-            return MockEvaluationStats(eval="mock_eval_1")
+            return MockEvaluationStats(eval=Eval.PROVE)
 
     # Also define an eval which is compatible with nothing, to check that it is
     # effectively ignored.
     class MockEval2(GenericEval[GeneratedSample, EvaluatedSample]):
-        name: ClassVar[Literal["mock_eval_2"]] = "mock_eval_2"
+        eval: ClassVar = Eval.PROVE
         supported_types: ClassVar = {}
 
-        def evaluate(self, _):
-            return MockEvaluationStats(eval="mock_eval_2")
+        def evaluate(self, _) -> MockEvaluationStats:  # type: ignore[override]  # `MockEvaluationStats` is not a real `EvaluationStats`
+            return MockEvaluationStats(eval="invalid")
 
     # Define a mock `create_eval` function which takes the mock eval ID instead
     # of a real `Eval`.
@@ -174,6 +176,9 @@ def test_generic_eval(
     generated_datasets = cast(
         list[Dataset[GeneratedSample]], load_datasets(generated_test_datasets)
     )
+    original_samples = {
+        (d.dirname(), s.name): s for d in generated_datasets for s in d.samples
+    }
     with patch("ada_eval.evaluate.create_eval", mock_create_eval):
         evaluated_datasets = evaluate_datasets(
             evals=[0, 1, 2],  # type: ignore[list-item]  # Using mock IDs instead of real enum
@@ -189,35 +194,25 @@ def test_generic_eval(
             # Raises a timeout on samples called "test_sample_1"
             return [
                 EvaluationStatsTimedOut(
-                    eval="mock_eval_1",
-                    cmd_timed_out=["cmd", "timeout-arg"],
-                    timeout=1.2,
+                    eval=Eval.PROVE, cmd_timed_out=["cmd", "timeout-arg"], timeout=1.2
                 )
             ]
         if sample.name == "test_sample_2":
             # Raises an exception on samples called "test_sample_2"
             return [
-                EvaluationStatsFailed(
-                    eval="mock_eval_1",
-                    exception="CalledProcessError()",
-                )
+                EvaluationStatsFailed(eval=Eval.PROVE, exception="CalledProcessError()")
             ]
         # Otherwise evaluates successfully
-        return [MockEvaluationStats(eval="mock_eval_1")]
+        return [MockEvaluationStats(eval=Eval.PROVE)]
 
     def check_evaluated_datasets(datasets: list[Dataset[EvaluatedSample]]):
         for dataset in datasets:
-            generated_dataset = next(
-                d for d in generated_datasets if d.dirname() == dataset.dirname()
-            )
             assert dataset_has_sample_type(dataset, EvaluatedSample)
             for sample in dataset.samples:
-                generated_sample = next(
-                    s for s in generated_dataset.samples if s.name == sample.name
-                )
+                generated_sample = original_samples[(dataset.dirname(), sample.name)]
                 assert isinstance(sample, EvaluatedSample)
                 assert sample.evaluation_results == [
-                    MockEvaluationStats(eval="mock_eval_0"),
+                    MockEvaluationStats(eval=Eval.BUILD),
                     *mock_1_expected_stats(generated_sample),
                 ]
                 assert generated_sample.model_dump() == sample.model_dump(
@@ -228,8 +223,8 @@ def test_generic_eval(
     # progress bars
     check_evaluated_datasets(evaluated_datasets)
     output = capsys.readouterr()
-    check_progress_bar(output, 5, "mock_eval_0")  # 5 total samples (1+1+3)
-    check_progress_bar(output, 4, "mock_eval_1")  # 4 total samples (1+3)
+    check_progress_bar(output, 5, "build")  # 5 total samples (1+1+3)
+    check_progress_bar(output, 4, "prove")  # 4 total samples (1+3)
     assert len(evaluated_datasets) == 3
     assert sum(len(d.samples) for d in evaluated_datasets) == 5
 
@@ -251,6 +246,8 @@ def test_generic_eval(
     )
     timeout_log = assert_log(caplog, WARN, warning)
     assert timeout_log.exc_text is None
+    # The eval which is compatible with nothing should have logged a warning
+    assert_log(caplog, WARN, "No datasets compatible with prove found.")
 
     # Run the mock evals as a canonical evaluation on the evaluated datasets
     # (canonical evaluations would usually be run on base datasets, but this
@@ -265,27 +262,38 @@ def test_generic_eval(
             jobs=8,
         )
     # Check that the `MockEvaluationStat`s were merged into the existing
-    # `canonical_evaluation_results` (i.e. appended, since there is no overlap),
-    # then remove them so that `check_evaluated_datasets()` can verify the rest.
+    # `canonical_evaluation_results`, then restore the originals so that
+    # `check_evaluated_datasets()` can verify the rest.
     for dataset in evaluated_datasets:
         for sample in dataset.samples:
+            original_sample = original_samples[(dataset.dirname(), sample.name)]
             assert isinstance(sample, EvaluatedSample)
-            canonical_results: list[EvaluationStatsBase] = list(
-                sample.canonical_evaluation_results
+            # The existing eval ordering should be preserved (which makes the
+            # diff cleaner)
+            assert all(
+                es1.eval == es2.eval
+                for es1, es2 in zip(
+                    sample.canonical_evaluation_results,
+                    original_sample.canonical_evaluation_results,
+                    strict=False,  # Not all original samples have both eval results
+                )
             )
+            results: dict[Eval, EvaluationStatsBase] = {
+                es.eval: es for es in sample.canonical_evaluation_results
+            }
             if isinstance(sample, EvaluatedExplainSample):
                 # `MockEval1` is incompatible with `ExplainSample`s, so only
-                # the results from `MockEval0` should be present
-                assert len(canonical_results) >= 1
-                assert canonical_results[-1] == MockEvaluationStats(eval="mock_eval_0")
-                sample.canonical_evaluation_results.pop()  # Remove `mock_eval_0`
+                # the results from `MockEval0` should be present.
+                assert results[Eval.BUILD] == MockEvaluationStats(eval=Eval.BUILD)
             else:
-                assert len(canonical_results) >= 2
-                eval_stats_1, eval_stats_0 = canonical_results[-2:]
-                assert eval_stats_0 == MockEvaluationStats(eval="mock_eval_0")
-                assert [eval_stats_1] == mock_1_expected_stats(sample)
-                sample.canonical_evaluation_results.pop()  # Remove `mock_eval_0`
-                sample.canonical_evaluation_results.pop()  # Remove `mock_eval_1`
+                # Both evals are compatible, so the results from both should
+                # be present.
+                assert results[Eval.BUILD] == MockEvaluationStats(eval=Eval.BUILD)
+                assert results[Eval.PROVE] == mock_1_expected_stats(sample)[0]
+            # Restore the original canonical results for `check_evaluated_datasets()`
+            sample.canonical_evaluation_results = (
+                original_sample.canonical_evaluation_results
+            )
     # Check that everything else is still correct
     check_evaluated_datasets(evaluated_datasets)
     assert len(evaluated_datasets) == 3
@@ -302,7 +310,7 @@ def test_generic_eval_wrong_output_type(
     # Create a mock eval with a misconfigured `supported_types` (mapping
     # `AdaSample` to `ExplainSample`).
     class MockEval(GenericEval[GeneratedSample, EvaluatedSample]):
-        name: ClassVar[Literal["mock_eval"]] = "mock_eval"
+        eval: ClassVar = Eval.BUILD
         supported_types: ClassVar = {
             GeneratedAdaSample: EvaluatedExplainSample,
             GeneratedSparkSample: EvaluatedSparkSample,
@@ -310,19 +318,19 @@ def test_generic_eval_wrong_output_type(
 
         def evaluate(self, _: GeneratedSample) -> EvaluationStatsFailed:
             # Use EvaluationStatsFailed as a dummy return value
-            return EvaluationStatsFailed(eval="mock_eval", exception="")
+            return EvaluationStatsFailed(eval=Eval.BUILD, exception="")
 
     # Check that running this eval on datasets including an `AdaSample` raises
     # a `WrongEvalOutputTypeError`.
     error_msg = (
-        "Eval 'mock_eval' accepted a GeneratedSample of type GeneratedAdaSample, "
+        "Eval 'build' accepted a GeneratedSample of type GeneratedAdaSample, "
         "but the corresponding evaluated sample type (EvaluatedAdaSample) is "
         "not compatible with the eval's output types "
         "(EvaluatedExplainSample, EvaluatedSparkSample)."
     )
     with (
-        pytest.raises(WrongEvalOutputTypeError, match=re.escape(error_msg)),
         patch("ada_eval.evaluate.create_eval", return_value=MockEval()),
+        pytest.raises(WrongEvalOutputTypeError, match=re.escape(error_msg)),
     ):
         evaluate_datasets(
             evals=[None],  # type: ignore[list-item]  # Dummy value; just need length 1
@@ -336,7 +344,7 @@ def test_generic_eval_wrong_output_type(
     assert caplog.text == ""
     output = capsys.readouterr()
     assert output.out == ""
-    assert "Evaluating with mock_eval:" in output.err
+    assert "Evaluating with build:" in output.err
 
 
 def test_evaluate_datasets_no_evals(
@@ -389,8 +397,13 @@ def test_evaluate_directory(
     check_progress_bar(output, 5, "build")
     check_progress_bar(output, 5, "prove")
 
-    # Run the evals as a canonical evaluation on the generated datasets
+    # Load a copy of the original generated datasets for later comparison.
     original_generated_datasets = load_datasets(generated_test_datasets)
+    original_samples = {
+        (d.dirname(), s.name): s for d in original_generated_datasets for s in d.samples
+    }
+
+    # Run the evals as a canonical evaluation on the generated datasets
     with patch("ada_eval.evaluate.create_eval", mock_create_eval):
         evaluate_directory(
             [Eval.BUILD, Eval.PROVE],
@@ -408,18 +421,10 @@ def test_evaluate_directory(
     # the mock results should replace the existing ones, as they have the same
     # `eval` field values.
     canonically_evaluated_datasets = load_datasets(generated_test_datasets)
-    assert all(
-        dataset_has_sample_type(d, GeneratedSample)
-        for d in canonically_evaluated_datasets
-    )
     for dataset in canonically_evaluated_datasets:
-        original_dataset = next(
-            d for d in original_generated_datasets if d.dirname() == dataset.dirname()
-        )
+        assert dataset_has_sample_type(dataset, GeneratedSample)
         for sample in dataset.samples:
-            original_sample = next(
-                s for s in original_dataset.samples if s.name == sample.name
-            )
+            original_sample = original_samples[(dataset.dirname(), sample.name)]
             assert isinstance(sample, GeneratedSample)
             # The existing ordering will be preserved (which makes the diff
             # cleaner)
@@ -612,9 +617,7 @@ def test_prove(
     ]
 
 
-def test_eval_path_checks(
-    eval_test_datasets: Path,  # noqa: F811  # pytest fixture
-):
+def test_eval_path_checks(eval_test_datasets: Path):  # noqa: F811  # pytest fixture
     """Check that evals raise appropriate exceptions when tools are not available."""
     test_datasets = load_datasets(eval_test_datasets)
 

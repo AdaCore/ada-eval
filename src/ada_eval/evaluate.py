@@ -3,21 +3,20 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import TypeVar
 
-from ada_eval.datasets import (
-    Dataset,
-    EvaluatedSample,
-    GeneratedSample,
-    Sample,
-    dataset_has_sample_type,
-    load_datasets,
-    save_datasets,
-)
+from ada_eval.datasets.loader import load_datasets
 from ada_eval.datasets.types import (
     GENERATED_SAMPLE_TYPES,
+    Dataset,
+    Eval,
+    EvaluatedSample,
+    GeneratedSample,
     GenerationStats,
+    Sample,
+    dataset_has_sample_type,
     is_unpacked_data,
+    save_datasets,
 )
-from ada_eval.evals import Eval, create_eval
+from ada_eval.evals import create_eval
 
 logger = logging.getLogger(__name__)
 

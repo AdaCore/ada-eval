@@ -1,15 +1,7 @@
-from enum import Enum
+from ada_eval.datasets import Eval
 
 from .build import Build
 from .prove import Prove
-
-
-class Eval(Enum):
-    BUILD = Build.name
-    PROVE = Prove.name
-
-    def __str__(self):
-        return self.value
 
 
 class UnsupportedEvalError(Exception):
