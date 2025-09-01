@@ -335,7 +335,7 @@ class GeneratedSample(Sample):
     generation_stats: GenerationStats
     generated_solution: object
 
-    def to_evaluated_sample(self) -> EvaluatedSample:
+    def as_evaluated_sample(self) -> EvaluatedSample:
         """
         Return this sample as an evaluated sample.
 

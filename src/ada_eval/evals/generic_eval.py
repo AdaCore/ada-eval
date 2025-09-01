@@ -75,7 +75,7 @@ class GenericEval(
         self, sample: GeneratedSampleType | EvaluatedSampleType
     ) -> EvaluatedSampleType:
         # Promote the `GeneratedSample` to an  `EvaluatedSample` if necessary.
-        evaluated_sample = sample.to_evaluated_sample()
+        evaluated_sample = sample.as_evaluated_sample()
         for t in self.type_map.values():  # Mypy doesn't understand `if any(...)`
             if isinstance(evaluated_sample, t):
                 break
@@ -123,6 +123,6 @@ class WrongEvalOutputTypeError(TypeError):
         super().__init__(
             f"Eval '{evaluation.name}' accepted a GeneratedSample of type "
             f"{type(gen_sample).__name__}, but the corresponding evaluated sample "
-            f"type ({type(gen_sample.to_evaluated_sample()).__name__}) is not "
+            f"type ({type(gen_sample.as_evaluated_sample()).__name__}) is not "
             f"compatible with the eval's output types ({', '.join(output_types)})."
         )
