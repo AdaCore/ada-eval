@@ -51,6 +51,8 @@ class Prove(GenericEval[GeneratedSparkSample, EvaluatedSparkSample]):
             result, _ = run_cmd_with_timeout(
                 [
                     "gnatprove",
+                    "-P",
+                    "main.gpr",
                     "--checks-as-errors=on",
                     "--warnings=error",
                     "-k",

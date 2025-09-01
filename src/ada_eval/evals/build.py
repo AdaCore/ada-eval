@@ -25,7 +25,7 @@ def _run_gprbuild(
     working_dir: Path, *, check_warnings: bool
 ) -> subprocess.CompletedProcess[str]:
     """Return the result of running `gprbuild`."""
-    args = ["gprbuild"]
+    args = ["gprbuild", "-P", "main.gpr"]
     if check_warnings:
         args.extend(["-gnatwae", "-gnatyy"])
     return run_cmd_with_timeout(args, working_dir, BUILD_TIMEOUT_S)[0]
