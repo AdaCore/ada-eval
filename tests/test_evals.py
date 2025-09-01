@@ -515,6 +515,7 @@ def test_evaluate_directory_save_unpacked(
 
 
 @pytest.mark.skipif(not shutil.which("gprbuild"), reason="gprbuild not available")
+@pytest.mark.skipif(not shutil.which("gnatformat"), reason="gnatformat not available")
 def test_build(
     eval_test_datasets: Path,  # noqa: F811  # pytest fixture
     capsys: pytest.CaptureFixture[str],
