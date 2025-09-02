@@ -31,8 +31,8 @@ class EvaluationStatsTimedOut(EvaluationStatsBase):
 class EvaluationStatsBuild(EvaluationStatsBase):
     eval: Literal[Eval.BUILD] = Eval.BUILD
     compiled: bool
-    has_pre_format_compile_warnings: bool
-    has_post_format_compile_warnings: bool
+    pre_format_warnings: bool
+    post_format_warnings: bool
 
 
 class EvaluationStatsProve(EvaluationStatsBase):

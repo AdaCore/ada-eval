@@ -54,9 +54,7 @@ class Build(GenericEval[GeneratedAdaSample, EvaluatedAdaSample]):
             )
             # Initialise values to success
             eval_stats = EvaluationStatsBuild(
-                compiled=True,
-                has_pre_format_compile_warnings=False,
-                has_post_format_compile_warnings=False,
+                compiled=True, pre_format_warnings=False, post_format_warnings=False
             )
             # Run `gprbuild` on the unformatted sources with warnings enabled
             run_cmd_with_timeout(
@@ -65,7 +63,7 @@ class Build(GenericEval[GeneratedAdaSample, EvaluatedAdaSample]):
             result = _run_gprbuild(working_dir, check_warnings=True)
             if result.returncode == 0:
                 return eval_stats  # Compiled successfully without warnings
-            eval_stats.has_pre_format_compile_warnings = True
+            eval_stats.pre_format_warnings = True
             # If that failed, format the sources with GNATformat and try again
             run_cmd_with_timeout(
                 ["gnatformat"], working_dir, BUILD_TIMEOUT_S, check=True
@@ -73,7 +71,7 @@ class Build(GenericEval[GeneratedAdaSample, EvaluatedAdaSample]):
             result = _run_gprbuild(working_dir, check_warnings=True)
             if result.returncode == 0:
                 return eval_stats  # Compiled with no warnings after formatting
-            eval_stats.has_post_format_compile_warnings = True
+            eval_stats.post_format_warnings = True
             # If that still failed, try building with warnings disabled
             result = _run_gprbuild(working_dir, check_warnings=False)
             eval_stats.compiled = result.returncode == 0

@@ -12,8 +12,8 @@
         {
             "eval": "build",
             "compiled": true,
-            "has_pre_format_compile_warnings": false,
-            "has_post_format_compile_warnings": false
+            "pre_format_warnings": false,
+            "post_format_warnings": false
         }
     ]
 }

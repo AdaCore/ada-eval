@@ -56,10 +56,9 @@ GENERATED_TYPE_TO_EVALUATED = {
 }
 
 
+# Mock eval stats matching those in `evaluated_test_datasets`
 MOCK_BUILD_EVAL_STATS = EvaluationStatsBuild(
-    compiled=False,
-    has_pre_format_compile_warnings=True,
-    has_post_format_compile_warnings=True,
+    compiled=False, pre_format_warnings=True, post_format_warnings=True
 )
 MOCK_PROVE_EVAL_STATS = EvaluationStatsProve(
     successfully_proven=False, subprogram_found=True
@@ -542,30 +541,22 @@ def test_build(
         samples = {s.name: s for s in dataset.samples}
         assert samples["correct"].canonical_evaluation_results == [
             EvaluationStatsBuild(
-                compiled=True,
-                has_pre_format_compile_warnings=False,
-                has_post_format_compile_warnings=False,
+                compiled=True, pre_format_warnings=False, post_format_warnings=False
             )
         ]
         assert samples["unformatted"].canonical_evaluation_results == [
             EvaluationStatsBuild(
-                compiled=True,
-                has_pre_format_compile_warnings=True,
-                has_post_format_compile_warnings=False,
+                compiled=True, pre_format_warnings=True, post_format_warnings=False
             )
         ]
         assert samples["warns"].canonical_evaluation_results == [
             EvaluationStatsBuild(
-                compiled=True,
-                has_pre_format_compile_warnings=True,
-                has_post_format_compile_warnings=True,
+                compiled=True, pre_format_warnings=True, post_format_warnings=True
             )
         ]
         assert samples["fails"].canonical_evaluation_results == [
             EvaluationStatsBuild(
-                compiled=False,
-                has_pre_format_compile_warnings=True,
-                has_post_format_compile_warnings=True,
+                compiled=False, pre_format_warnings=True, post_format_warnings=True
             )
         ]
 
@@ -576,9 +567,7 @@ def test_build(
     for sample in prove_test_datasets[0].samples:
         assert sample.canonical_evaluation_results == [
             EvaluationStatsBuild(
-                compiled=True,
-                has_pre_format_compile_warnings=False,
-                has_post_format_compile_warnings=False,
+                compiled=True, pre_format_warnings=False, post_format_warnings=False
             )
         ]
 

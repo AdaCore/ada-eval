@@ -162,9 +162,7 @@ def expected_evaluated_sample(base_sample: Sample) -> EvaluatedSample:
         evaluation_results=[
             EvaluationStatsProve(successfully_proven=False, subprogram_found=True),
             EvaluationStatsBuild(
-                compiled=False,
-                has_pre_format_compile_warnings=True,
-                has_post_format_compile_warnings=True,
+                compiled=False, pre_format_warnings=True, post_format_warnings=True
             ),
         ],
     )
@@ -201,9 +199,7 @@ def check_loaded_datasets(
     expected_ada_sample_0 = expected_ada_sample("test_sample_0", "ada_test")
     expected_ada_sample_0.canonical_evaluation_results = [
         EvaluationStatsBuild(
-            compiled=True,
-            has_pre_format_compile_warnings=True,
-            has_post_format_compile_warnings=False,
+            compiled=True, pre_format_warnings=True, post_format_warnings=False
         )
     ]
     # Check the Ada dataset
@@ -237,9 +233,7 @@ def check_loaded_datasets(
     expected_spark_sample_1.canonical_evaluation_results = [
         EvaluationStatsProve(successfully_proven=True, subprogram_found=True),
         EvaluationStatsBuild(
-            compiled=True,
-            has_pre_format_compile_warnings=False,
-            has_post_format_compile_warnings=False,
+            compiled=True, pre_format_warnings=False, post_format_warnings=False
         ),
     ]
     expected_spark_sample_2 = SparkSample(
