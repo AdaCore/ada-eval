@@ -6,6 +6,7 @@ from .datasets import (
     is_packed_data,
     is_unpacked_data,
     save_datasets,
+    save_datasets_auto_format,
 )
 from .directory_contents import get_contents
 from .evaluation_stats import (
@@ -76,4 +77,5 @@ __all__ = [
     "is_packed_data",
     "is_unpacked_data",
     "save_datasets",
+    "save_datasets_auto_format",
 ]

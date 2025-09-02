@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import shutil
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
@@ -13,6 +14,9 @@ from .samples import (
     SampleStage,
     is_unpacked_sample,
 )
+
+logger = logging.getLogger(__name__)
+
 
 SampleType_co = TypeVar("SampleType_co", bound=Sample, covariant=True)
 TargetSampleType = TypeVar("TargetSampleType", bound=Sample)
@@ -170,8 +174,58 @@ def save_datasets(
         raise NotImplementedError(
             "Saving generated datasets in unpacked form is not supported."
         )
-    if output_dir.exists():
+    if output_dir.is_file():
+        output_dir.unlink()
+    elif output_dir.exists():
         shutil.rmtree(output_dir)
     output_dir.mkdir(parents=True)
     for dataset in datasets:
         (dataset.save_unpacked if unpacked else dataset.save_packed)(output_dir)
+
+
+def save_datasets_auto_format(datasets: Sequence[Dataset[Sample]], path: Path) -> None:
+    """
+    Save datasets to a directory, respecting the format of any existing data thereat.
+
+    The data will be saved in unpacked form if `path` already exists and
+    contains unpacked data. If the output path points to a single dataset
+    file/directory (instead of a directory thereof), and `datasets` contains
+    exactly one dataset, that dataset will be saved likewise.
+
+    Any existing files at or within `path` will be removed or overwritten. A
+    directory will be created if necessary (even if `datasets` is empty).
+
+    Args:
+        datasets: Datasets to save.
+        path: File/Directory where the datasets will be saved.
+
+    """
+    unpacked = is_unpacked_data(path)
+    if unpacked and is_packed_data(path):
+        logger.warning(
+            "Output path '%s' contains a mixture of packed and unpacked data; "
+            "Defaulting to packed format.",
+            path,
+        )
+        unpacked = False
+    if is_unpacked_dataset(path) and is_collection_of_unpacked_datasets(path):
+        logger.warning(
+            "Output path '%s' contains a mixture of datasets and samples.", path
+        )
+    # Save as a single dataset if appropriate
+    if len(datasets) == 1:
+        dataset = datasets[0]
+        if (
+            unpacked
+            and is_unpacked_dataset(path)
+            and not is_collection_of_unpacked_datasets(path)
+            and path.name == dataset.dirname()
+        ):
+            shutil.rmtree(path)
+            dataset.save_unpacked(path.parent)
+            return
+        if is_packed_dataset(path) and path.name == dataset.dirname() + ".jsonl":
+            dataset.save_packed(path.parent)
+            return
+    # Otherwise, save as a collection of datasets
+    save_datasets(datasets, path, unpacked=unpacked)

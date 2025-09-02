@@ -13,8 +13,7 @@ from ada_eval.datasets.types import (
     GenerationStats,
     Sample,
     dataset_has_sample_type,
-    is_unpacked_data,
-    save_datasets,
+    save_datasets_auto_format,
 )
 from ada_eval.evals import create_eval
 
@@ -184,6 +183,5 @@ def evaluate_directory(
                 "No datasets were compatible with any eval; no results to save."
             )
             return
-    # Save results to `output_dir` (avoiding overwriting unpacked data with
-    # packed data, e.g. if running canonical evaluation on the unpacked base dir)
-    save_datasets(evaluated_datasets, output_dir, unpacked=is_unpacked_data(output_dir))
+    # Save results to `output_dir` (respecting the format of any existing data)
+    save_datasets_auto_format(evaluated_datasets, output_dir)
