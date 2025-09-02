@@ -28,13 +28,11 @@ unpack-dataset:
 
 generate-dummy:
 	uv run ada-eval generate \
-		--jobs 4 \
 		--tool shell_script \
 		--tool-config-file tools/configs/shell_dummy.json
 
 generate-spark-claude:
 	uv run ada-eval generate \
-		--jobs 4 \
 		--tool shell_script \
 		--tool-config-file tools/configs/claude_code_no_mcp.json
 
