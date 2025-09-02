@@ -607,6 +607,30 @@ def test_prove(
     ]
 
 
+@pytest.mark.skipif(not shutil.which("sh"), reason="sh not available")
+def test_prove_cli(
+    tmp_path: Path,
+    eval_test_datasets: Path,  # noqa: F811  # pytest fixture
+    capsys: pytest.CaptureFixture[str],
+    caplog: pytest.LogCaptureFixture,
+):
+    """A version of `test_prove()` which can be run in CI."""
+    # Mock `gnatprove` with a script which simulates the behaviour of the
+    # real tool on the eval test datasets; i.e. returns 0 iff `./src/increment.ads`
+    # contains the substring 'Pre => X < Integer'Last'.
+    script = '#!/usr/bin/env sh\ngrep "Pre => X < Integer\'Last" ./src/increment.ads'
+    path_dir = tmp_path / "path_dir"
+    path_dir.mkdir()
+    (path_dir / "gnatprove").write_text(script)
+    (path_dir / "gnatprove").chmod(0o700)
+
+    # Run the prove test with this mock `gnatprove` in the PATH
+    assert os.pathsep not in str(path_dir)
+    new_path = str(path_dir) + os.pathsep + os.environ.get("PATH", "")
+    with patch.dict(os.environ, {"PATH": new_path}):
+        test_prove(eval_test_datasets, capsys, caplog)
+
+
 def test_eval_path_checks(eval_test_datasets: Path):  # noqa: F811  # pytest fixture
     """Check that evals raise appropriate exceptions when tools are not available."""
     test_datasets = load_datasets(eval_test_datasets)
