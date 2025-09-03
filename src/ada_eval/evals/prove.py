@@ -15,7 +15,6 @@ from .generic_eval import GenericEval
 logger = logging.getLogger(__name__)
 
 
-# TODO (#2): Make this an attribute of each `SparkSample` or a command-line arg
 PROVE_TIMEOUT_S = 60
 
 
@@ -51,8 +50,7 @@ class Prove(GenericEval[GeneratedSparkSample, EvaluatedSparkSample]):
             result, _ = run_cmd_with_timeout(
                 [
                     "gnatprove",
-                    "-P",
-                    "main.gpr",
+                    "-Pmain.gpr",
                     "--checks-as-errors=on",
                     "--warnings=error",
                     "-k",

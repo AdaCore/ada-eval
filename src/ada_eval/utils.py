@@ -2,6 +2,7 @@ import logging
 import shutil
 import subprocess
 import time
+from enum import Enum
 from pathlib import Path
 
 logger = logging.getLogger(__name__)
@@ -10,6 +11,20 @@ logger = logging.getLogger(__name__)
 def make_files_relative_to(path: Path, files: list[Path]) -> list[Path]:
     """Make a list of files relative to a given path."""
     return [file.relative_to(path) for file in files]
+
+
+def construct_enum_case_insensitive(cls: type[Enum], value: object) -> Enum | None:
+    """Construct a member of `cls` from `value` case-insensitively."""
+    if not isinstance(value, str):
+        return None
+    return next(
+        (
+            member
+            for member in cls
+            if isinstance(member.value, str) and member.value.lower() == value.lower()
+        ),
+        None,
+    )
 
 
 def run_cmd_with_timeout(
@@ -33,6 +48,8 @@ def run_cmd_with_timeout(
 
     Raises:
         subprocess.TimeoutExpired: If the timeout is exceeded.
+        subprocess.CalledProcessError: If `check` is `True` and the command
+            returns a non-zero exit code.
 
     """
     logger.debug("Running command: %s", cmd)
@@ -72,7 +89,7 @@ class ExecutableNotFoundError(RuntimeError):
 
 def check_on_path(executable_name: str) -> None:
     """
-    Check if an executable is available in the PATH.
+    Check that an executable is available in the PATH.
 
     Args:
         executable_name (str): The name of the executable to check.

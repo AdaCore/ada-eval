@@ -15,13 +15,30 @@ from ada_eval.datasets.types import (
     dataset_has_sample_type,
     save_datasets_auto_format,
 )
-from ada_eval.evals import create_eval
+
+from .build import Build
+from .prove import Prove
 
 logger = logging.getLogger(__name__)
 
 
+class UnsupportedEvalError(Exception):
+    def __init__(self, evaluation) -> None:
+        super().__init__(f"Unsupported eval: {evaluation}")
+
+
+def create_eval(evaluation: Eval) -> Build | Prove:
+    match evaluation:
+        case Eval.BUILD:
+            return Build()
+        case Eval.PROVE:
+            return Prove()
+        case _:
+            raise UnsupportedEvalError(evaluation)
+
+
 def evaluate_datasets(
-    evals: list[Eval], datasets: list[Dataset[GeneratedSample]], jobs: int
+    evals: Sequence[Eval], datasets: Sequence[Dataset[GeneratedSample]], jobs: int
 ) -> list[Dataset[EvaluatedSample]]:
     """
     Run a list of `Eval`s on a list of `Dataset`s.
@@ -61,8 +78,8 @@ SampleType = TypeVar("SampleType", bound=Sample)
 
 
 def evaluate_datasets_canonical(
-    evals: list[Eval], datasets: list[Dataset[SampleType]], jobs: int
-) -> list[Dataset[SampleType]]:
+    evals: Sequence[Eval], datasets: Sequence[Dataset[SampleType]], jobs: int
+) -> None:
     """
     Run a list of `Eval`s on the canonical solutions from a list of `Dataset`s.
 
@@ -70,7 +87,7 @@ def evaluate_datasets_canonical(
     `canonical_evaluation_results` field of each sample merged with the new
     results from any compatible evaluations.
 
-    The samples are modified in-place.
+    The datsets and samples are modified in-place.
 
     Args:
         evals: List of `Eval`s to run.
@@ -78,13 +95,9 @@ def evaluate_datasets_canonical(
         jobs: Number of parallel jobs to run.
 
     """
-    # Create a mapping from `(dataset_name, dataset_kind, sample_name)`
-    # to the original sample for future reference.
-    original_samples = {
-        (dataset.name, dataset.kind, sample.name): sample
-        for dataset in datasets
-        for sample in dataset.samples
-    }
+    # Create a mapping from `(dataset.dirname, sample.name)` to the original
+    # sample for future reference.
+    original_samples = {(d.dirname, s.name): s for d in datasets for s in d.samples}
     # Create fake `GeneratedSample`s with the canonical solution as their
     # "generated" solutions.
     dummy_gen_stats = GenerationStats(exit_code=0, stdout="", stderr="", runtime_ms=0)
@@ -112,28 +125,25 @@ def evaluate_datasets_canonical(
     evaluated_datasets = evaluate_datasets(evals, generated_datasets, jobs=jobs)
     # Record the evaluation results in the `canonical_evaluation_results` field
     # of the original `Sample`s.
-    for eval_dataset in evaluated_datasets:
-        for evaluated_sample in eval_dataset.samples:
+    for evaluated_dataset in evaluated_datasets:
+        for evaluated_sample in evaluated_dataset.samples:
             original_sample = original_samples[
-                (eval_dataset.name, eval_dataset.kind, evaluated_sample.name)
+                (evaluated_dataset.dirname, evaluated_sample.name)
             ]
             # Merge new results with existing, overwriting only when we have
             # re-run the same eval.
-            combined_results = {
+            original_results = {
                 es.eval: es for es in original_sample.canonical_evaluation_results
             }
-            combined_results.update(
-                {es.eval: es for es in evaluated_sample.evaluation_results}
-            )
+            new_results = {es.eval: es for es in evaluated_sample.evaluation_results}
+            combined_results = original_results | new_results
             original_sample.canonical_evaluation_results = list(
                 combined_results.values()
             )
-    # Return the updated (original) `datasets`
-    return datasets
 
 
 def evaluate_directory(
-    evals: list[Eval],
+    evals: Sequence[Eval],
     path: Path,
     output_dir: Path,
     jobs: int,
@@ -152,8 +162,8 @@ def evaluate_directory(
         canonical_evaluation: If `True`, evaluate the canonical solution instead
             of the generated solution. The datasets will not be promoted to
             `EvaluatedSample`s, and the results will instead be recorded in the
-            `canonical_evaluation_results` field (overriding any value already
-            present).
+            `canonical_evaluation_results` field (merged with any results
+            already present).
 
     """
     # Load datasets
@@ -161,9 +171,8 @@ def evaluate_directory(
     # Evaluate datasets
     evaluated_datasets: Sequence[Dataset[Sample]]
     if canonical_evaluation:
-        evaluated_datasets = evaluate_datasets_canonical(
-            evals, datasets_unchecked, jobs=jobs
-        )
+        evaluate_datasets_canonical(evals, datasets_unchecked, jobs=jobs)
+        evaluated_datasets = datasets_unchecked
     else:
         # Warn about datasets without generated solutions
         datasets: list[Dataset[GeneratedSample]] = []
@@ -173,7 +182,7 @@ def evaluate_directory(
             else:
                 logger.warning(
                     "Dataset '%s' does not contain generations; Skipping evaluation.",
-                    dataset.dirname(),
+                    dataset.dirname,
                 )
         # Evaluate all datasets
         evaluated_datasets = evaluate_datasets(evals, datasets, jobs=jobs)
@@ -182,6 +191,5 @@ def evaluate_directory(
             logger.warning(
                 "No datasets were compatible with any eval; no results to save."
             )
-            return
     # Save results to `output_dir` (respecting the format of any existing data)
     save_datasets_auto_format(evaluated_datasets, output_dir)

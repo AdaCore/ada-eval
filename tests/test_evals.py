@@ -11,6 +11,7 @@ import pytest
 from helpers import (
     assert_git_status,
     assert_log,
+    dictify_datasets,
     eval_test_datasets,  # noqa: F401  # pytest fixture
     evaluated_test_datasets,  # noqa: F401  # pytest fixture
     expanded_test_datasets,  # noqa: F401  # pytest fixture
@@ -37,18 +38,17 @@ from ada_eval.datasets.types.samples import (
     EvaluatedSparkSample,
     ExplainSample,
     GeneratedAdaSample,
-    GeneratedExplainSample,
     GeneratedSample,
     GeneratedSparkSample,
     Sample,
     SampleKind,
 )
-from ada_eval.evals.generic_eval import GenericEval, WrongEvalOutputTypeError
-from ada_eval.evaluate import (
+from ada_eval.evals import (
     evaluate_datasets,
     evaluate_datasets_canonical,
     evaluate_directory,
 )
+from ada_eval.evals.generic_eval import GenericEval, WrongEvalOutputTypeError
 from ada_eval.utils import ExecutableNotFoundError
 
 GENERATED_TYPE_TO_EVALUATED = {
@@ -116,11 +116,7 @@ def test_generic_eval(
 
     class MockEval0(GenericEval[GeneratedSample, EvaluatedSample]):
         eval: ClassVar = Eval.BUILD
-        supported_types: ClassVar = {
-            GeneratedAdaSample: EvaluatedAdaSample,
-            GeneratedExplainSample: EvaluatedExplainSample,
-            GeneratedSparkSample: EvaluatedSparkSample,
-        }
+        supported_types: ClassVar = GENERATED_TYPE_TO_EVALUATED
 
         def evaluate(self, _: GeneratedSample) -> MockEvaluationStats:  # type: ignore[override]  # `MockEvaluationStats` is not a real `EvaluationStats`
             return MockEvaluationStats(eval=Eval.BUILD)
@@ -175,10 +171,8 @@ def test_generic_eval(
     generated_datasets = cast(
         list[Dataset[GeneratedSample]], load_datasets(generated_test_datasets)
     )
-    original_samples = {
-        (d.dirname(), s.name): s for d in generated_datasets for s in d.samples
-    }
-    with patch("ada_eval.evaluate.create_eval", mock_create_eval):
+    original_samples = dictify_datasets(generated_datasets)
+    with patch("ada_eval.evals.evaluate.create_eval", mock_create_eval):
         evaluated_datasets = evaluate_datasets(
             evals=[0, 1, 2],  # type: ignore[list-item]  # Using mock IDs instead of real enum
             datasets=generated_datasets,
@@ -208,7 +202,7 @@ def test_generic_eval(
         for dataset in datasets:
             assert dataset_has_sample_type(dataset, EvaluatedSample)
             for sample in dataset.samples:
-                generated_sample = original_samples[(dataset.dirname(), sample.name)]
+                generated_sample = original_samples[(dataset.dirname, sample.name)]
                 assert isinstance(sample, EvaluatedSample)
                 assert sample.evaluation_results == [
                     MockEvaluationStats(eval=Eval.BUILD),
@@ -248,16 +242,31 @@ def test_generic_eval(
     # The eval which is compatible with nothing should have logged a warning
     assert_log(caplog, WARN, "No datasets compatible with prove found.")
 
+    # Test that rerunning the evals on the already-evaluated datasets returns
+    # samples with twice as many eval stats, without mutating the existing ones.
+    with patch("ada_eval.evals.evaluate.create_eval", mock_create_eval):
+        doubly_evaluated_datasets = evaluate_datasets(
+            evals=[0, 1, 2],  # type: ignore[list-item]  # Using mock IDs instead of real enum
+            datasets=evaluated_datasets,
+            jobs=8,
+        )
+    singly_evaluated_samples = dictify_datasets(evaluated_datasets)
+    doubly_evaluated_samples = dictify_datasets(doubly_evaluated_datasets)
+    for key, singly_evaluated in singly_evaluated_samples.items():
+        doubly_evaluated = doubly_evaluated_samples[key]
+        assert len(singly_evaluated.evaluation_results) in (1, 2)
+        assert list(doubly_evaluated.evaluation_results) == 2 * list(
+            singly_evaluated.evaluation_results
+        )
+
     # Run the mock evals as a canonical evaluation on the evaluated datasets
     # (canonical evaluations would usually be run on base datasets, but this
     # should work too, and serves to check that the results of evaluating the
     # generations do not pollute the canonical results).
-    #
-    # Note the order of evals is reversed.
-    with patch("ada_eval.evaluate.create_eval", mock_create_eval):
-        evaluated_datasets = evaluate_datasets_canonical(
+    with patch("ada_eval.evals.evaluate.create_eval", mock_create_eval):
+        evaluate_datasets_canonical(
             evals=[2, 1, 0],  # type: ignore[list-item]  # Using mock IDs instead of real enum
-            datasets=list(evaluated_datasets),
+            datasets=evaluated_datasets,
             jobs=8,
         )
     # Check that the `MockEvaluationStat`s were merged into the existing
@@ -265,7 +274,7 @@ def test_generic_eval(
     # `check_evaluated_datasets()` can verify the rest.
     for dataset in evaluated_datasets:
         for sample in dataset.samples:
-            original_sample = original_samples[(dataset.dirname(), sample.name)]
+            original_sample = original_samples[(dataset.dirname, sample.name)]
             assert isinstance(sample, EvaluatedSample)
             # The existing eval ordering should be preserved (which makes the
             # diff cleaner)
@@ -307,7 +316,7 @@ def test_generic_eval_wrong_output_type(
     """Test that an exception is raised if `supported_types` is misconfigured."""
 
     # Create a mock eval with a misconfigured `supported_types` (mapping
-    # `AdaSample` to `ExplainSample`).
+    # an `AdaSample` to an `ExplainSample`).
     class MockEval(GenericEval[GeneratedSample, EvaluatedSample]):
         eval: ClassVar = Eval.BUILD
         supported_types: ClassVar = {
@@ -322,17 +331,16 @@ def test_generic_eval_wrong_output_type(
     # Check that running this eval on datasets including an `AdaSample` raises
     # a `WrongEvalOutputTypeError`.
     error_msg = (
-        "Eval 'build' accepted a GeneratedSample of type GeneratedAdaSample, "
-        "but the corresponding evaluated sample type (EvaluatedAdaSample) is "
-        "not compatible with the eval's output types "
-        "(EvaluatedExplainSample, EvaluatedSparkSample)."
+        "Eval 'build' purports to map samples of type GeneratedAdaSample to "
+        "type EvaluatedExplainSample, but the corresponding evaluated type is "
+        "actually EvaluatedAdaSample."
     )
     with (
-        patch("ada_eval.evaluate.create_eval", return_value=MockEval()),
+        patch("ada_eval.evals.evaluate.create_eval", return_value=MockEval()),
         pytest.raises(WrongEvalOutputTypeError, match=re.escape(error_msg)),
     ):
         evaluate_datasets(
-            evals=[None],  # type: ignore[list-item]  # Dummy value; just need length 1
+            evals=[None],  # type: ignore[list-item]  # Dummy value; just needs length 1
             datasets=cast(
                 list[Dataset[GeneratedSample]], load_datasets(generated_test_datasets)
             ),
@@ -351,7 +359,7 @@ def test_evaluate_datasets_no_evals(
     caplog: pytest.LogCaptureFixture,
 ):
     """Test that `evaluate_datasets()` warns when no `Eval`s are provided."""
-    with patch("ada_eval.evaluate.create_eval") as mock_create_eval:
+    with patch("ada_eval.evals.evaluate.create_eval") as mock_create_eval:
         datasets = cast(
             list[Dataset[GeneratedSample]], load_datasets(generated_test_datasets)
         )
@@ -378,9 +386,9 @@ def test_evaluate_directory(
     assert not evaluated_test_datasets.exists()
     assert_git_status(tmp_path, expect_dirty=True)
 
-    # Run the evals on the generated test datasets and check this regenerates
-    # the evaluated datasets.
-    with patch("ada_eval.evaluate.create_eval", mock_create_eval):
+    # Run `MockBuildEval` and `MockProveEval` on the generated test datasets and
+    # check this regenerates the evaluated datasets.
+    with patch("ada_eval.evals.evaluate.create_eval", mock_create_eval):
         evaluate_directory(
             [Eval.PROVE, Eval.BUILD],
             path=generated_test_datasets,
@@ -397,13 +405,10 @@ def test_evaluate_directory(
     check_progress_bar(output, 5, "prove")
 
     # Load a copy of the original generated datasets for later comparison.
-    original_generated_datasets = load_datasets(generated_test_datasets)
-    original_samples = {
-        (d.dirname(), s.name): s for d in original_generated_datasets for s in d.samples
-    }
+    original_samples = dictify_datasets(load_datasets(generated_test_datasets))
 
-    # Run the evals as a canonical evaluation on the generated datasets
-    with patch("ada_eval.evaluate.create_eval", mock_create_eval):
+    # Run the same mock evals as a canonical evaluation on the generated datasets
+    with patch("ada_eval.evals.evaluate.create_eval", mock_create_eval):
         evaluate_directory(
             [Eval.BUILD, Eval.PROVE],
             path=generated_test_datasets,
@@ -423,7 +428,7 @@ def test_evaluate_directory(
     for dataset in canonically_evaluated_datasets:
         assert dataset_has_sample_type(dataset, GeneratedSample)
         for sample in dataset.samples:
-            original_sample = original_samples[(dataset.dirname(), sample.name)]
+            original_sample = original_samples[(dataset.dirname, sample.name)]
             assert isinstance(sample, GeneratedSample)
             # The existing ordering will be preserved (which makes the diff
             # cleaner)
@@ -456,16 +461,18 @@ def test_evaluate_directory_no_generations(
     capsys: pytest.CaptureFixture[str],
     caplog: pytest.LogCaptureFixture,
 ):
-    """Test that `evaluate_datasets()` warns when run on base datasets."""
+    """Test that `evaluate_datasets()` warns when run on initial datasets."""
     output_dir = tmp_path / "output"
-    with patch("ada_eval.evaluate.create_eval", mock_create_eval):
+    assert not output_dir.exists()
+    with patch("ada_eval.evals.evaluate.create_eval", mock_create_eval):
         evaluate_directory(
             [Eval.BUILD],
             path=expanded_test_datasets,
             output_dir=output_dir,
             jobs=8,
         )
-    assert not output_dir.exists()
+    assert output_dir.exists()
+    assert list(output_dir.iterdir()) == []
     for name in ["ada_test", "explain_test", "spark_test"]:
         msg = f"Dataset '{name}' does not contain generations; Skipping evaluation."
         assert_log(caplog, WARN, msg)
@@ -486,7 +493,7 @@ def test_evaluate_directory_save_unpacked(
     # Output should be saved in packed format by default
     output_dir = tmp_path / "output"
     assert not output_dir.exists()
-    with patch("ada_eval.evaluate.create_eval", mock_create_eval):
+    with patch("ada_eval.evals.evaluate.create_eval", mock_create_eval):
         evaluate_directory(
             [Eval.BUILD],
             path=expanded_test_datasets,
@@ -501,7 +508,7 @@ def test_evaluate_directory_save_unpacked(
     shutil.rmtree(output_dir)
     output_dir.mkdir()
     shutil.copytree(expanded_test_datasets / "ada_test", output_dir / "ada_test")
-    with patch("ada_eval.evaluate.create_eval", mock_create_eval):
+    with patch("ada_eval.evals.evaluate.create_eval", mock_create_eval):
         evaluate_directory(
             [Eval.BUILD],
             path=expanded_test_datasets,
@@ -521,7 +528,8 @@ def test_build(
     caplog: pytest.LogCaptureFixture,
 ):
     # Build eval should support both ada and spark datasets (and treat them
-    # identically)
+    # identically), so make a copy of the ada eval test dataset with the name
+    # changed so that it loads as a spark dataset.
     ada_dataset_file = eval_test_datasets / "ada_build.jsonl"
     spark_dataset_file = eval_test_datasets / "spark_build.jsonl"
     shutil.copy(ada_dataset_file, spark_dataset_file)
@@ -529,7 +537,7 @@ def test_build(
     # Apply the build eval to the eval test datasets (for simplicity, they
     # contain initial samples defining only a canonical solution)
     test_datasets = load_datasets(eval_test_datasets)
-    test_datasets = evaluate_datasets_canonical([Eval.BUILD], test_datasets, jobs=8)
+    evaluate_datasets_canonical([Eval.BUILD], test_datasets, jobs=8)
     assert caplog.text == ""
     check_progress_bar(capsys.readouterr(), 11, "build")  # 2x4 (build) + 3 (prove)
 
@@ -581,12 +589,13 @@ def test_prove(
     # Apply the prove eval to the eval test datasets (for simplicity, they
     # contain initial samples defining only a canonical solution)
     test_datasets = load_datasets(eval_test_datasets)
-    test_datasets = evaluate_datasets_canonical([Eval.PROVE], test_datasets, jobs=8)
+    evaluate_datasets_canonical([Eval.PROVE], test_datasets, jobs=8)
     assert caplog.text == ""
     check_progress_bar(capsys.readouterr(), 3, "prove")  # 3 spark samples
 
     # Verify that the evaluation results are as expected for the build dataset
-    # (only spark samples are compatible with prove)
+    # (only spark samples are compatible with prove, so this should be an empty
+    # list)
     build_test_datasets = [d for d in test_datasets if d.name == "build"]
     assert len(build_test_datasets) == 1
     for sample in build_test_datasets[0].samples:
@@ -608,16 +617,16 @@ def test_prove(
 
 
 @pytest.mark.skipif(not shutil.which("sh"), reason="sh not available")
-def test_prove_cli(
+def test_prove_ci(
     tmp_path: Path,
     eval_test_datasets: Path,  # noqa: F811  # pytest fixture
     capsys: pytest.CaptureFixture[str],
     caplog: pytest.LogCaptureFixture,
 ):
-    """A version of `test_prove()` which can be run in CI."""
+    """A version of `test_prove()` which can be run without `gnatprove` on PATH."""
     # Mock `gnatprove` with a script which simulates the behaviour of the
-    # real tool on the eval test datasets; i.e. returns 0 iff `./src/increment.ads`
-    # contains the substring 'Pre => X < Integer'Last'.
+    # real tool on the eval test datasets; i.e. returns exit code 0 iff
+    # `./src/increment.ads` contains the substring "Pre => X < Integer'Last".
     script = '#!/usr/bin/env sh\ngrep "Pre => X < Integer\'Last" ./src/increment.ads'
     path_dir = tmp_path / "path_dir"
     path_dir.mkdir()
@@ -635,11 +644,10 @@ def test_eval_path_checks(eval_test_datasets: Path):  # noqa: F811  # pytest fix
     """Check that evals raise appropriate exceptions when tools are not available."""
     test_datasets = load_datasets(eval_test_datasets)
 
-    with patch.dict(os.environ, {"PATH": ""}):
-        error_msg = "'gprbuild' is not available in the PATH."
-        with pytest.raises(ExecutableNotFoundError, match=re.escape(error_msg)):
-            evaluate_datasets_canonical([Eval.BUILD], test_datasets, jobs=8)
-
-        error_msg = "'gnatprove' is not available in the PATH."
-        with pytest.raises(ExecutableNotFoundError, match=re.escape(error_msg)):
-            evaluate_datasets_canonical([Eval.PROVE], test_datasets, jobs=8)
+    for eval_, exe in [(Eval.BUILD, "gprbuild"), (Eval.PROVE, "gnatprove")]:
+        error_msg = f"'{exe}' is not available in the PATH."
+        with (
+            patch.dict(os.environ, {"PATH": ""}),
+            pytest.raises(ExecutableNotFoundError, match=re.escape(error_msg)),
+        ):
+            evaluate_datasets_canonical([eval_], test_datasets, jobs=8)

@@ -96,7 +96,7 @@ def test_generic_tool(
     def check_generated_datasets(generated_datasets: list[Dataset[GeneratedSample]]):
         for dataset in generated_datasets:
             base_dataset = next(
-                d for d in base_datasets if d.dirname() == dataset.dirname()
+                d for d in base_datasets if d.dirname == dataset.dirname
             )
             assert dataset_has_sample_type(dataset, GeneratedSample)
             for sample in dataset.samples:
@@ -178,13 +178,13 @@ def test_generic_tool(
 
     # Check that the explain dataset is recognised as incompatible
     assert len(incompatible_datasets_1) == 1
-    assert incompatible_datasets_1[0].dirname() == "explain_test"
+    assert incompatible_datasets_1[0].dirname == "explain_test"
     assert incompatible_datasets_1[0].sample_type is ExplainSample
 
     # Check that the exception on the spark sample is recorded properly in
     # `failed_datasets_1`
     assert len(failed_datasets_1) == 1
-    assert failed_datasets_1[0].dirname() == "spark_test"
+    assert failed_datasets_1[0].dirname == "spark_test"
     assert len(failed_datasets_1[0].samples) == 1
     failed_sample = failed_datasets_1[0].samples[0]
     assert isinstance(failed_sample, SparkSample)
@@ -192,7 +192,7 @@ def test_generic_tool(
     base_spark_sample_0 = next(
         s
         for d in base_datasets
-        if d.dirname() == "spark_test"
+        if d.dirname == "spark_test"
         for s in d.samples
         if s.name == "test_sample_0"
     )

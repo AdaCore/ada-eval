@@ -64,7 +64,7 @@ def test_generate(capsys):
         with patch_args("invalid_tool", "path/to/config"), pytest.raises(SystemExit):
             main()
         output = capsys.readouterr()
-        assert "argument --tool: invalid tool value: 'invalid_tool'" in output.err
+        assert "argument --tool: invalid Tool value: 'invalid_tool'" in output.err
         assert output.out == ""
         mock_create_tool.assert_not_called()
         mock_tool.apply_to_directory.assert_not_called()
@@ -124,7 +124,7 @@ def test_evaluate(capsys):
         with patch_args(["invalid_eval"]), pytest.raises(SystemExit):
             main()
         output = capsys.readouterr()
-        assert "argument --evals: invalid eval_ value: 'invalid_eval'" in output.err
+        assert "argument --evals: invalid Eval value: 'invalid_eval'" in output.err
         assert output.out == ""
         mock_evaluate_directory.assert_not_called()
 

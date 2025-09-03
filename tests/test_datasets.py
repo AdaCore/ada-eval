@@ -41,7 +41,7 @@ def test_dataset_types():
     base_ada_dataset = Dataset(name="test_0", sample_type=AdaSample, samples=[])
     assert base_ada_dataset.kind is SampleKind.ADA
     assert base_ada_dataset.stage is SampleStage.INITIAL
-    assert base_ada_dataset.dirname() == "ada_test_0"
+    assert base_ada_dataset.dirname == "ada_test_0"
     assert dataset_has_sample_type(base_ada_dataset, Sample)
     assert dataset_has_sample_type(base_ada_dataset, AdaSample)
     assert not dataset_has_sample_type(base_ada_dataset, GeneratedSample)
@@ -56,7 +56,7 @@ def test_dataset_types():
     )
     assert generated_explain_dataset.kind is SampleKind.EXPLAIN
     assert generated_explain_dataset.stage is SampleStage.GENERATED
-    assert generated_explain_dataset.dirname() == "explain_test_1"
+    assert generated_explain_dataset.dirname == "explain_test_1"
     assert dataset_has_sample_type(generated_explain_dataset, Sample)
     assert dataset_has_sample_type(generated_explain_dataset, ExplainSample)
     assert dataset_has_sample_type(generated_explain_dataset, GeneratedSample)
@@ -73,7 +73,7 @@ def test_dataset_types():
     )
     assert evaluated_spark_dataset.kind is SampleKind.SPARK
     assert evaluated_spark_dataset.stage is SampleStage.EVALUATED
-    assert evaluated_spark_dataset.dirname() == "spark_test_2"
+    assert evaluated_spark_dataset.dirname == "spark_test_2"
     assert dataset_has_sample_type(evaluated_spark_dataset, Sample)
     assert dataset_has_sample_type(evaluated_spark_dataset, AdaSample)
     assert dataset_has_sample_type(evaluated_spark_dataset, SparkSample)
@@ -202,6 +202,7 @@ def test_save_datasets_auto_format(
 
     # Load the dataset files
     datasets = load_datasets(expanded_test_datasets)
+    datasets_dict = {d.dirname: d for d in datasets}
 
     # Test that packed format is used by default when there is no existing data
     save_datasets_auto_format(datasets, tmp_path / "new")
@@ -256,16 +257,15 @@ def test_save_datasets_auto_format(
     caplog.clear()
 
     # Test saving a single dataset to a matching packed dataset file
-    explain_dataset = next(d for d in datasets if d.dirname() == "explain_test")
-    (compacted_test_datasets / "explain_test.jsonl").write_text("")
+    explain_dataset = datasets_dict["explain_test"]
+    packed_explain_path = compacted_test_datasets / "explain_test.jsonl"
+    packed_explain_path.write_text("")
     assert_git_status(tmp_path, expect_dirty=True)
-    save_datasets_auto_format(
-        [explain_dataset], compacted_test_datasets / "explain_test.jsonl"
-    )
+    save_datasets_auto_format([explain_dataset], packed_explain_path)
     assert_git_status(tmp_path, expect_dirty=False)
 
     # Test saving a single dataset to a matching unpacked dataset directory
-    spark_dataset = next(d for d in datasets if d.dirname() == "spark_test")
+    spark_dataset = datasets_dict["spark_test"]
     shutil.rmtree(expanded_test_datasets / "spark_test" / "test_sample_1")
     assert_git_status(tmp_path, expect_dirty=True)
     save_datasets_auto_format([spark_dataset], expanded_test_datasets / "spark_test")

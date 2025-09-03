@@ -50,26 +50,27 @@ class Dataset(Generic[SampleType_co]):
 
     @property
     def kind(self) -> SampleKind:
-        """Return the kind of this dataset."""
+        """The kind of this dataset."""
         return self.sample_type.kind
 
     @property
     def stage(self) -> SampleStage:
-        """Return the stage of this dataset."""
+        """The stage of this dataset."""
         return self.sample_type.stage
 
+    @property
     def dirname(self) -> str:
-        """Return the stem of this dataset's file or directory name."""
+        """The stem of this dataset's file or directory name."""
         return f"{self.kind}_{self.name}"
 
     def save_unpacked(self, unpacked_datasets_root: Path):
-        dataset_root = unpacked_datasets_root / self.dirname()
+        dataset_root = unpacked_datasets_root / self.dirname
         dataset_root.mkdir(exist_ok=True, parents=True)
         for sample in self.samples:
             sample.unpack(dataset_root)
 
     def save_packed(self, dest_dir: Path):
-        dest_file = dest_dir / f"{self.dirname()}.jsonl"
+        dest_file = dest_dir / f"{self.dirname}.jsonl"
         with dest_file.open("w") as f:
             for sample in self.samples:
                 f.write(sample.model_dump_json(exclude_defaults=True) + "\n")
@@ -188,9 +189,12 @@ def save_datasets_auto_format(datasets: Sequence[Dataset[Sample]], path: Path) -
     Save datasets to a directory, respecting the format of any existing data thereat.
 
     The data will be saved in unpacked form if `path` already exists and
-    contains unpacked data. If the output path points to a single dataset
-    file/directory (instead of a directory thereof), and `datasets` contains
-    exactly one dataset, that dataset will be saved likewise.
+    contains unpacked data.
+
+    If the output path points to a single dataset file/directory (instead of a
+    directory thereof), and `datasets` contains exactly one dataset with a
+    matching `dirname`, it will be saved as a single dataset file/directory in
+    the same way.
 
     Any existing files at or within `path` will be removed or overwritten. A
     directory will be created if necessary (even if `datasets` is empty).
@@ -219,12 +223,12 @@ def save_datasets_auto_format(datasets: Sequence[Dataset[Sample]], path: Path) -
             unpacked
             and is_unpacked_dataset(path)
             and not is_collection_of_unpacked_datasets(path)
-            and path.name == dataset.dirname()
+            and path.name == dataset.dirname
         ):
             shutil.rmtree(path)
             dataset.save_unpacked(path.parent)
             return
-        if is_packed_dataset(path) and path.name == dataset.dirname() + ".jsonl":
+        if is_packed_dataset(path) and path.name == f"{dataset.dirname}.jsonl":
             dataset.save_packed(path.parent)
             return
     # Otherwise, save as a collection of datasets

@@ -60,9 +60,9 @@ class DuplicateSampleNameError(ValueError):
 
 
 class MixedSampleTypesError(ValueError):
-    """Raised when a dataset contains samples of different types."""
+    """Raised when attempting to load datasets containing samples of different types."""
 
-    def __init__(self, location: Path, samples: Sequence[Sample]):
+    def __init__(self, samples: Sequence[Sample], location: Path):
         s1 = samples[0]
         s2 = next(s for s in samples if type(s) is not type(s1))
         super().__init__(
@@ -76,7 +76,7 @@ def _parse_dataset_dirname(path: Path, expected_format: str) -> tuple[SampleKind
     if "_" not in path.stem:
         raise InvalidDatasetNameError(path, expected_format)
     dataset_type_str, _, dataset_name = path.stem.partition("_")
-    if not any(k.value == dataset_type_str for k in SampleKind):
+    if not any(k == dataset_type_str for k in SampleKind):
         raise UnknownDatasetKindError(dataset_type_str)
     return SampleKind(dataset_type_str), dataset_name
 
@@ -176,7 +176,7 @@ def load_packed_dataset(path: Path) -> Dataset[Sample]:
     # All samples should be of the same concrete type, and names should be unique
     sample_class = type(samples[0])
     if not all(type(s) is sample_class for s in samples):
-        raise MixedSampleTypesError(path, samples)
+        raise MixedSampleTypesError(samples, path)
     check_no_duplicate_sample_names(samples, path)
     return Dataset(name=dataset_name, samples=samples, sample_type=sample_class)
 

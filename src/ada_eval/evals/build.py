@@ -20,12 +20,14 @@ logger = logging.getLogger(__name__)
 
 BUILD_TIMEOUT_S = 60
 
+PROJ_ARG = "-Pmain.gpr"
+
 
 def _run_gprbuild(
     working_dir: Path, *, check_warnings: bool
 ) -> subprocess.CompletedProcess[str]:
     """Return the result of running `gprbuild`."""
-    args = ["gprbuild", "-P", "main.gpr"]
+    args = ["gprbuild", PROJ_ARG]
     if check_warnings:
         args.extend(["-gnatwae", "-gnatyy"])
     return run_cmd_with_timeout(args, working_dir, BUILD_TIMEOUT_S)[0]
@@ -58,7 +60,7 @@ class Build(GenericEval[GeneratedAdaSample, EvaluatedAdaSample]):
             )
             # Run `gprbuild` on the unformatted sources with warnings enabled
             run_cmd_with_timeout(
-                ["gprclean", "-r"], working_dir, BUILD_TIMEOUT_S, check=True
+                ["gprclean", "-r", PROJ_ARG], working_dir, BUILD_TIMEOUT_S, check=True
             )
             result = _run_gprbuild(working_dir, check_warnings=True)
             if result.returncode == 0:
@@ -66,7 +68,7 @@ class Build(GenericEval[GeneratedAdaSample, EvaluatedAdaSample]):
             eval_stats.pre_format_warnings = True
             # If that failed, format the sources with GNATformat and try again
             run_cmd_with_timeout(
-                ["gnatformat"], working_dir, BUILD_TIMEOUT_S, check=True
+                ["gnatformat", PROJ_ARG], working_dir, BUILD_TIMEOUT_S, check=True
             )
             result = _run_gprbuild(working_dir, check_warnings=True)
             if result.returncode == 0:

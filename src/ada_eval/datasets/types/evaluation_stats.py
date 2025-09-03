@@ -1,12 +1,20 @@
+from collections.abc import Sequence
 from enum import StrEnum
 from typing import Literal
 
 from pydantic import BaseModel, model_serializer
 
+from ada_eval.utils import construct_enum_case_insensitive
+
 
 class Eval(StrEnum):
     BUILD = "build"
     PROVE = "prove"
+
+    # Constructor should be case-insensitive
+    @classmethod
+    def _missing_(cls, value):
+        return construct_enum_case_insensitive(cls, value)
 
 
 class EvaluationStatsBase(BaseModel):
@@ -24,7 +32,7 @@ class EvaluationStatsFailed(EvaluationStatsBase):
 
 
 class EvaluationStatsTimedOut(EvaluationStatsBase):
-    cmd_timed_out: list[str]
+    cmd_timed_out: Sequence[str]
     timeout: float
 
 

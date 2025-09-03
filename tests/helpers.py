@@ -1,11 +1,13 @@
 import logging
 import shutil
 import subprocess
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from pathlib import Path
+from typing import TypeVar
 
 import pytest
 
+from ada_eval.datasets import Dataset, Sample
 from ada_eval.paths import TEST_DATA_DIR
 
 
@@ -61,6 +63,16 @@ def assert_log(caplog: pytest.LogCaptureFixture, level: int, message: str):
         if record.levelno == level and record.message == message:
             return record
     raise ValueError(f"'{logging.getLevelName(level)}' message not found: {message}")
+
+
+SampleType = TypeVar("SampleType", bound=Sample)
+
+
+def dictify_datasets(
+    datasets: Sequence[Dataset[SampleType]],
+) -> dict[tuple[str, str], SampleType]:
+    """Construct a dictionary of samples keyed by (dataset.dirname, sample.name)."""
+    return {(d.dirname, s.name): s for d in datasets for s in d.samples}
 
 
 def _create_test_data_fixture(rel_path: Path) -> Callable[[Path], Path]:

@@ -74,12 +74,6 @@ def test_sample_kind_str():
     assert str(SampleKind.SPARK) == "spark"
 
 
-def test_sample_stage_str():
-    assert str(SampleStage.INITIAL) == "initial"
-    assert str(SampleStage.GENERATED) == "generated"
-    assert str(SampleStage.EVALUATED) == "evaluated"
-
-
 def test_sample_type_dicts_are_complete():
     for kind in SampleKind:
         assert kind in INITIAL_SAMPLE_TYPES

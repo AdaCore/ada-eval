@@ -4,6 +4,7 @@ from abc import abstractmethod
 from typing import Generic, TypeVar
 
 from ada_eval.datasets import (
+    EVALUATED_SAMPLE_TYPES,
     Eval,
     EvaluatedSample,
     EvaluationStats,
@@ -65,8 +66,7 @@ class GenericEval(
     ]:
         # Construct the full type mapping: unevaluated `GeneratedSample`s are
         # converted to the corresponding `EvaluatedSample` type, while the
-        # `EvaluatedSample`s are mapped to themselves (but with additional
-        # `EvaluationStats`).
+        # `EvaluatedSample`s are mapped to themselves.
         return self.supported_types | {
             output_type: output_type for output_type in self.supported_types.values()
         }
@@ -75,13 +75,22 @@ class GenericEval(
         self, sample: GeneratedSampleType | EvaluatedSampleType
     ) -> EvaluatedSampleType:
         # Promote the `GeneratedSample` to an  `EvaluatedSample` if necessary.
-        evaluated_sample = sample.as_evaluated_sample()
-        for t in self.type_map.values():  # Mypy doesn't understand `if any(...)`
-            if isinstance(evaluated_sample, t):
-                break
+        if isinstance(sample, EvaluatedSample):
+            # Keep any prior `evaluation_results`, but avoid mutating the input.
+            evaluated_sample: EvaluatedSample = sample.model_copy()
         else:
-            raise WrongEvalOutputTypeError(evaluation=self, gen_sample=sample)
-        # Evaluate the sample and add the results to the `EvaluatedSample`
+            evaluated_sample = EVALUATED_SAMPLE_TYPES[sample.kind](
+                **sample.model_dump(),  # Copy all fields from the original sample
+                evaluation_results=[],
+            )
+        # Python's type annotations support neither type maps nor intersection
+        # types, so we can only check that `self.type_map` is correctly
+        # configured at runtime.
+        if not isinstance(evaluated_sample, self.type_map[type(sample)]):
+            raise WrongEvalOutputTypeError(
+                evaluation=self, generated=sample, evaluated=evaluated_sample
+            )
+        # Evaluate the sample
         try:
             eval_stats = self.evaluate(sample)
         except subprocess.TimeoutExpired as e:
@@ -99,7 +108,11 @@ class GenericEval(
                 e.add_note(f"stderr: {e.stderr!r}")
             logger.exception("Error during evaluation of sample %s", sample.name)
             eval_stats = EvaluationStatsFailed(eval=self.eval, exception=repr(e))
-        evaluated_sample.evaluation_results.append(eval_stats)
+        # Add the results to the `EvaluatedSample` (append without mutating)
+        evaluated_sample.evaluation_results = [
+            *evaluated_sample.evaluation_results,
+            eval_stats,
+        ]
         return evaluated_sample
 
 
@@ -116,13 +129,13 @@ class WrongEvalOutputTypeError(TypeError):
     def __init__(
         self,
         evaluation: GenericEval[GeneratedSampleType, EvaluatedSampleType],
-        gen_sample: GeneratedSample,
+        generated: GeneratedSampleType | EvaluatedSampleType,
+        evaluated: EvaluatedSample,
     ) -> None:
-        output_types = sorted({t.__name__ for t in evaluation.type_map.values()})
-        # (use set to avoid repetition; sorted to make testing deterministic)
         super().__init__(
-            f"Eval '{evaluation.name}' accepted a GeneratedSample of type "
-            f"{type(gen_sample).__name__}, but the corresponding evaluated sample "
-            f"type ({type(gen_sample.as_evaluated_sample()).__name__}) is not "
-            f"compatible with the eval's output types ({', '.join(output_types)})."
+            f"Eval '{evaluation.name}' purports to map samples of type "
+            f"{type(generated).__name__} to type "
+            f"{evaluation.type_map[type(generated)].__name__}, "
+            f"but the corresponding evaluated type is actually "
+            f"{type(evaluated).__name__}."
         )

@@ -15,10 +15,7 @@ from helpers import (
     setup_git_repo,
 )
 
-from ada_eval.datasets import (
-    Dataset,
-    dataset_has_sample_type,
-)
+from ada_eval.datasets import Dataset, dataset_has_sample_type
 from ada_eval.datasets.loader import (
     DuplicateSampleNameError,
     InvalidDatasetError,
@@ -183,7 +180,7 @@ def check_loaded_datasets(
                 return expected_evaluated_sample(sample)
 
     assert len(datasets) == 3
-    datasets_by_name = {d.dirname(): d for d in datasets}
+    datasets_by_name = {d.dirname: d for d in datasets}
 
     # Check the Explain dataset
     explain_dataset = datasets_by_name["explain_test"]

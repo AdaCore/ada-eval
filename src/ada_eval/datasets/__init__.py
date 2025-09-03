@@ -1,6 +1,9 @@
 from .loader import load_datasets
 from .sample_operation import SampleOperation
 from .types import (
+    EVALUATED_SAMPLE_TYPES,
+    GENERATED_SAMPLE_TYPES,
+    INITIAL_SAMPLE_TYPES,
     AdaSample,
     Dataset,
     Eval,
@@ -29,6 +32,9 @@ from .types import (
 )
 
 __all__ = [
+    "EVALUATED_SAMPLE_TYPES",
+    "GENERATED_SAMPLE_TYPES",
+    "INITIAL_SAMPLE_TYPES",
     "AdaSample",
     "Dataset",
     "Eval",

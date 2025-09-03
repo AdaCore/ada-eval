@@ -123,7 +123,7 @@ class SampleOperation(ABC, Generic[InputType, OutputType]):
                         logging.exception(
                             "Error processing sample %s from dataset %s",
                             sample.name,
-                            dataset.dirname(),
+                            dataset.dirname,
                         )
                         failures_by_dataset[dataset].append(sample)
                     finally:

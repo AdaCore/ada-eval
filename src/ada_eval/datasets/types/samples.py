@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import json
 import re
-from enum import Enum
+from collections.abc import Sequence
+from enum import Enum, StrEnum
 from pathlib import Path
 from typing import ClassVar, Self
 
@@ -114,7 +115,7 @@ class Location(BaseModel):
         return find_subprogram_line(full_path, self.subprogram_name)
 
 
-class SampleKind(Enum):
+class SampleKind(StrEnum):
     """
     Enum for the 'kind' of a sample/dataset.
 
@@ -125,9 +126,6 @@ class SampleKind(Enum):
     ADA = "ada"
     EXPLAIN = "explain"
     SPARK = "spark"
-
-    def __str__(self) -> str:
-        return self.name.lower()
 
 
 class SampleStage(Enum):
@@ -145,9 +143,6 @@ class SampleStage(Enum):
     EVALUATED = "evaluated"
     """A problem, a generated solution thereto, and an evaluation thereof."""
 
-    def __str__(self) -> str:
-        return self.value
-
 
 VALID_SAMPLE_NAME_PATTERN = re.compile(r"^[\w-]+$")
 
@@ -164,9 +159,8 @@ class Sample(BaseModel):
         sources (DirectoryContents): Source files for the sample.
         canonical_solution (object): Canonical solution for the sample. The type
             should be constrained by the subclass.
-        canonical_evaluation_results (list[EvaluationStats]): Results of
-            evaluating the canonical solution. Empty if no such evaluation has
-            yet been performed.
+        canonical_evaluation_results (list[EvaluationStats]): Results from
+            evaluation of the canonical solution.
         comments (str): Any comments about the sample by the author. May be empty.
 
     """
@@ -179,7 +173,7 @@ class Sample(BaseModel):
     prompt: str
     sources: DirectoryContents
     canonical_solution: object
-    canonical_evaluation_results: list[EvaluationStats]
+    canonical_evaluation_results: Sequence[EvaluationStats]
     comments: str
 
     @field_validator("name")
@@ -287,8 +281,8 @@ class ExplainSample(Sample):
     kind: ClassVar = SampleKind.EXPLAIN
 
     canonical_solution: str
-    correct_statements: list[str]
-    incorrect_statements: list[str]
+    correct_statements: Sequence[str]
+    incorrect_statements: Sequence[str]
 
     def unpack(self, dataset_root: Path, other_data: dict[str, object] | None = None):
         other_data = {
@@ -335,21 +329,6 @@ class GeneratedSample(Sample):
     generation_stats: GenerationStats
     generated_solution: object
 
-    def as_evaluated_sample(self) -> EvaluatedSample:
-        """
-        Return this sample as an evaluated sample.
-
-        Returns this sample promoted to an `EvaluatedSample` (with an empty
-        `evaluation_results`) if necessary, or unmodified if it is already an
-        `EvaluatedSample`.
-        """
-        if isinstance(self, EvaluatedSample):
-            return self
-        return EVALUATED_SAMPLE_TYPES[self.kind](
-            **self.model_dump(),  # Copy all fields from the original sample
-            evaluation_results=[],
-        )
-
 
 class GeneratedAdaSample(AdaSample, GeneratedSample):
     # Note that `AdaSample` must be inherited before `GeneratedSample`, so that
@@ -370,7 +349,7 @@ class GeneratedSparkSample(SparkSample, GeneratedAdaSample):
 class EvaluatedSample(GeneratedSample):
     stage: ClassVar = SampleStage.EVALUATED
 
-    evaluation_results: list[EvaluationStats]
+    evaluation_results: Sequence[EvaluationStats]
 
 
 class EvaluatedAdaSample(GeneratedAdaSample, EvaluatedSample):

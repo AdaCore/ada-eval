@@ -5,7 +5,7 @@ from pathlib import Path
 
 from ada_eval.datasets.pack_unpack import pack_datasets, unpack_datasets
 from ada_eval.datasets.types import Eval
-from ada_eval.evaluate import evaluate_directory
+from ada_eval.evals import evaluate_directory
 from ada_eval.paths import (
     COMPACTED_DATASETS_DIR,
     EVALUATED_DATASETS_DIR,
@@ -13,16 +13,6 @@ from ada_eval.paths import (
     GENERATED_DATASETS_DIR,
 )
 from ada_eval.tools import Tool, create_tool
-
-
-def tool(tool_name: str) -> Tool:
-    """Case-insensitive `Tool` constructor."""
-    return Tool(tool_name.lower())
-
-
-def eval_(eval_name: str) -> Eval:
-    """Case-insensitive `Eval` constructor."""
-    return Eval(eval_name.lower())
 
 
 def call_unpack_datasets(args):
@@ -151,7 +141,7 @@ def main() -> None:
     )
     generate_parser.add_argument(
         "--tool",
-        type=tool,
+        type=Tool,
         choices=list(Tool),
         help="Name of tool to use for generation",
         required=True,
@@ -175,8 +165,8 @@ def main() -> None:
         help=(
             "Evaluate the canonical solution instead of the generated samples. "
             "The results will be recorded in the 'canonical_evaluation_results' "
-            "of each sample in the original dataset files (overwriting any "
-            "value already present)."
+            "of each sample in the original dataset files. If there are results "
+            "from the same eval(s) already present, they will be overwritten."
         ),
     )
     evaluation_parser.add_argument(
@@ -191,7 +181,7 @@ def main() -> None:
     )
     evaluation_parser.add_argument(
         "--evals",
-        type=eval_,
+        type=Eval,
         choices=list(Eval),
         nargs="*",
         help="Names of the evals to run. (Default: all)",
