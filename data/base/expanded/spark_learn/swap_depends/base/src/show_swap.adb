@@ -9,8 +9,8 @@ package body Show_Swap is
 
    procedure Identity (X, Y : in out Positive) is
    begin
-      Swap (X, Y);
-      Swap (Y, X);
+      Swap (X => X, Y => Y);
+      Swap (X => Y, Y => X);
    end Identity;
 
 end Show_Swap;
