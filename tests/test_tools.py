@@ -1,4 +1,5 @@
 import shutil
+import subprocess
 import textwrap
 from logging import ERROR, WARN
 from pathlib import Path
@@ -278,6 +279,22 @@ def test_shell_script(
     config_file.write_text(
         f'{{"timeout_s": 1, "shell_script": "{shell_script_relative}"}}'
     )
+
+    # Verify the script works. This also serves to trigger any first-run
+    # Gatekeeper checks or similar so that the actual tool calls do not time out.
+    script_test_dir = tmp_path / "script_test"
+    script_test_dir.mkdir()
+    result = subprocess.run(
+        [str(shell_script), "dummy_arg"],
+        cwd=script_test_dir,
+        capture_output=True,
+        check=True,
+        encoding="utf-8",
+    )
+    assert result.stdout == "This is the generation's stdout\n"
+    assert result.stderr == ""
+    generated_file = script_test_dir / "generated_file"
+    assert generated_file.read_text() == "This file was added during generation\n"
 
     # Run the tool on the test datasets
     base_datasets = load_datasets(compacted_test_datasets)
