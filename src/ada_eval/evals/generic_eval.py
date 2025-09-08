@@ -1,7 +1,6 @@
 import logging
 import subprocess
 from abc import abstractmethod
-from typing import Generic, TypeVar
 
 from ada_eval.datasets import (
     EVALUATED_SAMPLE_TYPES,
@@ -17,12 +16,10 @@ from ada_eval.datasets import (
 logger = logging.getLogger(__name__)
 
 
-GeneratedSampleType = TypeVar("GeneratedSampleType", bound=GeneratedSample)
-EvaluatedSampleType = TypeVar("EvaluatedSampleType", bound=EvaluatedSample)
-
-
-class GenericEval(
-    Generic[GeneratedSampleType, EvaluatedSampleType],
+class GenericEval[
+    GeneratedSampleType: GeneratedSample,
+    EvaluatedSampleType: EvaluatedSample,
+](
     SampleOperation[GeneratedSampleType | EvaluatedSampleType, EvaluatedSampleType],
 ):
     """
@@ -126,7 +123,10 @@ class WrongEvalOutputTypeError(TypeError):
     is misconfigured.
     """
 
-    def __init__(
+    def __init__[
+        GeneratedSampleType: GeneratedSample,
+        EvaluatedSampleType: EvaluatedSample,
+    ](
         self,
         evaluation: GenericEval[GeneratedSampleType, EvaluatedSampleType],
         generated: GeneratedSampleType | EvaluatedSampleType,

@@ -3,7 +3,6 @@ from abc import ABC, abstractmethod
 from collections.abc import Iterable
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
-from typing import Generic, TypeVar
 
 from tqdm import tqdm
 
@@ -13,12 +12,7 @@ from .types import Dataset, Sample, dataset_has_sample_type, save_datasets
 logger = logging.getLogger(__name__)
 
 
-InputType = TypeVar("InputType", bound=Sample)
-OutputType = TypeVar("OutputType", bound=Sample)
-DatasetSampleType = TypeVar("DatasetSampleType", bound=Sample)
-
-
-class SampleOperation(ABC, Generic[InputType, OutputType]):
+class SampleOperation[InputType: Sample, OutputType: Sample](ABC):
     """
     An operation that converts one type of `Sample` to another.
 
@@ -48,7 +42,7 @@ class SampleOperation(ABC, Generic[InputType, OutputType]):
     def apply(self, sample: InputType) -> OutputType:
         """Apply the operation to a sample."""
 
-    def apply_to_datasets(
+    def apply_to_datasets[DatasetSampleType: Sample](
         self,
         datasets: Iterable[Dataset[DatasetSampleType]],
         jobs: int,

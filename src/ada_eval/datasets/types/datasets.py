@@ -5,7 +5,7 @@ import shutil
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Generic, TypeGuard, TypeVar
+from typing import TypeGuard
 
 from .samples import (
     GeneratedSample,
@@ -18,12 +18,8 @@ from .samples import (
 logger = logging.getLogger(__name__)
 
 
-SampleType_co = TypeVar("SampleType_co", bound=Sample, covariant=True)
-TargetSampleType = TypeVar("TargetSampleType", bound=Sample)
-
-
-@dataclass(kw_only=True)
-class Dataset(Generic[SampleType_co]):
+@dataclass(kw_only=True, frozen=True)
+class Dataset[SampleType: Sample]:
     """
     A dataset of samples.
 
@@ -35,8 +31,8 @@ class Dataset(Generic[SampleType_co]):
     """
 
     name: str
-    sample_type: type[SampleType_co]
-    samples: Sequence[SampleType_co]  # Must be immutable for covariance
+    sample_type: type[SampleType]
+    samples: Sequence[SampleType]  # Must be immutable for covariance
 
     def __hash__(self) -> int:
         """Make Dataset hashable based on name and type only."""
@@ -76,7 +72,7 @@ class Dataset(Generic[SampleType_co]):
                 f.write(sample.model_dump_json(exclude_defaults=True) + "\n")
 
 
-def dataset_has_sample_type(
+def dataset_has_sample_type[TargetSampleType: Sample](
     dataset: Dataset[Sample],
     sample_types: type[TargetSampleType] | Sequence[type[TargetSampleType]],
 ) -> TypeGuard[Dataset[TargetSampleType]]:

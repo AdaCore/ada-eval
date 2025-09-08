@@ -1,7 +1,6 @@
 import logging
 from collections.abc import Sequence
 from pathlib import Path
-from typing import TypeVar
 
 from ada_eval.datasets.loader import load_datasets
 from ada_eval.datasets.types import (
@@ -74,10 +73,7 @@ def evaluate_datasets(
     ]
 
 
-SampleType = TypeVar("SampleType", bound=Sample)
-
-
-def evaluate_datasets_canonical(
+def evaluate_datasets_canonical[SampleType: Sample](
     evals: Sequence[Eval], datasets: Sequence[Dataset[SampleType]], jobs: int
 ) -> None:
     """

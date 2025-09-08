@@ -3,7 +3,6 @@ import shutil
 import subprocess
 from collections.abc import Callable, Sequence
 from pathlib import Path
-from typing import TypeVar
 
 import pytest
 
@@ -65,10 +64,7 @@ def assert_log(caplog: pytest.LogCaptureFixture, level: int, message: str):
     raise ValueError(f"'{logging.getLevelName(level)}' message not found: {message}")
 
 
-SampleType = TypeVar("SampleType", bound=Sample)
-
-
-def dictify_datasets(
+def dictify_datasets[SampleType: Sample](
     datasets: Sequence[Dataset[SampleType]],
 ) -> dict[tuple[str, str], SampleType]:
     """Construct a dictionary of samples keyed by (dataset.dirname, sample.name)."""
