@@ -4,17 +4,15 @@ from os import cpu_count
 from pathlib import Path
 
 from ada_eval.datasets.pack_unpack import pack_datasets, unpack_datasets
+from ada_eval.datasets.types import Eval
+from ada_eval.evals import evaluate_directory
 from ada_eval.paths import (
     COMPACTED_DATASETS_DIR,
+    EVALUATED_DATASETS_DIR,
     EXPANDED_DATASETS_DIR,
     GENERATED_DATASETS_DIR,
 )
 from ada_eval.tools import Tool, create_tool
-
-
-def tool(tool_name: str) -> Tool:
-    """Case-insensitive `Tool` constructor."""
-    return Tool(tool_name.lower())
 
 
 def call_unpack_datasets(args):
@@ -34,16 +32,37 @@ def generate(args):
     )
 
 
-def call_evaluate_completions(_):
-    raise NotImplementedError
+def evaluate(args):
+    if args.evals is None:
+        args.evals = list(Eval)
+    if args.dataset is None:
+        args.dataset = (
+            EXPANDED_DATASETS_DIR if args.canonical else GENERATED_DATASETS_DIR
+        )
+    evaluate_directory(
+        evals=args.evals,
+        path=args.dataset,
+        output_dir=args.dataset if args.canonical else EVALUATED_DATASETS_DIR,
+        jobs=args.jobs,
+        canonical_evaluation=args.canonical,
+    )
 
 
 def main() -> None:
-    logging.basicConfig(level=logging.INFO)
     parser = argparse.ArgumentParser(description="CLI for Eval Framework")
     subparsers = parser.add_subparsers(required=True)
 
     default_num_jobs = cpu_count() or 1
+
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        help=(
+            "Enable verbose logging "
+            "(--jobs=1 is recommended to avoid interleaved output)"
+        ),
+    )
 
     # Unpack datasets subcommand
     unpack_parser = subparsers.add_parser(
@@ -122,7 +141,7 @@ def main() -> None:
     )
     generate_parser.add_argument(
         "--tool",
-        type=tool,
+        type=Tool,
         choices=list(Tool),
         help="Name of tool to use for generation",
         required=True,
@@ -138,24 +157,45 @@ def main() -> None:
     evaluation_parser = subparsers.add_parser(
         "evaluate",
         help="Evaluate completions",
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    evaluation_parser.set_defaults(func=call_evaluate_completions)
+    evaluation_parser.set_defaults(func=evaluate)
+    evaluation_parser.add_argument(
+        "--canonical",
+        action="store_true",
+        help=(
+            "Evaluate the canonical solution instead of the generated samples. "
+            "The results will be recorded in the 'canonical_evaluation_results' "
+            "of each sample in the original dataset files. If there are results "
+            "from the same eval(s) already present, they will be overwritten."
+        ),
+    )
     evaluation_parser.add_argument(
         "--dataset",
         type=Path,
-        help="Path to packed dataset or dir of packed datasets",
-        default=GENERATED_DATASETS_DIR,
+        help=(
+            "Path to a dataset or a directory of datasets. (Default: "
+            f"'{GENERATED_DATASETS_DIR}', or '{EXPANDED_DATASETS_DIR}' if "
+            "'--canonical' is set)"
+        ),
+        default=None,
+    )
+    evaluation_parser.add_argument(
+        "--evals",
+        type=Eval,
+        choices=list(Eval),
+        nargs="*",
+        help="Names of the evals to run. (Default: all)",
     )
     evaluation_parser.add_argument(
         "-j",
         "--jobs",
         type=int,
-        help="Number of evaluations to run in parallel.",
+        help=f"Number of evaluations to run in parallel. (Default: {default_num_jobs})",
         default=default_num_jobs,
     )
 
     args = parser.parse_args()
+    logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO)
     args.func(args)
 
 

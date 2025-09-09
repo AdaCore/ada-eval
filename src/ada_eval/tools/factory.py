@@ -1,14 +1,18 @@
-from enum import Enum
+from enum import StrEnum
 from pathlib import Path
+
+from ada_eval.utils import construct_enum_case_insensitive
 
 from .shell_script import ShellScript
 
 
-class Tool(Enum):
+class Tool(StrEnum):
     SHELL_SCRIPT = ShellScript.name
 
-    def __str__(self):
-        return self.value
+    # Constructor should be case-insensitive
+    @classmethod
+    def _missing_(cls, value):
+        return construct_enum_case_insensitive(cls, value)
 
 
 class UnsupportedToolError(Exception):

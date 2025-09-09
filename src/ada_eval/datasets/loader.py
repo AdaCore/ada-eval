@@ -1,20 +1,16 @@
 import logging
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from pathlib import Path
 
 from pydantic import ValidationError
 
 from .types import (
-    AdaSample,
+    EVALUATED_SAMPLE_TYPES,
+    GENERATED_SAMPLE_TYPES,
+    INITIAL_SAMPLE_TYPES,
     Dataset,
-    DatasetKind,
-    ExplainSample,
-    GeneratedAdaSample,
-    GeneratedExplainSample,
-    GeneratedSample,
-    GeneratedSparkSample,
     Sample,
-    SparkSample,
+    SampleKind,
     get_packed_dataset_files,
     get_unpacked_dataset_dirs,
     is_packed_data,
@@ -50,10 +46,10 @@ class InvalidDatasetNameError(Exception):
 
 
 class UnknownDatasetKindError(Exception):
-    """Raised when an unknown dataset type is encountered."""
+    """Raised when an unknown dataset kind is encountered."""
 
-    def __init__(self, dataset_type: DatasetKind | str):
-        super().__init__(f"Unknown dataset type: {dataset_type}")
+    def __init__(self, dataset_kind: str):
+        super().__init__(f"Unknown dataset kind: {dataset_kind}")
 
 
 class DuplicateSampleNameError(ValueError):
@@ -63,14 +59,26 @@ class DuplicateSampleNameError(ValueError):
         super().__init__(f"Duplicate sample name '{sample_name}' found in '{location}'")
 
 
-def _parse_dataset_dirname(path: Path, expected_format: str) -> tuple[DatasetKind, str]:
+class MixedSampleTypesError(ValueError):
+    """Raised when attempting to load datasets containing samples of different types."""
+
+    def __init__(self, samples: Sequence[Sample], location: Path):
+        s1 = samples[0]
+        s2 = next(s for s in samples if type(s) is not type(s1))
+        super().__init__(
+            f"Dataset at '{location}' contains mixed sample types:\n"
+            f"'{s1.name}' is {type(s1).__name__} but '{s2.name}' is {type(s2).__name__}"
+        )
+
+
+def _parse_dataset_dirname(path: Path, expected_format: str) -> tuple[SampleKind, str]:
     """Parse a dataset file/directory path into its kind and name."""
     if "_" not in path.stem:
         raise InvalidDatasetNameError(path, expected_format)
     dataset_type_str, _, dataset_name = path.stem.partition("_")
-    if not any(k.value == dataset_type_str for k in DatasetKind):
+    if not any(k == dataset_type_str for k in SampleKind):
         raise UnknownDatasetKindError(dataset_type_str)
-    return DatasetKind(dataset_type_str), dataset_name
+    return SampleKind(dataset_type_str), dataset_name
 
 
 def check_no_duplicate_sample_names(samples: Iterable[Sample], location: Path) -> None:
@@ -94,16 +102,7 @@ def load_unpacked_dataset(path: Path) -> Dataset[Sample]:
     dataset_type, dataset_name = _parse_dataset_dirname(
         path, "unpacked dataset dir name"
     )
-    sample_class: type[Sample]
-    match dataset_type:
-        case DatasetKind.ADA:
-            sample_class = AdaSample
-        case DatasetKind.SPARK:
-            sample_class = SparkSample
-        case DatasetKind.EXPLAIN:
-            sample_class = ExplainSample
-        case _:
-            raise UnknownDatasetKindError(dataset_type)
+    sample_class = INITIAL_SAMPLE_TYPES[dataset_type]
     samples = []
     for sample_dir in sorted(path.iterdir()):
         if not is_unpacked_sample(sample_dir):
@@ -121,45 +120,63 @@ def load_unpacked_dataset(path: Path) -> Dataset[Sample]:
     return Dataset(name=dataset_name, samples=samples, sample_type=sample_class)
 
 
+def _load_packed_sample(
+    dataset_type: SampleKind, line: tuple[int, str], path: Path
+) -> Sample:
+    """
+    Load a single sample from a line of JSON in a packed dataset file.
+
+    Tries to parse the line as an `EvaluatedSample`, `GeneratedSample` or
+    `Sample` (in that order), raising a `ValidationError` if none succeed.
+
+    Args:
+        dataset_type: The type of dataset being loaded.
+        line: A tuple containing the line number (1-indexed) and the line of
+            JSON to parse.
+        path: The path to the dataset file (for error messages).
+
+    """
+    sample_classes = (
+        EVALUATED_SAMPLE_TYPES[dataset_type],
+        GENERATED_SAMPLE_TYPES[dataset_type],
+        INITIAL_SAMPLE_TYPES[dataset_type],
+    )
+    for i, sample_class in enumerate(sample_classes):
+        try:
+            sample = sample_class.model_validate_json(line[1], strict=True)
+        except Exception as e:
+            if isinstance(e, ValidationError) and i < len(sample_classes) - 1:
+                # Failed to validate, but there are more models to try
+                continue
+            # No more models to try, or a non-validation exception, so re-raise
+            # the exception with a note
+            e.add_note(f"This error occurred while parsing line {line[0]} of '{path}'")
+            raise
+        else:
+            return sample
+    raise RuntimeError("Unreachable")  # Ruff can't tell that loop always returns/raises
+
+
 def load_packed_dataset(path: Path) -> Dataset[Sample]:
     """Load a packed dataset from its `.jsonl` file."""
     if not is_packed_dataset(path):
         raise InvalidDatasetError(path, "packed")
     dataset_type, dataset_name = _parse_dataset_dirname(path, "packed dataset filename")
-    sample_class: type[Sample]
-    generated_sample_class: type[GeneratedSample]
-    match dataset_type:
-        case DatasetKind.ADA:
-            sample_class = AdaSample
-            generated_sample_class = GeneratedAdaSample
-        case DatasetKind.EXPLAIN:
-            sample_class = ExplainSample
-            generated_sample_class = GeneratedExplainSample
-        case DatasetKind.SPARK:
-            sample_class = SparkSample
-            generated_sample_class = GeneratedSparkSample
-        case _:
-            raise UnknownDatasetKindError(dataset_type)
     with path.open() as f:
-        lines = f.readlines()
-    # Try to load as `GeneratedSample`s first, but fall back to `Sample`s if that fails
-    samples: list[Sample]
-    try:
-        samples = [
-            generated_sample_class.model_validate_json(x, strict=True) for x in lines
-        ]
-        sample_class = generated_sample_class
-    except ValidationError:
-        samples = []
-        for line_num, line in enumerate(lines, start=1):
-            try:
-                sample = sample_class.model_validate_json(line, strict=True)
-            except Exception as e:
-                e.add_note(
-                    f"This error occurred while parsing line {line_num} of '{path}'"
-                )
-                raise
-            samples.append(sample)
+        lines = [s for s in f.readlines() if s.strip() != ""]  # Ignore blank lines
+    if len(lines) == 0:
+        # Empty dataset should warn and return with most permissive type
+        logger.warning("Dataset at '%s' is empty.", path)
+        evaluated_sample_type = EVALUATED_SAMPLE_TYPES[dataset_type]
+        return Dataset(name=dataset_name, samples=[], sample_type=evaluated_sample_type)
+    samples = [
+        _load_packed_sample(dataset_type, line, path)
+        for line in enumerate(lines, start=1)
+    ]
+    # All samples should be of the same concrete type, and names should be unique
+    sample_class = type(samples[0])
+    if not all(type(s) is sample_class for s in samples):
+        raise MixedSampleTypesError(samples, path)
     check_no_duplicate_sample_names(samples, path)
     return Dataset(name=dataset_name, samples=samples, sample_type=sample_class)
 

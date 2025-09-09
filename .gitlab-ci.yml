@@ -40,6 +40,13 @@ pytest:
   stage: test
   needs: []
   script:
+    # Install tools for eval tests
+    - anod init wave /it/wave
+    - |
+      for x in gnat gnatformat; do
+        eval "$(cd "/it/wave"; anod install $x; anod printenv $x)"
+      done
+    # Run tests
     - uv run pytest --junitxml=report.xml --cov-report xml:coverage.xml
   artifacts:
     when: always

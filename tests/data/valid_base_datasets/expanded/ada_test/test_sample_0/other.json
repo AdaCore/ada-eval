@@ -2,5 +2,13 @@
     "location": {
         "path": "source_file_0",
         "subprogram_name": "My_Subprogram"
-    }
+    },
+    "canonical_evaluation_results": [
+        {
+            "eval": "build",
+            "compiled": true,
+            "pre_format_warnings": true,
+            "post_format_warnings": false
+        }
+    ]
 }

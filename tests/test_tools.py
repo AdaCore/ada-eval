@@ -1,10 +1,13 @@
 import shutil
+import subprocess
 import textwrap
+from logging import ERROR, WARN
 from pathlib import Path
 from typing import ClassVar
 
 import pytest
 from helpers import (
+    assert_log,
     compacted_test_datasets,  # noqa: F401  # Fixtures used implicitly
     expanded_test_datasets,  # noqa: F401  # Fixtures used implicitly
     generated_test_datasets,  # noqa: F401  # Fixtures used implicitly
@@ -13,12 +16,12 @@ from helpers import (
 from ada_eval.datasets.loader import load_datasets
 from ada_eval.datasets.types.datasets import (
     Dataset,
-    DatasetKind,
     dataset_has_sample_type,
 )
 from ada_eval.datasets.types.directory_contents import DirectoryContents
 from ada_eval.datasets.types.samples import (
-    BASE_TYPE_TO_GENERATED,
+    GENERATED_SAMPLE_TYPES,
+    INITIAL_SAMPLE_TYPES,
     AdaSample,
     ExplainSample,
     GeneratedAdaSample,
@@ -27,6 +30,7 @@ from ada_eval.datasets.types.samples import (
     GeneratedSparkSample,
     GenerationStats,
     Sample,
+    SampleKind,
     SparkSample,
 )
 from ada_eval.tools import Tool, create_tool
@@ -62,7 +66,9 @@ def test_generic_tool(
 
     class MockTool0(GenericTool[BaseConfig, Sample, GeneratedSample]):
         name: ClassVar = "mock_tool_0"
-        type_map: ClassVar = BASE_TYPE_TO_GENERATED
+        type_map: ClassVar = {
+            INITIAL_SAMPLE_TYPES[k]: GENERATED_SAMPLE_TYPES[k] for k in SampleKind
+        }
         config_type = BaseConfig
 
         def apply(self, sample: Sample) -> GeneratedSample:
@@ -70,7 +76,7 @@ def test_generic_tool(
                 generated_solution: object = mock_explain_solution
             else:
                 generated_solution = mock_ada_solution
-            return BASE_TYPE_TO_GENERATED[type(sample)](
+            return GENERATED_SAMPLE_TYPES[sample.kind](
                 **sample.model_dump(),
                 generation_stats=mock_generation_stats,
                 generated_solution=generated_solution,
@@ -91,7 +97,7 @@ def test_generic_tool(
     def check_generated_datasets(generated_datasets: list[Dataset[GeneratedSample]]):
         for dataset in generated_datasets:
             base_dataset = next(
-                d for d in base_datasets if d.dirname() == dataset.dirname()
+                d for d in base_datasets if d.dirname == dataset.dirname
             )
             assert dataset_has_sample_type(dataset, GeneratedSample)
             for sample in dataset.samples:
@@ -99,7 +105,7 @@ def test_generic_tool(
                     s for s in base_dataset.samples if s.name == sample.name
                 )
                 assert sample.generation_stats == mock_generation_stats
-                if dataset.kind() == DatasetKind.EXPLAIN:
+                if dataset.kind == SampleKind.EXPLAIN:
                     assert isinstance(sample, GeneratedExplainSample)
                     assert sample.generated_solution == mock_explain_solution
                 else:
@@ -147,7 +153,7 @@ def test_generic_tool(
         def apply(self, sample: AdaSample) -> GeneratedAdaSample:
             if isinstance(sample, SparkSample) and sample.name == "test_sample_0":
                 raise RuntimeError("Mock failure on test_sample_0")
-            gen_sample = BASE_TYPE_TO_GENERATED[type(sample)](
+            gen_sample = GENERATED_SAMPLE_TYPES[sample.kind](
                 **sample.model_dump(),
                 generation_stats=mock_generation_stats,
                 generated_solution=mock_ada_solution,
@@ -163,28 +169,23 @@ def test_generic_tool(
     check_progress_bar(capsys, 4, "mock_tool_1")  # 4 because Explain sample is excluded
 
     # The failure should have been logged with a full stack trace
-    failure_log_substrs = [
-        "ERROR",
-        (
-            "Error processing sample test_sample_0 from dataset spark_test\n"
-            "Traceback (most recent call last):\n"
-        ),
-        'raise RuntimeError("Mock failure on test_sample_0")',  # From stack trace
-        "RuntimeError: Mock failure on test_sample_0",  # Actual exception message
-    ]
-    for substr in failure_log_substrs:
-        assert substr in caplog.text
+    def check_fail_log() -> None:
+        msg = "Error processing sample test_sample_0 from dataset spark_test"
+        fail_log = assert_log(caplog, ERROR, msg)
+        assert fail_log.exc_text.endswith("RuntimeError: Mock failure on test_sample_0")
+
+    check_fail_log()
     caplog.clear()
 
     # Check that the explain dataset is recognised as incompatible
     assert len(incompatible_datasets_1) == 1
-    assert incompatible_datasets_1[0].dirname() == "explain_test"
+    assert incompatible_datasets_1[0].dirname == "explain_test"
     assert incompatible_datasets_1[0].sample_type is ExplainSample
 
     # Check that the exception on the spark sample is recorded properly in
     # `failed_datasets_1`
     assert len(failed_datasets_1) == 1
-    assert failed_datasets_1[0].dirname() == "spark_test"
+    assert failed_datasets_1[0].dirname == "spark_test"
     assert len(failed_datasets_1[0].samples) == 1
     failed_sample = failed_datasets_1[0].samples[0]
     assert isinstance(failed_sample, SparkSample)
@@ -192,7 +193,7 @@ def test_generic_tool(
     base_spark_sample_0 = next(
         s
         for d in base_datasets
-        if d.dirname() == "spark_test"
+        if d.dirname == "spark_test"
         for s in d.samples
         if s.name == "test_sample_0"
     )
@@ -212,16 +213,17 @@ def test_generic_tool(
 
     # The failure should have been logged again, and there should also be
     # warnings about the omissions from the output
-    for substr in failure_log_substrs:
-        assert substr in caplog.text
-    assert (
+    check_fail_log()
+    msg = (
         "'mock_tool_1' is incompatible with 1 datasets found at "
         f"'{compacted_test_datasets}'. These datasets will be omitted from the results."
-    ) in caplog.text
-    assert (
+    )
+    assert_log(caplog, WARN, msg)
+    msg = (
         "'mock_tool_1' failed on 1 samples found at "
         f"'{compacted_test_datasets}'. These samples will be omitted from the results."
-    ) in caplog.text
+    )
+    assert_log(caplog, WARN, msg)
     caplog.clear()
 
     # Check that the generated datasets are as expected
@@ -239,11 +241,12 @@ def test_generic_tool(
     output = capsys.readouterr()
     assert output.err == ""
     assert output.out == ""
-    assert ("No datasets compatible with mock_tool_1 found.") in caplog.text
-    assert (
+    assert_log(caplog, WARN, "No datasets compatible with mock_tool_1 found.")
+    msg = (
         "'mock_tool_1' could not be applied to any samples found at "
         f"'{compacted_test_datasets}'."
-    ) in caplog.text
+    )
+    assert_log(caplog, WARN, msg)
 
 
 @pytest.mark.skipif(not shutil.which("sh"), reason="sh not available")
@@ -277,6 +280,22 @@ def test_shell_script(
         f'{{"timeout_s": 1, "shell_script": "{shell_script_relative}"}}'
     )
 
+    # Verify the script works. This also serves to trigger any first-run
+    # Gatekeeper checks or similar so that the actual tool calls do not time out.
+    script_test_dir = tmp_path / "script_test"
+    script_test_dir.mkdir()
+    result = subprocess.run(
+        [str(shell_script), "dummy_arg"],
+        cwd=script_test_dir,
+        capture_output=True,
+        check=True,
+        encoding="utf-8",
+    )
+    assert result.stdout == "This is the generation's stdout\n"
+    assert result.stderr == ""
+    generated_file = script_test_dir / "generated_file"
+    assert generated_file.read_text() == "This file was added during generation\n"
+
     # Run the tool on the test datasets
     base_datasets = load_datasets(compacted_test_datasets)
     tool = create_tool(Tool.SHELL_SCRIPT, config_file)
@@ -299,7 +318,7 @@ def test_shell_script(
     # `generation_stats`'s `runtime_ms`, which may be non-zero.
     generated_datasets_fixture = load_datasets(generated_test_datasets)
     generated_spark_dataset_fixture = next(
-        d for d in generated_datasets_fixture if d.kind() == DatasetKind.SPARK
+        d for d in generated_datasets_fixture if d.kind == SampleKind.SPARK
     )
     assert len(generated_datasets) == 1
     generated_spark_dataset = generated_datasets[0]

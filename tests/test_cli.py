@@ -6,7 +6,13 @@ from unittest.mock import Mock, patch
 import pytest
 
 from ada_eval.cli import main
-from ada_eval.paths import COMPACTED_DATASETS_DIR, GENERATED_DATASETS_DIR
+from ada_eval.datasets import Eval
+from ada_eval.paths import (
+    COMPACTED_DATASETS_DIR,
+    EVALUATED_DATASETS_DIR,
+    EXPANDED_DATASETS_DIR,
+    GENERATED_DATASETS_DIR,
+)
 from ada_eval.tools.factory import Tool
 
 
@@ -58,7 +64,7 @@ def test_generate(capsys):
         with patch_args("invalid_tool", "path/to/config"), pytest.raises(SystemExit):
             main()
         output = capsys.readouterr()
-        assert "argument --tool: invalid tool value: 'invalid_tool'" in output.err
+        assert "argument --tool: invalid Tool value: 'invalid_tool'" in output.err
         assert output.out == ""
         mock_create_tool.assert_not_called()
         mock_tool.apply_to_directory.assert_not_called()
@@ -86,3 +92,74 @@ def test_generate(capsys):
                 jobs=8 if jobs is None else int(jobs),
             )
             mock_create_tool.reset_mock()
+
+
+def test_evaluate(capsys):
+    # Helper function to patch `sys.argv`
+    def patch_args(
+        evals: list[str] | None = None,
+        dataset: str | None = None,
+        jobs: str | None = None,
+        *,
+        canonical: bool = False,
+    ):
+        test_args = ["ada-eval", "evaluate"]
+        if canonical:
+            test_args.append("--canonical")
+        if evals is not None:
+            test_args += ["--evals", *evals]
+        if dataset is not None:
+            test_args += ["--dataset", dataset]
+        if jobs is not None:
+            test_args += ["--jobs", jobs]
+        return patch.object(sys, "argv", test_args)
+
+    # Mock the `evaluate_directory()` and `cpu_count()` functions
+    mock_evaluate_directory = Mock()
+    mock_cpu_count = Mock(return_value=8)
+    eval_dir_patch = patch("ada_eval.cli.evaluate_directory", mock_evaluate_directory)
+    cpu_count_patch = patch("ada_eval.cli.cpu_count", mock_cpu_count)
+    with eval_dir_patch, cpu_count_patch:
+        # Test with an invalid eval name
+        with patch_args(["invalid_eval"]), pytest.raises(SystemExit):
+            main()
+        output = capsys.readouterr()
+        assert "argument --evals: invalid Eval value: 'invalid_eval'" in output.err
+        assert output.out == ""
+        mock_evaluate_directory.assert_not_called()
+
+        # Test with various valid argument combinations
+        for evals, dataset, jobs, canonical in itertools.product(
+            [None, ["PrOvE", "build"], ["prove"]],
+            [None, "path/to/dataset"],
+            [None, "2", "4"],
+            [False, True],
+        ):
+            with patch_args(evals, dataset, jobs, canonical=canonical):
+                main()
+            output = capsys.readouterr()
+            assert output.err == ""
+            assert output.out == ""
+            expected_evals = (
+                [Eval.BUILD, Eval.PROVE]
+                if evals is None
+                else ([Eval.PROVE, Eval.BUILD] if "build" in evals else [Eval.PROVE])
+            )
+            if canonical:
+                expected_dataset_path = (
+                    EXPANDED_DATASETS_DIR if dataset is None else Path(dataset)
+                )
+                expected_output_dir = expected_dataset_path
+            else:
+                expected_dataset_path = (
+                    GENERATED_DATASETS_DIR if dataset is None else Path(dataset)
+                )
+                expected_output_dir = EVALUATED_DATASETS_DIR
+            mock_evaluate_directory.assert_called_once_with(
+                evals=expected_evals,
+                path=expected_dataset_path,
+                output_dir=expected_output_dir,
+                jobs=8 if jobs is None else int(jobs),
+                canonical_evaluation=canonical,
+            )
+            mock_evaluate_directory.reset_mock()

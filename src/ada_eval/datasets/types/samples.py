@@ -4,14 +4,17 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import Sequence
+from enum import Enum, StrEnum
 from pathlib import Path
-from typing import Self
+from typing import ClassVar, Self
 
-from pydantic import BaseModel, field_serializer, field_validator
+from pydantic import BaseModel, TypeAdapter, field_serializer, field_validator
 
 from ada_eval.datasets.utils import get_file_or_empty
 
 from .directory_contents import DirectoryContents, get_contents_git_aware
+from .evaluation_stats import EvaluationStats
 
 
 class InvalidSampleNameError(ValueError):
@@ -37,6 +40,7 @@ REFERENCE_ANSWER_FILE_NAME = "reference_answer.md"
 CORRECT_STATEMENTS_KEY = "correct_statements"
 INCORRECT_STATEMENTS_KEY = "incorrect_statements"
 LOCATION_KEY = "location"
+CANONICAL_EVAL_KEY = "canonical_evaluation_results"
 
 
 class PathMustBeRelativeError(Exception):
@@ -111,10 +115,33 @@ class Location(BaseModel):
         return find_subprogram_line(full_path, self.subprogram_name)
 
 
-class ExplainSolution(BaseModel):
-    reference_answer: str
-    correct_statements: list[str]
-    incorrect_statements: list[str]
+class SampleKind(StrEnum):
+    """
+    Enum for the 'kind' of a sample/dataset.
+
+    This is the kind of problem the sample represents, making no distinction
+    between initial, generated, or evaluated types.
+    """
+
+    ADA = "ada"
+    EXPLAIN = "explain"
+    SPARK = "spark"
+
+
+class SampleStage(Enum):
+    """
+    Enum for the 'stage' of a sample/dataset.
+
+    This is the stage of the evaluation pipeline the sample has reached, making
+    no distinction between different kinds of problems.
+    """
+
+    INITIAL = "initial"
+    """An initial problem statement; the input to the evaluation pipeline."""
+    GENERATED = "generated"
+    """A problem and a generated solution thereto, which has not yet been evaluated."""
+    EVALUATED = "evaluated"
+    """A problem, a generated solution thereto, and an evaluation thereof."""
 
 
 VALID_SAMPLE_NAME_PATTERN = re.compile(r"^[\w-]+$")
@@ -132,15 +159,21 @@ class Sample(BaseModel):
         sources (DirectoryContents): Source files for the sample.
         canonical_solution (object): Canonical solution for the sample. The type
             should be constrained by the subclass.
+        canonical_evaluation_results (list[EvaluationStats]): Results from
+            evaluation of the canonical solution.
         comments (str): Any comments about the sample by the author. May be empty.
 
     """
+
+    kind: ClassVar[SampleKind]
+    stage: ClassVar[SampleStage] = SampleStage.INITIAL
 
     name: str
     location: Location
     prompt: str
     sources: DirectoryContents
     canonical_solution: object
+    canonical_evaluation_results: Sequence[EvaluationStats]
     comments: str
 
     @field_validator("name")
@@ -169,6 +202,10 @@ class Sample(BaseModel):
         (dest_dir / COMMENTS_FILE_NAME).write_text(self.comments)
         self.sources.unpack_to(dest_dir / BASE_DIR_NAME)
         other_data = {LOCATION_KEY: self.location.model_dump()} | (other_data or {})
+        if len(self.canonical_evaluation_results) > 0:
+            other_data[CANONICAL_EVAL_KEY] = [
+                es.model_dump() for es in self.canonical_evaluation_results
+            ]
         (dest_dir / OTHER_JSON_NAME).write_text(json.dumps(other_data, indent=4) + "\n")
 
     @classmethod
@@ -177,6 +214,10 @@ class Sample(BaseModel):
         base_files = get_contents_git_aware(sample_dir / BASE_DIR_NAME)
         prompt = get_file_or_empty(sample_dir / PROMPT_FILE_NAME)
         comments = get_file_or_empty(sample_dir / COMMENTS_FILE_NAME)
+        eval_results_adapter = TypeAdapter(list[EvaluationStats])
+        canonical_evaluation_results = eval_results_adapter.validate_python(
+            other_data.get(CANONICAL_EVAL_KEY, [])
+        )
         return cls(
             name=sample_dir.name,
             location=Location.model_validate(other_data[LOCATION_KEY]),
@@ -184,6 +225,7 @@ class Sample(BaseModel):
             comments=comments,
             sources=base_files,
             canonical_solution=None,  # Placeholder
+            canonical_evaluation_results=canonical_evaluation_results,
         )
 
 
@@ -207,6 +249,8 @@ class AdaSample(Sample):
 
     """
 
+    kind: ClassVar = SampleKind.ADA
+
     canonical_solution: DirectoryContents
     unit_tests: DirectoryContents
 
@@ -228,23 +272,26 @@ class AdaSample(Sample):
             comments=base_sample.comments,
             sources=base_sample.sources,
             canonical_solution=solution_files,
+            canonical_evaluation_results=base_sample.canonical_evaluation_results,
             unit_tests=unit_test_files,
         )
 
 
 class ExplainSample(Sample):
-    canonical_solution: ExplainSolution
+    kind: ClassVar = SampleKind.EXPLAIN
+
+    canonical_solution: str
+    correct_statements: Sequence[str]
+    incorrect_statements: Sequence[str]
 
     def unpack(self, dataset_root: Path, other_data: dict[str, object] | None = None):
         other_data = {
-            CORRECT_STATEMENTS_KEY: self.canonical_solution.correct_statements,
-            INCORRECT_STATEMENTS_KEY: self.canonical_solution.incorrect_statements,
+            CORRECT_STATEMENTS_KEY: self.correct_statements,
+            INCORRECT_STATEMENTS_KEY: self.incorrect_statements,
         } | (other_data or {})
         super().unpack(dataset_root, other_data=other_data)
         dest_dir = self.working_dir_in(dataset_root)
-        (dest_dir / REFERENCE_ANSWER_FILE_NAME).write_text(
-            self.canonical_solution.reference_answer
-        )
+        (dest_dir / REFERENCE_ANSWER_FILE_NAME).write_text(self.canonical_solution)
 
     @classmethod
     def load_unpacked_sample(cls, sample_dir: Path):
@@ -257,16 +304,15 @@ class ExplainSample(Sample):
             prompt=base_sample.prompt,
             comments=base_sample.comments,
             sources=base_sample.sources,
-            canonical_solution=ExplainSolution(
-                reference_answer=reference_answer,
-                correct_statements=other_data.get(CORRECT_STATEMENTS_KEY, []),
-                incorrect_statements=other_data.get(INCORRECT_STATEMENTS_KEY, []),
-            ),
+            canonical_solution=reference_answer,
+            correct_statements=other_data.get(CORRECT_STATEMENTS_KEY, []),
+            incorrect_statements=other_data.get(INCORRECT_STATEMENTS_KEY, []),
+            canonical_evaluation_results=base_sample.canonical_evaluation_results,
         )
 
 
 class SparkSample(AdaSample):
-    pass
+    kind: ClassVar = SampleKind.SPARK
 
 
 class GenerationStats(BaseModel):
@@ -278,6 +324,8 @@ class GenerationStats(BaseModel):
 
 
 class GeneratedSample(Sample):
+    stage: ClassVar = SampleStage.GENERATED
+
     generation_stats: GenerationStats
     generated_solution: object
 
@@ -298,49 +346,41 @@ class GeneratedSparkSample(SparkSample, GeneratedAdaSample):
     pass
 
 
-class EvaluationStats(BaseModel):
-    pass
-
-
 class EvaluatedSample(GeneratedSample):
-    evaluation_stats: EvaluationStats
+    stage: ClassVar = SampleStage.EVALUATED
+
+    evaluation_results: Sequence[EvaluationStats]
 
 
-class EvaluationStatsAda(EvaluationStats):
-    compiled: bool
-    has_pre_format_compile_warnings: bool
-    has_post_format_compile_warnings: bool
-
-
-class EvaluatedAdaSample(EvaluatedSample, GeneratedAdaSample):
-    evaluation_stats: EvaluationStatsAda
-
-
-class EvaluationStatsExplain(EvaluationStats):
+class EvaluatedAdaSample(GeneratedAdaSample, EvaluatedSample):
     pass
 
 
-class EvaluatedExplainSample(EvaluatedSample, GeneratedExplainSample):
-    evaluation_stats: EvaluationStatsExplain
+class EvaluatedExplainSample(GeneratedExplainSample, EvaluatedSample):
+    pass
 
 
-class EvaluationStatsSpark(EvaluationStatsAda):
-    successfully_proven: bool
+class EvaluatedSparkSample(GeneratedSparkSample, EvaluatedAdaSample):
+    pass
 
 
-class EvaluatedSparkSample(EvaluatedAdaSample, GeneratedSparkSample):
-    evaluation_stats: EvaluationStatsSpark
-
-
-# Type mappings for promoting `Sample` -> `GeneratedSample` and
-# `GeneratedSample` -> `EvaluatedSample`
-BASE_TYPE_TO_GENERATED: dict[type[Sample], type[GeneratedSample]] = {
-    AdaSample: GeneratedAdaSample,
-    ExplainSample: GeneratedExplainSample,
-    SparkSample: GeneratedSparkSample,
+INITIAL_SAMPLE_TYPES = {
+    sample_type.kind: sample_type
+    for sample_type in (AdaSample, ExplainSample, SparkSample)
 }
-GENERATED_TYPE_TO_EVALUATED: dict[type[GeneratedSample], type[EvaluatedSample]] = {
-    GeneratedAdaSample: EvaluatedAdaSample,
-    GeneratedExplainSample: EvaluatedExplainSample,
-    GeneratedSparkSample: EvaluatedSparkSample,
+GENERATED_SAMPLE_TYPES = {
+    sample_type.kind: sample_type
+    for sample_type in (
+        GeneratedAdaSample,
+        GeneratedExplainSample,
+        GeneratedSparkSample,
+    )
+}
+EVALUATED_SAMPLE_TYPES = {
+    sample_type.kind: sample_type
+    for sample_type in (
+        EvaluatedAdaSample,
+        EvaluatedExplainSample,
+        EvaluatedSparkSample,
+    )
 }

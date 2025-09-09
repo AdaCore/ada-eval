@@ -193,56 +193,51 @@ The rough structure of a SPARK sample is as follows:
 ```sh
 example_sample
 ├── base  # The project for the challenge. This will be duplicated somewhere for a tool to attempt to modify to solve the challenge
-│   ├── default.gpr
+│   ├── main.gpr
 │   └── src
 ├── comments.md  # Comments about the sample for humans to better understand it
-├── other.json  # Contains additional metadata for the sample. For SPARK samples, this will include the name of the subprogram of interest, and the relative path to the file that contains it's specification.
+├── other.json  # Contains additional metadata for the sample. For SPARK samples, this will include the name of the subprogram of interest, and the relative path to the file that contains its specification.
 ├── prompt.md  # The prompt that is provided to the tool to specify the challenge/problem
 ├── solution  # A solution to the challenge/problem. For SPARK samples, this will be a project that can be built, passes the tests, and gnatprove is happy with.
-│   ├── default.gpr
+│   ├── main.gpr
 │   ├── main.adc
 │   └── src
 └── tests  # Unit test project for the sample. Used in addition to gnatprove to verify that the solution is correct.
+    ├── src
+    └── tests.gpr
 ```
 
 #### Adding a new SPARK sample
 
-1. Create a new directory in `data/base/expanded/your_dataset_of_choice` with the name of the sample.
-2. Add the following:
-   - `base/`: A project that contains the code that needs to be modified to solve the challenge/problem
-   - `solution/`: A complete project that contains the modified code with the solved problem
-   - `tests/`: A project that contains unit tests for the sample.
-   - `comments.md`: if the challenge isn't obvious, consider including a more detailed description of the challenge/problem in this file
-   - `prompt.md`: A prompt that describes the challenge/problem. This will be provided to the tool to generate a solution.
-   - `other.json`: A file that contains additional metadata about the sample. For SPARK samples, this should look like:
-    ```json
-    {
-        "location": {
-            "path": "src/relative/path/to/file.ads",  // Should be relative to the base/solution directory of the sample
-            "subprogram_name": "Name_Of_Subprogram"  // The name of the subprogram that is the focus of the challenge/problem
-        }
-    }
-    ```
-3. Verify that the solution proves:
-   ```sh
-    cd solution
-    gnatprove -P default.gpr -j0
-   ```
-   Note that for now we're checking that the entire project proves, not limiting the check to a single subprogram, and are using the default mode "all".
-4. Verify that the unit tests pass for the solution:
+1.  Create a new directory in `data/base/expanded/your_dataset_of_choice` with the name of the sample.
+2.  Add the following:
+    - `base/`: A project that contains the code that needs to be modified to solve the challenge/problem
+    - `solution/`: A complete project that contains the modified code with the solved problem
+    - `tests/`: A project that contains unit tests for the sample. It should compile to an executable at `tests/bin/tests` which returns a zero exit code if (and only if) the tests pass.
+    - `comments.md`: if the challenge isn't obvious, consider including a more detailed description of the challenge/problem in this file
+    - `prompt.md`: A prompt that describes the challenge/problem. This will be provided to the tool to generate a solution.
+    - `other.json`: A file that contains additional metadata about the sample. For SPARK samples, this should look like:
+      ```json
+      {
+          "location": {
+              "path": "src/relative/path/to/file.ads",  // Should be relative to the base/solution directory of the sample
+              "subprogram_name": "Name_Of_Subprogram"  // The name of the subprogram that is the focus of the challenge/problem
+          }
+      }
+      ```
+3.  Verify that the solution builds, proves, etc. by running
     ```sh
-      cd tests
-      GPR_PROJECT_PATH=$PWD/../solution gprbuild -s -P tests.gpr && ./bin/tests
+    make evaluate-canonical
     ```
-    This should output nothing and return a zero exit code if the tests pass.
+    and checking the output in `other.json`.
 
 ### Generating new completions
 
 To generate new completions for one or multiple datasets, you can use the `generate` command of the CLI. For example, to generate completions for all datasets using Claude Code, you can run:
-
 ```sh
-uv generate --tool shell_script --tool-config-file tools/configs/claude_code_no_mcp.json
+uv run ada-eval generate --tool shell_script --tool-config-file tools/configs/claude_code_no_mcp.json
 ```
+This also available via the shortcut `make generate-spark-claude`.
 
 Currently you have to specify the type of tool you want to use, and the configuration file for that tool. The configuration files provide a place for modifying settings. Currently there are only shell tools, and the only values are used to specify where the script is located, and how long it should be allowed to run for.
 
@@ -250,7 +245,18 @@ This interface is not final.
 
 ### Evaluating completions
 
-TODO - This is currently a work in progress, and does nothing useful yet.
+To evaluate completions that were generated as described in the previous section, you can run
+```sh
+uv run ada-eval evaluate
+```
+which will run all available evaluations on the generations in `data/generated/`, and save the results to `data/evaluated/`. This also available via the shortcut `make evaluate`.
+
+For more options, such as specifying which evaluations are run, see the output of
+```sh
+uv run ada-eval evaluate --help
+```
+
+This interface is not final.
 
 
 ### Adding or Updating Python Dependencies

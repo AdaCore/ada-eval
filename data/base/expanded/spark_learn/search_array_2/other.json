@@ -2,5 +2,18 @@
     "location": {
         "path": "src/search_array.ads",
         "subprogram_name": "Contains"
-    }
+    },
+    "canonical_evaluation_results": [
+        {
+            "eval": "build",
+            "compiled": true,
+            "pre_format_warnings": false,
+            "post_format_warnings": false
+        },
+        {
+            "eval": "prove",
+            "successfully_proven": true,
+            "subprogram_found": true
+        }
+    ]
 }

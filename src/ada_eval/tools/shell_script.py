@@ -1,4 +1,5 @@
 import logging
+import subprocess
 from pathlib import Path
 from typing import ClassVar, Literal, Self
 
@@ -33,20 +34,18 @@ class ShellScript(GenericTool[ShellScriptConfig, SparkSample, GeneratedSparkSamp
                 "Applying ShellScript to %s in %s", sample.name, sample_working_dir
             )
             # Run the shell script with the prompt as its argument
-            result, time_ms = run_cmd_with_timeout(
-                [str(self.config.shell_script), sample.prompt],
-                sample_working_dir,
-                self.config.timeout_s,
-            )
-            # Pack up the resulting files and return a GeneratedSparkSample
-            generated_files = get_contents(sample_working_dir)
-            if result is None:
-                # Timed out
+            try:
+                result, time_ms = run_cmd_with_timeout(
+                    [str(self.config.shell_script), sample.prompt],
+                    sample_working_dir,
+                    self.config.timeout_s,
+                )
+            except subprocess.TimeoutExpired:
                 generation_stats = GenerationStats(
                     exit_code=124,  # Standard timeout exit code
                     stdout="",
                     stderr=f"Process timed out after {self.config.timeout_s} seconds",
-                    runtime_ms=time_ms,
+                    runtime_ms=self.config.timeout_s * 1000,
                 )
             else:
                 generation_stats = GenerationStats(
@@ -55,6 +54,8 @@ class ShellScript(GenericTool[ShellScriptConfig, SparkSample, GeneratedSparkSamp
                     stderr=result.stderr,
                     runtime_ms=time_ms,
                 )
+            # Pack up the resulting files and return a GeneratedSparkSample
+            generated_files = get_contents(sample_working_dir)
             return GeneratedSparkSample(
                 **sample.model_dump(),  # Copy all fields from the original sample
                 generated_solution=generated_files,

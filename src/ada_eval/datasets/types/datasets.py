@@ -1,57 +1,25 @@
 from __future__ import annotations
 
+import logging
 import shutil
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
-from enum import Enum
 from pathlib import Path
-from typing import Generic, TypeGuard, TypeVar
-
-from ada_eval.utils import UnexpectedTypeError
+from typing import TypeGuard
 
 from .samples import (
-    AdaSample,
-    ExplainSample,
     GeneratedSample,
     Sample,
-    SparkSample,
+    SampleKind,
+    SampleStage,
     is_unpacked_sample,
 )
 
-
-class DatasetKind(Enum):
-    """
-    Enum for the 'kind' of a sample/dataset.
-
-    This is the base type of the sample, making no distinction between
-    base, generated, or evaluated types.
-    """
-
-    ADA = "ada"
-    EXPLAIN = "explain"
-    SPARK = "spark"
-
-    def __str__(self) -> str:
-        return self.name.lower()
-
-    @classmethod
-    def from_type(cls, sample_type: type[Sample]) -> DatasetKind:
-        """Get the `DatasetKind` from a sample type."""
-        if issubclass(sample_type, SparkSample):
-            return DatasetKind.SPARK
-        if issubclass(sample_type, AdaSample):
-            return DatasetKind.ADA
-        if issubclass(sample_type, ExplainSample):
-            return DatasetKind.EXPLAIN
-        raise UnexpectedTypeError(expected_type=Sample, actual_type=sample_type)
+logger = logging.getLogger(__name__)
 
 
-SampleType_co = TypeVar("SampleType_co", bound=Sample, covariant=True)
-TargetSampleType = TypeVar("TargetSampleType", bound=Sample)
-
-
-@dataclass(kw_only=True)
-class Dataset(Generic[SampleType_co]):
+@dataclass(kw_only=True, frozen=True)
+class Dataset[SampleType: Sample]:
     """
     A dataset of samples.
 
@@ -63,8 +31,8 @@ class Dataset(Generic[SampleType_co]):
     """
 
     name: str
-    sample_type: type[SampleType_co]
-    samples: Sequence[SampleType_co]  # Must be immutable for covariance
+    sample_type: type[SampleType]
+    samples: Sequence[SampleType]  # Must be immutable for covariance
 
     def __hash__(self) -> int:
         """Make Dataset hashable based on name and type only."""
@@ -76,28 +44,35 @@ class Dataset(Generic[SampleType_co]):
             return False
         return self.name == other.name and self.sample_type is other.sample_type
 
-    def kind(self) -> DatasetKind:
-        """Return the kind of this dataset."""
-        return DatasetKind.from_type(self.sample_type)
+    @property
+    def kind(self) -> SampleKind:
+        """The kind of this dataset."""
+        return self.sample_type.kind
 
+    @property
+    def stage(self) -> SampleStage:
+        """The stage of this dataset."""
+        return self.sample_type.stage
+
+    @property
     def dirname(self) -> str:
-        """Return the stem of this dataset's file or directory name."""
-        return f"{self.kind()}_{self.name}"
+        """The stem of this dataset's file or directory name."""
+        return f"{self.kind}_{self.name}"
 
     def save_unpacked(self, unpacked_datasets_root: Path):
-        dataset_root = unpacked_datasets_root / self.dirname()
+        dataset_root = unpacked_datasets_root / self.dirname
         dataset_root.mkdir(exist_ok=True, parents=True)
         for sample in self.samples:
             sample.unpack(dataset_root)
 
     def save_packed(self, dest_dir: Path):
-        dest_file = dest_dir / f"{self.dirname()}.jsonl"
+        dest_file = dest_dir / f"{self.dirname}.jsonl"
         with dest_file.open("w") as f:
             for sample in self.samples:
                 f.write(sample.model_dump_json(exclude_defaults=True) + "\n")
 
 
-def dataset_has_sample_type(
+def dataset_has_sample_type[TargetSampleType: Sample](
     dataset: Dataset[Sample],
     sample_types: type[TargetSampleType] | Sequence[type[TargetSampleType]],
 ) -> TypeGuard[Dataset[TargetSampleType]]:
@@ -196,8 +171,61 @@ def save_datasets(
         raise NotImplementedError(
             "Saving generated datasets in unpacked form is not supported."
         )
-    if output_dir.exists():
+    if output_dir.is_file():
+        output_dir.unlink()
+    elif output_dir.exists():
         shutil.rmtree(output_dir)
     output_dir.mkdir(parents=True)
     for dataset in datasets:
         (dataset.save_unpacked if unpacked else dataset.save_packed)(output_dir)
+
+
+def save_datasets_auto_format(datasets: Sequence[Dataset[Sample]], path: Path) -> None:
+    """
+    Save datasets to a directory, respecting the format of any existing data thereat.
+
+    The data will be saved in unpacked form if `path` already exists and
+    contains unpacked data.
+
+    If the output path points to a single dataset file/directory (instead of a
+    directory thereof), and `datasets` contains exactly one dataset with a
+    matching `dirname`, it will be saved as a single dataset file/directory in
+    the same way.
+
+    Any existing files at or within `path` will be removed or overwritten. A
+    directory will be created if necessary (even if `datasets` is empty).
+
+    Args:
+        datasets: Datasets to save.
+        path: File/Directory where the datasets will be saved.
+
+    """
+    unpacked = is_unpacked_data(path)
+    if unpacked and is_packed_data(path):
+        logger.warning(
+            "Output path '%s' contains a mixture of packed and unpacked data; "
+            "Defaulting to packed format.",
+            path,
+        )
+        unpacked = False
+    if is_unpacked_dataset(path) and is_collection_of_unpacked_datasets(path):
+        logger.warning(
+            "Output path '%s' contains a mixture of datasets and samples.", path
+        )
+    # Save as a single dataset if appropriate
+    if len(datasets) == 1:
+        dataset = datasets[0]
+        if (
+            unpacked
+            and is_unpacked_dataset(path)
+            and not is_collection_of_unpacked_datasets(path)
+            and path.name == dataset.dirname
+        ):
+            shutil.rmtree(path)
+            dataset.save_unpacked(path.parent)
+            return
+        if is_packed_dataset(path) and path.name == f"{dataset.dirname}.jsonl":
+            dataset.save_packed(path.parent)
+            return
+    # Otherwise, save as a collection of datasets
+    save_datasets(datasets, path, unpacked=unpacked)

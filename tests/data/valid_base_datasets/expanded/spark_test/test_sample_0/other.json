@@ -2,5 +2,20 @@
     "location": {
         "path": "source_file_0",
         "subprogram_name": "My_Subprogram"
-    }
+    },
+    "canonical_evaluation_results": [
+        {
+            "eval": "prove",
+            "cmd_timed_out": [
+                "cmd",
+                "arg0",
+                "arg1"
+            ],
+            "timeout": 12.34
+        },
+        {
+            "eval": "build",
+            "exception": "SomeError(\"Some message\")"
+        }
+    ]
 }

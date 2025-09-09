@@ -4,8 +4,13 @@ from pathlib import Path
 import pytest
 
 from ada_eval.datasets.types.samples import (
+    EVALUATED_SAMPLE_TYPES,
+    GENERATED_SAMPLE_TYPES,
+    INITIAL_SAMPLE_TYPES,
     Location,
     PathMustBeRelativeError,
+    SampleKind,
+    SampleStage,
     SubprogramNotFoundError,
 )
 
@@ -61,3 +66,22 @@ def test_location_find_line_number(tmp_path: Path):
     error_msg = f"Subprogram 'Some_Name' not found in '{test_adb}'"
     with pytest.raises(SubprogramNotFoundError, match=re.escape(error_msg)):
         loc.find_line_number(tmp_path)
+
+
+def test_sample_kind_str():
+    assert str(SampleKind.ADA) == "ada"
+    assert str(SampleKind.EXPLAIN) == "explain"
+    assert str(SampleKind.SPARK) == "spark"
+
+
+def test_sample_type_dicts_are_complete():
+    for kind in SampleKind:
+        assert kind in INITIAL_SAMPLE_TYPES
+        assert INITIAL_SAMPLE_TYPES[kind].kind == kind
+        assert INITIAL_SAMPLE_TYPES[kind].stage == SampleStage.INITIAL
+        assert kind in GENERATED_SAMPLE_TYPES
+        assert GENERATED_SAMPLE_TYPES[kind].kind == kind
+        assert GENERATED_SAMPLE_TYPES[kind].stage == SampleStage.GENERATED
+        assert kind in EVALUATED_SAMPLE_TYPES
+        assert EVALUATED_SAMPLE_TYPES[kind].kind == kind
+        assert EVALUATED_SAMPLE_TYPES[kind].stage == SampleStage.EVALUATED

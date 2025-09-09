@@ -1,43 +1,52 @@
 import json
 import re
 import shutil
+from logging import WARN
 from pathlib import Path
 
 import pydantic
 import pytest
 from helpers import (
+    assert_log,
     compacted_test_datasets,  # noqa: F401  # Fixtures used implicitly
+    evaluated_test_datasets,  # noqa: F401  # Fixtures used implicitly
     expanded_test_datasets,  # noqa: F401  # Fixtures used implicitly
     generated_test_datasets,  # noqa: F401  # Fixtures used implicitly
     setup_git_repo,
 )
 
-from ada_eval.datasets import (
-    Dataset,
-    dataset_has_sample_type,
-)
+from ada_eval.datasets import Dataset, dataset_has_sample_type
 from ada_eval.datasets.loader import (
     DuplicateSampleNameError,
     InvalidDatasetError,
     InvalidDatasetNameError,
     MixedDatasetFormatsError,
+    MixedSampleTypesError,
     UnknownDatasetKindError,
     load_datasets,
     load_packed_dataset,
     load_unpacked_dataset,
 )
 from ada_eval.datasets.types.directory_contents import DirectoryContents
+from ada_eval.datasets.types.evaluation_stats import (
+    EvaluationStatsBuild,
+    EvaluationStatsFailed,
+    EvaluationStatsProve,
+    EvaluationStatsTimedOut,
+)
 from ada_eval.datasets.types.samples import (
+    EVALUATED_SAMPLE_TYPES,
+    GENERATED_SAMPLE_TYPES,
     AdaSample,
+    EvaluatedAdaSample,
+    EvaluatedSample,
     ExplainSample,
-    ExplainSolution,
-    GeneratedAdaSample,
-    GeneratedExplainSample,
     GeneratedSample,
-    GeneratedSparkSample,
     GenerationStats,
     Location,
     Sample,
+    SampleKind,
+    SampleStage,
     SparkSample,
 )
 
@@ -67,6 +76,7 @@ def expected_base_sample_fields(
             f"This is a comment on sample '{sample_name}' from dataset "
             f"'{dataset_dirname}'.\n"
         ),
+        "canonical_evaluation_results": [],
     }
 
 
@@ -74,20 +84,18 @@ def expected_explain_sample(sample_name: str, dataset_dirname: str) -> ExplainSa
     """Return an `ExplainSample` matching that expected from the test datasets."""
     return ExplainSample(
         **expected_base_sample_fields(sample_name, dataset_dirname),
-        canonical_solution=ExplainSolution(
-            reference_answer=(
-                f"This is the reference answer for sample '{sample_name}' from "
-                f"dataset '{dataset_dirname}'.\n"
-            ),
-            correct_statements=[
-                "This is a correct statement.",
-                "This is another correct statement.",
-            ],
-            incorrect_statements=[
-                "This is an incorrect statement.",
-                "This is another incorrect statement.",
-            ],
+        canonical_solution=(
+            f"This is the reference answer for sample '{sample_name}' from "
+            f"dataset '{dataset_dirname}'.\n"
         ),
+        correct_statements=[
+            "This is a correct statement.",
+            "This is another correct statement.",
+        ],
+        incorrect_statements=[
+            "This is an incorrect statement.",
+            "This is another incorrect statement.",
+        ],
     )
 
 
@@ -124,11 +132,6 @@ def expected_spark_sample(sample_name: str, dataset_dirname: str) -> SparkSample
 
 def expected_generated_sample(base_sample: Sample) -> GeneratedSample:
     """Return the expected `GeneratedSample` corresponding to a base sample."""
-    type_map: dict[type[Sample], type[GeneratedSample]] = {
-        AdaSample: GeneratedAdaSample,
-        ExplainSample: GeneratedExplainSample,
-        SparkSample: GeneratedSparkSample,
-    }
     if isinstance(base_sample, AdaSample):
         generated_solution: object = DirectoryContents(
             base_sample.sources.files
@@ -136,7 +139,7 @@ def expected_generated_sample(base_sample: Sample) -> GeneratedSample:
         )
     else:
         generated_solution = "This is the generated explanation."
-    return type_map[type(base_sample)](
+    return GENERATED_SAMPLE_TYPES[base_sample.kind](
         **base_sample.model_dump(),
         generation_stats=GenerationStats(
             exit_code=0,
@@ -148,38 +151,72 @@ def expected_generated_sample(base_sample: Sample) -> GeneratedSample:
     )
 
 
-def check_loaded_datasets(datasets: list[Dataset[Sample]], *, generated: bool = False):
+def expected_evaluated_sample(base_sample: Sample) -> EvaluatedSample:
+    """Return the expected `EvaluatedSample` corresponding to a base sample."""
+    generated_sample = expected_generated_sample(base_sample)
+    return EVALUATED_SAMPLE_TYPES[generated_sample.kind](
+        **generated_sample.model_dump(),
+        evaluation_results=[
+            EvaluationStatsProve(successfully_proven=False, subprogram_found=True),
+            EvaluationStatsBuild(
+                compiled=False, pre_format_warnings=True, post_format_warnings=True
+            ),
+        ],
+    )
+
+
+def check_loaded_datasets(
+    datasets: list[Dataset[Sample]], stage: SampleStage = SampleStage.INITIAL
+) -> None:
     """Check that `datasets` matches `tests/data/valid_[base/generated]_datasets`."""
 
-    def generated_if_needed(sample: Sample) -> Sample:
-        return expected_generated_sample(sample) if generated else sample
+    def promoted_if_needed(sample: Sample) -> Sample:
+        match stage:
+            case SampleStage.INITIAL:
+                return sample
+            case SampleStage.GENERATED:
+                return expected_generated_sample(sample)
+            case SampleStage.EVALUATED:
+                return expected_evaluated_sample(sample)
 
     assert len(datasets) == 3
-    datasets_by_name = {d.dirname(): d for d in datasets}
+    datasets_by_name = {d.dirname: d for d in datasets}
 
     # Check the Explain dataset
     explain_dataset = datasets_by_name["explain_test"]
     assert explain_dataset.name == "test"
-    assert explain_dataset.sample_type is (
-        GeneratedExplainSample if generated else ExplainSample
-    )
+    assert explain_dataset.kind is SampleKind.EXPLAIN
+    assert explain_dataset.stage is stage
     assert explain_dataset.samples == [
-        generated_if_needed(expected_explain_sample("test_sample_0", "explain_test"))
+        promoted_if_needed(expected_explain_sample("test_sample_0", "explain_test"))
     ]
 
+    # Construct the expected sample for the Ada dataset (i.e. that returned by
+    # `expected_ada_sample()`, except with some `canonical_evaluation_results`)
+    expected_ada_sample_0 = expected_ada_sample("test_sample_0", "ada_test")
+    expected_ada_sample_0.canonical_evaluation_results = [
+        EvaluationStatsBuild(
+            compiled=True, pre_format_warnings=True, post_format_warnings=False
+        )
+    ]
     # Check the Ada dataset
     ada_dataset = datasets_by_name["ada_test"]
     assert ada_dataset.name == "test"
-    assert ada_dataset.sample_type is (GeneratedAdaSample if generated else AdaSample)
-    assert ada_dataset.samples == [
-        generated_if_needed(expected_ada_sample("test_sample_0", "ada_test"))
-    ]
+    assert ada_dataset.kind is SampleKind.ADA
+    assert ada_dataset.stage is stage
+    assert ada_dataset.samples == [promoted_if_needed(expected_ada_sample_0)]
 
-    # Construct expected samples for the Spark dataset (sample_0 is as returned
-    # by `expected_spark_sample()`, sample_1 has some extra files, and sample_2
-    # is empty apart from a minimal `other.json` file, so should be populated
-    # with defaults)
+    # Construct expected samples for the Spark dataset (sample_0 is mostly
+    # as returned by `expected_spark_sample()`, sample_1 has some extra files,
+    # and sample_2 is empty apart from a minimal `other.json` file, so should be
+    # populated with defaults)
     expected_spark_sample_0 = expected_spark_sample("test_sample_0", "spark_test")
+    expected_spark_sample_0.canonical_evaluation_results = [
+        EvaluationStatsTimedOut(
+            eval="prove", cmd_timed_out=["cmd", "arg0", "arg1"], timeout=12.34
+        ),
+        EvaluationStatsFailed(eval="build", exception='SomeError("Some message")'),
+    ]
     expected_spark_sample_1 = expected_spark_sample("test_sample_1", "spark_test")
     expected_spark_sample_1.sources.files[Path("source_dir_0/source_file_1")] = (
         "This is 'source_file_1' in sample 'test_sample_1' from dataset 'spark_test'.\n"
@@ -190,6 +227,12 @@ def check_loaded_datasets(datasets: list[Dataset[Sample]], *, generated: bool = 
         "This is 'source_file_2' in sample 'test_sample_1' from dataset 'spark_test'.\n"
         "The addition of this file is part of the canonical solution.\n"
     )
+    expected_spark_sample_1.canonical_evaluation_results = [
+        EvaluationStatsProve(successfully_proven=True, subprogram_found=True),
+        EvaluationStatsBuild(
+            compiled=True, pre_format_warnings=False, post_format_warnings=False
+        ),
+    ]
     expected_spark_sample_2 = SparkSample(
         name="test_sample_2",
         location=Location(
@@ -205,14 +248,13 @@ def check_loaded_datasets(datasets: list[Dataset[Sample]], *, generated: bool = 
     # Check the Spark dataset (note that the sample ordering is not guaranteed)
     spark_dataset = datasets_by_name["spark_test"]
     assert spark_dataset.name == "test"
-    assert spark_dataset.sample_type is (
-        GeneratedSparkSample if generated else SparkSample
-    )
+    assert spark_dataset.kind is SampleKind.SPARK
+    assert spark_dataset.stage is stage
     spark_samples_by_name = {s.name: s for s in spark_dataset.samples}
     assert spark_samples_by_name == {
-        "test_sample_0": generated_if_needed(expected_spark_sample_0),
-        "test_sample_1": generated_if_needed(expected_spark_sample_1),
-        "test_sample_2": generated_if_needed(expected_spark_sample_2),
+        "test_sample_0": promoted_if_needed(expected_spark_sample_0),
+        "test_sample_1": promoted_if_needed(expected_spark_sample_1),
+        "test_sample_2": promoted_if_needed(expected_spark_sample_2),
     }
 
 
@@ -228,7 +270,12 @@ def test_load_valid_packed_datasets(compacted_test_datasets: Path):  # noqa: F81
 
 def test_load_valid_packed_generated_datasets(generated_test_datasets: Path):  # noqa: F811  # pytest fixture
     """Check that loading packed generated datasets works correctly."""
-    check_loaded_datasets(load_datasets(generated_test_datasets), generated=True)
+    check_loaded_datasets(load_datasets(generated_test_datasets), SampleStage.GENERATED)
+
+
+def test_load_valid_packed_evaluated_datasets(evaluated_test_datasets: Path):  # noqa: F811  # pytest fixture
+    """Check that loading packed evaluated datasets works correctly."""
+    check_loaded_datasets(load_datasets(evaluated_test_datasets), SampleStage.EVALUATED)
 
 
 def test_load_valid_unpacked_datasets_with_gitignore(expanded_test_datasets: Path):  # noqa: F811  # pytest fixture
@@ -285,6 +332,24 @@ def test_load_valid_unpacked_datasets_with_gitignore(expanded_test_datasets: Pat
     check_loaded_datasets(datasets)
 
 
+def test_load_empty_packed_dataset(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], caplog: pytest.LogCaptureFixture
+):
+    """Check that loading an empty jsonl file yields an appropriate empty dataset."""
+    empty_dataset_path = tmp_path / "ada_empty.jsonl"
+    empty_dataset_path.touch()
+    datasets = load_datasets(empty_dataset_path)
+    assert len(datasets) == 1
+    empty_dataset = datasets[0]
+    assert empty_dataset.name == "empty"
+    assert empty_dataset.sample_type is EvaluatedAdaSample
+    assert empty_dataset.samples == []
+    assert_log(caplog, WARN, f"Dataset at '{empty_dataset_path}' is empty.")
+    output = capsys.readouterr()
+    assert output.out == ""
+    assert output.err == ""
+
+
 def test_load_no_valid_samples(
     compacted_test_datasets,  # noqa: F811  # pytest fixture
     expanded_test_datasets,  # noqa: F811  # pytest fixture
@@ -297,14 +362,16 @@ def test_load_no_valid_samples(
         packed_dataset.rename(packed_dataset.with_suffix(""))
     datasets = load_datasets(compacted_test_datasets)
     assert len(datasets) == 0
-    assert f"No datasets could be found at: {compacted_test_datasets}" in caplog.text
+    assert_log(
+        caplog, WARN, f"No datasets could be found at: {compacted_test_datasets}"
+    )
     # Remove the `other.json` file from all unpacked datasets and check that
     # loading them issues a warning
     for other_json in expanded_test_datasets.glob("**/other.json"):
         other_json.unlink()
     datasets = load_datasets(expanded_test_datasets)
     assert len(datasets) == 0
-    assert f"No datasets could be found at: {expanded_test_datasets}" in caplog.text
+    assert_log(caplog, WARN, f"No datasets could be found at: {expanded_test_datasets}")
 
 
 def test_load_mixed_datasets(
@@ -413,7 +480,7 @@ def test_load_non_sample_warning(
     datasets = load_datasets(expanded_test_datasets)
     spark_dataset = next(d for d in datasets if dataset_has_sample_type(d, SparkSample))
     assert len(spark_dataset.samples) == 2
-    assert f"Skipping non-sample directory: {spark_sample_path}" in caplog.text
+    assert_log(caplog, WARN, f"Skipping non-sample directory: {spark_sample_path}")
 
 
 def test_load_invalid_dataset_name(compacted_test_datasets, expanded_test_datasets):  # noqa: F811  # pytest fixtures
@@ -440,14 +507,13 @@ def test_load_invalid_dataset_kind(compacted_test_datasets, expanded_test_datase
         compacted_test_datasets / "ada_test.jsonl",
         compacted_test_datasets / "unknown_test.jsonl",
     )
-    error_msg = "Unknown dataset type: unknown"
+    error_msg = "Unknown dataset kind: unknown"
     with pytest.raises(UnknownDatasetKindError, match=re.escape(error_msg)):
         load_datasets(compacted_test_datasets)
     shutil.move(
         expanded_test_datasets / "ada_test",
         expanded_test_datasets / "unknown_test",
     )
-    error_msg = "Unknown dataset type: unknown"
     with pytest.raises(UnknownDatasetKindError, match=re.escape(error_msg)):
         load_datasets(expanded_test_datasets)
 
@@ -463,6 +529,25 @@ def test_load_duplicate_sample_names(compacted_test_datasets):  # noqa: F811  # 
     error_msg = f"Duplicate sample name 'test_sample_1' found in '{spark_dataset_file}'"
     with pytest.raises(DuplicateSampleNameError, match=re.escape(error_msg)):
         load_datasets(compacted_test_datasets)
+
+
+def test_load_mixed_sample_types(generated_test_datasets: Path):  # noqa: F811  # pytest fixture
+    """Check that loading a dataset with mixed sample types raises an error."""
+    spark_dataset_file = generated_test_datasets / "spark_test.jsonl"
+    spark_dataset_content = spark_dataset_file.read_text()
+    # Change one of the generated samples to an evaluated one
+    spark_dataset_content = spark_dataset_content.replace(
+        '"name":"test_sample_2"',
+        '"name":"test_sample_2","evaluation_results":[]',
+    )
+    spark_dataset_file.write_text(spark_dataset_content)
+    error_msg = (
+        f"Dataset at '{spark_dataset_file}' contains mixed sample types:\n"
+        f"'test_sample_0' is GeneratedSparkSample "
+        f"but 'test_sample_2' is EvaluatedSparkSample"
+    )
+    with pytest.raises(MixedSampleTypesError, match=re.escape(error_msg)):
+        load_datasets(generated_test_datasets)
 
 
 def test_load_unpacked_dataset_invalid(expanded_test_datasets: Path):  # noqa: F811  # pytest fixture

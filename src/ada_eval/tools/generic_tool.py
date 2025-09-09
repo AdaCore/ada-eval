@@ -1,7 +1,7 @@
 import logging
 from enum import Enum
 from pathlib import Path
-from typing import Generic, Self, TypeVar
+from typing import Self
 
 from pydantic import BaseModel
 
@@ -35,13 +35,11 @@ class BaseConfig(BaseModel):
         return cls.model_validate_json(config_file.read_text(encoding="utf-8"))
 
 
-ConfigType = TypeVar("ConfigType", bound=BaseConfig)
-BaseSampleType = TypeVar("BaseSampleType", bound=Sample)
-GeneratedSampleType = TypeVar("GeneratedSampleType", bound=GeneratedSample)
-
-
-class GenericTool(
-    Generic[ConfigType, BaseSampleType, GeneratedSampleType],
+class GenericTool[
+    ConfigType: BaseConfig,
+    BaseSampleType: Sample,
+    GeneratedSampleType: GeneratedSample,
+](
     SampleOperation[BaseSampleType, GeneratedSampleType],
 ):
     config: ConfigType
