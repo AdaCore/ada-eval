@@ -1,3 +1,4 @@
+from collections import Counter
 from collections.abc import Sequence
 from enum import StrEnum
 from typing import Literal
@@ -50,6 +51,22 @@ class EvaluationStatsProve(EvaluationStatsBase):
     subprogram_found: bool
 
 
+class EvaluationStatsProve_New(EvaluationStatsBase):  # noqa: N801
+    eval: Literal[Eval.PROVE] = Eval.PROVE
+    result: Literal[
+        "subprogram_not_found",
+        "error",
+        "unproved",
+        "proved_with_pragma_assume",
+        "proved",
+    ]
+    proved_checks: Counter[str]
+    unproved_checks: Counter[str]
+    warnings: Counter[str]
+    pragma_assume_count: int
+    proof_steps: int
+
+
 class EvaluationStatsTest(EvaluationStatsBase):
     eval: Literal[Eval.TEST] = Eval.TEST
     compiled: bool
@@ -59,6 +76,7 @@ class EvaluationStatsTest(EvaluationStatsBase):
 EvaluationStats = (
     EvaluationStatsBuild
     | EvaluationStatsProve
+    | EvaluationStatsProve_New
     | EvaluationStatsTest
     | EvaluationStatsFailed
     | EvaluationStatsTimedOut

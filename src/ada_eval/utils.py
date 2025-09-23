@@ -2,10 +2,34 @@ import logging
 import shutil
 import subprocess
 import time
+from collections import Counter
 from enum import Enum
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from _typeshed import SupportsRichComparison
 
 logger = logging.getLogger(__name__)
+
+
+def sort_dict[K: SupportsRichComparison, V](d: dict[K, V]) -> dict[K, V]:
+    """Return a copy of `d` sorted by key."""
+    return dict(sorted(d.items(), key=lambda item: item[0]))
+
+
+def subtract_counters[T](minuend: Counter[T], subtrahend: Counter[T]) -> Counter[T]:
+    """
+    Equivalent to `minuend - subtrahend`, except negative counts are not dropped.
+
+    Zero counts are still dropped.
+    """
+    difference = Counter[T]()
+    for key in minuend.keys() | subtrahend.keys():
+        count = minuend[key] - subtrahend[key]
+        if count != 0:
+            difference[key] = count
+    return difference
 
 
 def make_files_relative_to(path: Path, files: list[Path]) -> list[Path]:
@@ -85,6 +109,19 @@ class UnexpectedTypeError(TypeError):
         super().__init__(
             f"Expected type {expected_type.__name__}, but got {actual_type.__name__}."
         )
+
+
+def type_checked[T](value: object, expected_type: type[T]) -> T:
+    """
+    Assert that `value` is an instance of `expected_type` and return it.
+
+    Raises:
+        UnexpectedTypeError: If `value` is not of type `expected_type`.
+
+    """
+    if isinstance(value, expected_type):
+        return value
+    raise UnexpectedTypeError(expected_type, type(value))
 
 
 class ExecutableNotFoundError(RuntimeError):

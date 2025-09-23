@@ -15,6 +15,7 @@ from .evaluation_stats import (
     EvaluationStatsBuild,
     EvaluationStatsFailed,
     EvaluationStatsProve,
+    EvaluationStatsProve_New,
     EvaluationStatsTest,
     EvaluationStatsTimedOut,
 )
@@ -57,6 +58,7 @@ __all__ = [
     "EvaluationStatsBuild",
     "EvaluationStatsFailed",
     "EvaluationStatsProve",
+    "EvaluationStatsProve_New",
     "EvaluationStatsTest",
     "EvaluationStatsTimedOut",
     "ExplainSample",
