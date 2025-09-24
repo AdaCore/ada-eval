@@ -12,6 +12,7 @@ from typing import ClassVar, Self
 from pydantic import BaseModel, TypeAdapter, field_serializer, field_validator
 
 from ada_eval.datasets.utils import get_file_or_empty
+from ada_eval.utils import serialise_sequence, type_checked
 
 from .directory_contents import DirectoryContents, get_contents_git_aware
 from .evaluation_stats import EvaluationStats
@@ -41,6 +42,7 @@ CORRECT_STATEMENTS_KEY = "correct_statements"
 INCORRECT_STATEMENTS_KEY = "incorrect_statements"
 LOCATION_KEY = "location"
 CANONICAL_EVAL_KEY = "canonical_evaluation_results"
+REQUIRED_CHECKS_KEY = "required_checks"
 
 
 class PathMustBeRelativeError(Exception):
@@ -144,6 +146,13 @@ class SampleStage(Enum):
     """A problem, a generated solution thereto, and an evaluation thereof."""
 
 
+def get_other_json_data(sample_dir: Path) -> dict[str, object]:
+    """Parse the `other.json` file from an unpacked sample."""
+    return type_checked(
+        json.loads((sample_dir / OTHER_JSON_NAME).read_text("utf-8")), dict
+    )
+
+
 VALID_SAMPLE_NAME_PATTERN = re.compile(r"^[\w-]+$")
 
 
@@ -203,14 +212,14 @@ class Sample(BaseModel):
         self.sources.unpack_to(dest_dir / BASE_DIR_NAME)
         other_data = {LOCATION_KEY: self.location.model_dump()} | (other_data or {})
         if len(self.canonical_evaluation_results) > 0:
-            other_data[CANONICAL_EVAL_KEY] = [
-                es.model_dump() for es in self.canonical_evaluation_results
-            ]
+            other_data[CANONICAL_EVAL_KEY] = serialise_sequence(
+                self.canonical_evaluation_results
+            )
         (dest_dir / OTHER_JSON_NAME).write_text(json.dumps(other_data, indent=4) + "\n")
 
     @classmethod
     def load_unpacked_sample(cls, sample_dir: Path) -> Self:
-        other_data = json.loads(get_file_or_empty(sample_dir / OTHER_JSON_NAME))
+        other_data = get_other_json_data(sample_dir)
         base_files = get_contents_git_aware(sample_dir / BASE_DIR_NAME)
         prompt = get_file_or_empty(sample_dir / PROMPT_FILE_NAME)
         comments = get_file_or_empty(sample_dir / COMMENTS_FILE_NAME)
@@ -255,7 +264,7 @@ class AdaSample(Sample):
     unit_tests: DirectoryContents
 
     def unpack(self, dataset_root: Path, other_data: dict[str, object] | None = None):
-        super().unpack(dataset_root, other_data=other_data)
+        super().unpack(dataset_root=dataset_root, other_data=other_data)
         dest_dir = self.working_dir_in(dataset_root)
         self.canonical_solution.unpack_to(dest_dir / SOLUTION_DIR_NAME)
         self.unit_tests.unpack_to(dest_dir / UNIT_TEST_DIR_NAME)
@@ -289,13 +298,13 @@ class ExplainSample(Sample):
             CORRECT_STATEMENTS_KEY: self.correct_statements,
             INCORRECT_STATEMENTS_KEY: self.incorrect_statements,
         } | (other_data or {})
-        super().unpack(dataset_root, other_data=other_data)
+        super().unpack(dataset_root=dataset_root, other_data=other_data)
         dest_dir = self.working_dir_in(dataset_root)
         (dest_dir / REFERENCE_ANSWER_FILE_NAME).write_text(self.canonical_solution)
 
     @classmethod
     def load_unpacked_sample(cls, sample_dir: Path):
-        other_data = json.loads(get_file_or_empty(sample_dir / OTHER_JSON_NAME))
+        other_data = get_other_json_data(sample_dir)
         reference_answer = get_file_or_empty(sample_dir / REFERENCE_ANSWER_FILE_NAME)
         base_sample = Sample.load_unpacked_sample(sample_dir)
         return cls(
@@ -311,8 +320,49 @@ class ExplainSample(Sample):
         )
 
 
+class ProofCheck(BaseModel):
+    """A check that a `SparkSample`'s solution must prove to be considered correct."""
+
+    rule: str
+    """The rule name of the check, e.g. `"VC_POSTCONDITION"`."""
+    src_pattern: str | None = None
+    """
+    An optional regex pattern that must match the source code.
+
+    Matches starting from the check location as reported by GNATprove.
+    """
+
+
 class SparkSample(AdaSample):
     kind: ClassVar = SampleKind.SPARK
+
+    required_checks: Sequence[ProofCheck] = []
+
+    def unpack(self, dataset_root: Path, other_data: dict[str, object] | None = None):
+        if len(self.required_checks) > 0:
+            other_data = {
+                REQUIRED_CHECKS_KEY: serialise_sequence(self.required_checks)
+            } | (other_data or {})
+        super().unpack(dataset_root=dataset_root, other_data=other_data)
+
+    @classmethod
+    def load_unpacked_sample(cls, sample_dir: Path):
+        other_data = get_other_json_data(sample_dir)
+        required_checks = TypeAdapter(list[ProofCheck]).validate_python(
+            other_data.get(REQUIRED_CHECKS_KEY, [])
+        )
+        ada_sample = AdaSample.load_unpacked_sample(sample_dir)
+        return cls(
+            name=ada_sample.name,
+            location=ada_sample.location,
+            prompt=ada_sample.prompt,
+            comments=ada_sample.comments,
+            sources=ada_sample.sources,
+            canonical_solution=ada_sample.canonical_solution,
+            canonical_evaluation_results=ada_sample.canonical_evaluation_results,
+            unit_tests=ada_sample.unit_tests,
+            required_checks=required_checks,
+        )
 
 
 class GenerationStats(BaseModel):

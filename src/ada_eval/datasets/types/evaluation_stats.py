@@ -54,15 +54,12 @@ class EvaluationStatsProve(EvaluationStatsBase):
 class EvaluationStatsProve_New(EvaluationStatsBase):  # noqa: N801
     eval: Literal[Eval.PROVE] = Eval.PROVE
     result: Literal[
-        "subprogram_not_found",
-        "error",
-        "unproved",
-        "proved_with_pragma_assume",
-        "proved",
+        "subprogram_not_found", "error", "unproved", "proved_incorrectly", "proved"
     ]
     proved_checks: Counter[str]
     unproved_checks: Counter[str]
     warnings: Counter[str]
+    missing_required_checks: int
     pragma_assume_count: int
     proof_steps: int
 

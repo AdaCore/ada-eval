@@ -3,9 +3,12 @@ import shutil
 import subprocess
 import time
 from collections import Counter
+from collections.abc import Sequence
 from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING
+
+from pydantic import BaseModel
 
 if TYPE_CHECKING:
     from _typeshed import SupportsRichComparison
@@ -35,6 +38,11 @@ def subtract_counters[T](minuend: Counter[T], subtrahend: Counter[T]) -> Counter
 def make_files_relative_to(path: Path, files: list[Path]) -> list[Path]:
     """Make a list of files relative to a given path."""
     return [file.relative_to(path) for file in files]
+
+
+def serialise_sequence(seq: Sequence[BaseModel]) -> list[dict[str, object]]:
+    """Serialise a sequence of Pydantic models to a list of dictionaries."""
+    return [item.model_dump() for item in seq]
 
 
 def construct_enum_case_insensitive(cls: type[Enum], value: object) -> Enum | None:
