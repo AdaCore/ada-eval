@@ -27,6 +27,7 @@ from ada_eval.datasets.types.evaluation_stats import (
     EvaluationStatsBuild,
     EvaluationStatsFailed,
     EvaluationStatsProve,
+    EvaluationStatsProve_New,
     EvaluationStatsTest,
     EvaluationStatsTimedOut,
 )
@@ -553,8 +554,8 @@ def test_build(
     test_datasets = load_datasets(eval_test_datasets)
     evaluate_datasets_canonical([Eval.BUILD], test_datasets, jobs=8)
     assert caplog.text == ""
-    # 16 = 2x4 (build) + 3 (prove) + 5 (test)
-    check_progress_bar(capsys.readouterr(), 16, "build")
+    # 21 = 2x4 (build) + 8 (prove) + 5 (test)
+    check_progress_bar(capsys.readouterr(), 21, "build")
 
     # Verify that the evaluation results are as expected for the build test
     # datasets
@@ -584,11 +585,11 @@ def test_build(
         ]
 
     # Verify that all the spark samples in the prove dataset compiled without
-    # issue.
+    # issue (except `"errors"`, which is intended to be non-compilable).
     prove_test_datasets = [d for d in test_datasets if d.name == "prove"]
     assert len(prove_test_datasets) == 1
     for sample in prove_test_datasets[0].samples:
-        assert sample.canonical_evaluation_results == [
+        assert sample.name == "errors" or sample.canonical_evaluation_results == [
             EvaluationStatsBuild(
                 compiled=True, pre_format_warnings=False, post_format_warnings=False
             )
@@ -607,7 +608,7 @@ def test_prove(
     test_datasets = [d for d in all_datasets if d.name in ("build", "prove")]
     evaluate_datasets_canonical([Eval.PROVE], test_datasets, jobs=8)
     assert caplog.text == ""
-    check_progress_bar(capsys.readouterr(), 3, "prove")  # 3 spark samples
+    check_progress_bar(capsys.readouterr(), 8, "prove")  # 8 spark samples
 
     # Verify that the evaluation results are as expected for the build dataset
     # (only spark samples are compatible with prove, so this should be an empty
@@ -621,14 +622,68 @@ def test_prove(
     prove_test_datasets = [d for d in test_datasets if d.name == "prove"]
     assert len(prove_test_datasets) == 1
     samples = {s.name: s for s in prove_test_datasets[0].samples}
-    assert samples["proves"].canonical_evaluation_results == [
-        EvaluationStatsProve(successfully_proven=True, subprogram_found=True)
-    ]
+    expected_eval_stats = EvaluationStatsProve_New(
+        result="proved",
+        proved_checks={
+            "SUBPROGRAM_TERMINATION": 1,
+            "VC_OVERFLOW_CHECK": 2,
+            "VC_POSTCONDITION": 1,
+        },
+        unproved_checks={},
+        warnings={},
+        missing_required_checks=0,
+        pragma_assume_count=0,
+        proof_steps=5,
+    )
+    assert samples["proves"].canonical_evaluation_results == [expected_eval_stats]
     assert samples["fails"].canonical_evaluation_results == [
-        EvaluationStatsProve(successfully_proven=False, subprogram_found=True)
+        expected_eval_stats.model_copy(
+            update={
+                "result": "unproved",
+                "proved_checks": {"SUBPROGRAM_TERMINATION": 1, "VC_OVERFLOW_CHECK": 1},
+                "unproved_checks": {"VC_OVERFLOW_CHECK": 1, "VC_POSTCONDITION": 1},
+                "missing_required_checks": 1,
+            }
+        )
+    ]
+    assert samples["assumes"].canonical_evaluation_results == [
+        expected_eval_stats.model_copy(
+            update={"result": "proved_incorrectly", "pragma_assume_count": 1}
+        )
+    ]
+    assert samples["wrong_postcondition"].canonical_evaluation_results == [
+        expected_eval_stats.model_copy(
+            update={"result": "proved_incorrectly", "missing_required_checks": 1}
+        )
+    ]
+    assert samples["no_postcondition"].canonical_evaluation_results == [
+        expected_eval_stats.model_copy(
+            update={
+                "result": "proved_incorrectly",
+                "proved_checks": {"SUBPROGRAM_TERMINATION": 1, "VC_OVERFLOW_CHECK": 1},
+                "missing_required_checks": 1,
+                "proof_steps": 2,
+            }
+        )
+    ]
+    assert samples["warns"].canonical_evaluation_results == [
+        expected_eval_stats.model_copy(
+            update={"result": "unproved", "warnings": {"INEFFECTIVE": 1}}
+        )
+    ]
+    assert samples["errors"].canonical_evaluation_results == [
+        expected_eval_stats.model_copy(
+            update={"result": "error", "proved_checks": {}, "proof_steps": 0}
+        )
     ]
     assert samples["not_found"].canonical_evaluation_results == [
-        EvaluationStatsProve(successfully_proven=False, subprogram_found=False)
+        expected_eval_stats.model_copy(
+            update={
+                "result": "subprogram_not_found",
+                "proved_checks": {},
+                "proof_steps": 0,
+            }
+        )
     ]
 
 
