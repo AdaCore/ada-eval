@@ -4,6 +4,7 @@ import shutil
 import subprocess
 from logging import ERROR, WARN
 from pathlib import Path
+from textwrap import dedent
 from typing import Any, ClassVar, cast
 from unittest.mock import patch
 
@@ -739,9 +740,16 @@ def test_prove_ci(
 ):
     """A version of `test_prove()` which can be run without `gnatprove` on PATH."""
     # Mock `gnatprove` with a script which simulates the behaviour of the
-    # real tool on the eval test datasets; i.e. returns exit code 0 iff
-    # `./src/increment.ads` contains the substring "Pre => X < Integer'Last".
-    script = '#!/usr/bin/env sh\ngrep "Pre => X < Integer\'Last" ./src/increment.ads'
+    # real tool on the eval test datasets; i.e. copies `./expected_spark_file`
+    # to `./obj/gnatprove/increment.spark` (and returns non-zero exit code if
+    # there is no such file).
+    script = dedent(
+        """\
+        #!/usr/bin/env sh
+        mkdir -p ./obj/gnatprove
+        cp ./expected_spark_file ./obj/gnatprove/increment.spark
+        """
+    )
     path_dir = tmp_path / "path_dir"
     path_dir.mkdir()
     (path_dir / "gnatprove").write_text(script)
