@@ -1,0 +1,1 @@
+Adapted from https://learn.adacore.com/courses/intro-to-spark/chapters/03_Proof_Of_Program_Integrity.html#contracts

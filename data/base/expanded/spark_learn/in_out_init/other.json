@@ -14,6 +14,11 @@
             "eval": "prove",
             "successfully_proven": true,
             "subprogram_found": true
+        },
+        {
+            "eval": "test",
+            "compiled": true,
+            "passed_tests": true
         }
     ]
 }

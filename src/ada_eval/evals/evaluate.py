@@ -14,6 +14,7 @@ from ada_eval.datasets.types import (
     dataset_has_sample_type,
     save_datasets_auto_format,
 )
+from ada_eval.evals.test import Test
 
 from .build import Build
 from .prove import Prove
@@ -26,12 +27,14 @@ class UnsupportedEvalError(Exception):
         super().__init__(f"Unsupported eval: {evaluation}")
 
 
-def create_eval(evaluation: Eval) -> Build | Prove:
+def create_eval(evaluation: Eval) -> Build | Prove | Test:
     match evaluation:
         case Eval.BUILD:
             return Build()
         case Eval.PROVE:
             return Prove()
+        case Eval.TEST:
+            return Test()
         case _:
             raise UnsupportedEvalError(evaluation)
 

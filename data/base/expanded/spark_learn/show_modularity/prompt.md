@@ -1,0 +1,1 @@
+I'm trying to prove the absence of runtime errors for Increment_Twice. Please can you help me do this without changing the functionality of the code.
