@@ -29,7 +29,7 @@ def _run_gprbuild(
     """Return the result of running `gprbuild`."""
     args = ["gprbuild", PROJ_ARG]
     if check_warnings:
-        args.extend(["-gnatwae", "-gnatyy"])
+        args.extend(["-gnatwae", "-gnatyy", "-gnatVa"])
     return run_cmd_with_timeout(args, working_dir, BUILD_TIMEOUT_S)[0]
 
 
@@ -66,10 +66,8 @@ class Build(GenericEval[GeneratedAdaSample, EvaluatedAdaSample]):
             if result.returncode == 0:
                 return eval_stats  # Compiled successfully without warnings
             eval_stats.pre_format_warnings = True
-            # If that failed, format the sources with GNATformat and try again
-            run_cmd_with_timeout(
-                ["gnatformat", PROJ_ARG], working_dir, BUILD_TIMEOUT_S, check=True
-            )
+            # If that failed, try reformating the sources with GNATformat and try again
+            run_cmd_with_timeout(["gnatformat", PROJ_ARG], working_dir, BUILD_TIMEOUT_S)
             result = _run_gprbuild(working_dir, check_warnings=True)
             if result.returncode == 0:
                 return eval_stats  # Compiled with no warnings after formatting

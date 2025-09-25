@@ -15,6 +15,7 @@ from .evaluation_stats import (
     EvaluationStatsBuild,
     EvaluationStatsFailed,
     EvaluationStatsProve,
+    EvaluationStatsTest,
     EvaluationStatsTimedOut,
 )
 from .samples import (
@@ -56,6 +57,7 @@ __all__ = [
     "EvaluationStatsBuild",
     "EvaluationStatsFailed",
     "EvaluationStatsProve",
+    "EvaluationStatsTest",
     "EvaluationStatsTimedOut",
     "ExplainSample",
     "GeneratedAdaSample",

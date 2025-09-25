@@ -32,7 +32,7 @@ class InvalidSampleNameError(ValueError):
 # - two dirs: "base", "solution"
 BASE_DIR_NAME = "base"
 SOLUTION_DIR_NAME = "solution"
-UNIT_TEST_DIR_NAME = "unit_test"
+UNIT_TEST_DIR_NAME = "tests"
 OTHER_JSON_NAME = "other.json"
 COMMENTS_FILE_NAME = "comments.md"
 PROMPT_FILE_NAME = "prompt.md"

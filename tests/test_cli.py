@@ -141,7 +141,7 @@ def test_evaluate(capsys):
             assert output.err == ""
             assert output.out == ""
             expected_evals = (
-                [Eval.BUILD, Eval.PROVE]
+                [Eval.BUILD, Eval.PROVE, Eval.TEST]
                 if evals is None
                 else ([Eval.PROVE, Eval.BUILD] if "build" in evals else [Eval.PROVE])
             )

@@ -27,6 +27,7 @@ from ada_eval.datasets.types.evaluation_stats import (
     EvaluationStatsBuild,
     EvaluationStatsFailed,
     EvaluationStatsProve,
+    EvaluationStatsTest,
     EvaluationStatsTimedOut,
 )
 from ada_eval.datasets.types.samples import (
@@ -85,13 +86,25 @@ class MockProveEval(GenericEval[GeneratedSample, EvaluatedSample]):
         return MOCK_PROVE_EVAL_STATS
 
 
-def mock_create_eval(eval_: Eval) -> MockBuildEval | MockProveEval:
+class MockTestEval(GenericEval[GeneratedSample, EvaluatedSample]):
+    """Mock test eval suitable for reproducing `evaluated_test_datasets`."""
+
+    eval: ClassVar = Eval.TEST
+    supported_types: ClassVar = GENERATED_TYPE_TO_EVALUATED
+
+    def evaluate(self, _: GeneratedSample) -> EvaluationStatsTest:
+        return EvaluationStatsTest(eval=Eval.TEST, compiled=True, passed_tests=True)
+
+
+def mock_create_eval(eval_: Eval) -> MockBuildEval | MockProveEval | MockTestEval:
     """Mock `create_eval()` suitable for reproducing `evaluated_test_datasets`."""
     match eval_:
         case Eval.BUILD:
             return MockBuildEval()
         case Eval.PROVE:
             return MockProveEval()
+        case Eval.TEST:
+            return MockTestEval()
         case _:
             raise ValueError(f"Unknown mock eval {eval_}")
 
@@ -521,6 +534,7 @@ def test_evaluate_directory_save_unpacked(
 
 
 @pytest.mark.skipif(not shutil.which("gprbuild"), reason="gprbuild not available")
+@pytest.mark.skipif(not shutil.which("gprclean"), reason="gprclean not available")
 @pytest.mark.skipif(not shutil.which("gnatformat"), reason="gnatformat not available")
 def test_build(
     eval_test_datasets: Path,  # noqa: F811  # pytest fixture
@@ -539,7 +553,8 @@ def test_build(
     test_datasets = load_datasets(eval_test_datasets)
     evaluate_datasets_canonical([Eval.BUILD], test_datasets, jobs=8)
     assert caplog.text == ""
-    check_progress_bar(capsys.readouterr(), 11, "build")  # 2x4 (build) + 3 (prove)
+    # 16 = 2x4 (build) + 3 (prove) + 5 (test)
+    check_progress_bar(capsys.readouterr(), 16, "build")
 
     # Verify that the evaluation results are as expected for the build test
     # datasets
@@ -588,7 +603,8 @@ def test_prove(
 ):
     # Apply the prove eval to the eval test datasets (for simplicity, they
     # contain initial samples defining only a canonical solution)
-    test_datasets = load_datasets(eval_test_datasets)
+    all_datasets = load_datasets(eval_test_datasets)
+    test_datasets = [d for d in all_datasets if d.name in ("build", "prove")]
     evaluate_datasets_canonical([Eval.PROVE], test_datasets, jobs=8)
     assert caplog.text == ""
     check_progress_bar(capsys.readouterr(), 3, "prove")  # 3 spark samples
@@ -614,6 +630,49 @@ def test_prove(
     assert samples["not_found"].canonical_evaluation_results == [
         EvaluationStatsProve(successfully_proven=False, subprogram_found=False)
     ]
+
+
+@pytest.mark.skipif(not shutil.which("gprbuild"), reason="gprbuild not available")
+@pytest.mark.skipif(not shutil.which("gprclean"), reason="gprclean not available")
+def test_test(
+    eval_test_datasets: Path,  # noqa: F811  # pytest fixture
+    capsys: pytest.CaptureFixture[str],
+    caplog: pytest.LogCaptureFixture,
+):
+    # Test eval should support both ada and spark datasets (and treat them
+    # identically), so make a copy of the spark eval test dataset with the name
+    # changed so that it loads as a ada dataset.
+    ada_dataset_file = eval_test_datasets / "ada_test.jsonl"
+    spark_dataset_file = eval_test_datasets / "spark_test.jsonl"
+    shutil.copy(spark_dataset_file, ada_dataset_file)
+
+    # Apply the test eval to the eval test datasets (for simplicity, they
+    # contain initial samples defining only a canonical solution)
+    all_datasets = load_datasets(eval_test_datasets)
+    test_datasets = [d for d in all_datasets if d.name == "test"]
+    evaluate_datasets_canonical([Eval.TEST], test_datasets, jobs=8)
+    assert caplog.text == ""
+    check_progress_bar(capsys.readouterr(), 10, "test")  # 2x5 (test)
+
+    # Verify that the evaluation results are as expected for the test datasets
+    assert len(test_datasets) == 2
+    for dataset in test_datasets:
+        samples = {s.name: s for s in dataset.samples}
+        assert samples["catches_missing_assertions"].canonical_evaluation_results == [
+            EvaluationStatsTest(compiled=True, passed_tests=False)
+        ]
+        assert samples["fails_to_build"].canonical_evaluation_results == [
+            EvaluationStatsTest(compiled=False, passed_tests=False)
+        ]
+        assert samples["ignores_warnings"].canonical_evaluation_results == [
+            EvaluationStatsTest(compiled=True, passed_tests=True)
+        ]
+        assert samples["test_fails"].canonical_evaluation_results == [
+            EvaluationStatsTest(compiled=True, passed_tests=False)
+        ]
+        assert samples["passes"].canonical_evaluation_results == [
+            EvaluationStatsTest(compiled=True, passed_tests=True)
+        ]
 
 
 @pytest.mark.skipif(not shutil.which("sh"), reason="sh not available")
@@ -644,7 +703,11 @@ def test_eval_path_checks(eval_test_datasets: Path):  # noqa: F811  # pytest fix
     """Check that evals raise appropriate exceptions when tools are not available."""
     test_datasets = load_datasets(eval_test_datasets)
 
-    for eval_, exe in [(Eval.BUILD, "gprbuild"), (Eval.PROVE, "gnatprove")]:
+    for eval_, exe in [
+        (Eval.BUILD, "gprbuild"),
+        (Eval.PROVE, "gnatprove"),
+        (Eval.TEST, "gprbuild"),
+    ]:
         error_msg = f"'{exe}' is not available in the PATH."
         with (
             patch.dict(os.environ, {"PATH": ""}),

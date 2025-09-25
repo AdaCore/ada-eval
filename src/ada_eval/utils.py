@@ -28,7 +28,12 @@ def construct_enum_case_insensitive(cls: type[Enum], value: object) -> Enum | No
 
 
 def run_cmd_with_timeout(
-    cmd: list[str], working_dir: Path, timeout: int, *, check: bool = False
+    cmd: list[str],
+    working_dir: Path,
+    timeout: int,
+    *,
+    check: bool = False,
+    env: dict[str, str] | None = None,
 ) -> tuple[subprocess.CompletedProcess[str], int]:
     """
     Run a command with a timeout and return the result.
@@ -41,6 +46,7 @@ def run_cmd_with_timeout(
         timeout (int): The timeout in seconds.
         check (bool): Whether to raise a `subprocess.CalledProcessError` if the
             command returns a non-zero exit code.
+        env (dict[str, str] | None): environment variables to set for the process
 
     Returns:
         result (subprocess.CompletedProcess): The completed process object.
@@ -61,6 +67,7 @@ def run_cmd_with_timeout(
         capture_output=True,
         encoding="utf-8",
         timeout=timeout,
+        env=env,
     )
     end = time.monotonic_ns()
     logger.debug("Return code: %d", result.returncode)

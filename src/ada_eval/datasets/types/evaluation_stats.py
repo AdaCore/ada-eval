@@ -10,6 +10,7 @@ from ada_eval.utils import construct_enum_case_insensitive
 class Eval(StrEnum):
     BUILD = "build"
     PROVE = "prove"
+    TEST = "test"
 
     # Constructor should be case-insensitive
     @classmethod
@@ -49,9 +50,16 @@ class EvaluationStatsProve(EvaluationStatsBase):
     subprogram_found: bool
 
 
+class EvaluationStatsTest(EvaluationStatsBase):
+    eval: Literal[Eval.TEST] = Eval.TEST
+    compiled: bool
+    passed_tests: bool
+
+
 EvaluationStats = (
     EvaluationStatsBuild
     | EvaluationStatsProve
+    | EvaluationStatsTest
     | EvaluationStatsFailed
     | EvaluationStatsTimedOut
 )
