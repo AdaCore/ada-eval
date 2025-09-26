@@ -3,6 +3,12 @@
         "path": "src/show_swap.ads",
         "subprogram_name": "Identity"
     },
+    "required_checks": [
+        {
+            "rule": "DEPENDS_WRONG",
+            "src_pattern": "Depends => \\(X => X, Y => Y\\);"
+        }
+    ],
     "canonical_evaluation_results": [
         {
             "eval": "build",

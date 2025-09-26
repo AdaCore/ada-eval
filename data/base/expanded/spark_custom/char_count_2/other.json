@@ -3,6 +3,12 @@
         "path": "src/string_utils.ads",
         "subprogram_name": "Count"
     },
+    "required_checks": [
+        {
+            "rule": "VC_POSTCONDITION",
+            "src_pattern": "Count'Result = Count_Ghost \\(Str, Char, Str'Last\\);"
+        }
+    ],
     "canonical_evaluation_results": [
         {
             "eval": "build",

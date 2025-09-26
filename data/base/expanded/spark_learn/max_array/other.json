@@ -3,6 +3,12 @@
         "path": "src/array_utils.ads",
         "subprogram_name": "Max_Array"
     },
+    "required_checks": [
+        {
+            "rule": "VC_POSTCONDITION",
+            "src_pattern": "\\(for all I in A'Range => Max_Array'Result >= A \\(I\\)\\);"
+        }
+    ],
     "canonical_evaluation_results": [
         {
             "eval": "build",

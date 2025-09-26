@@ -3,6 +3,12 @@
         "path": "src/integer_utils.ads",
         "subprogram_name": "Absolute"
     },
+    "required_checks": [
+        {
+            "rule": "VC_POSTCONDITION",
+            "src_pattern": "X >= 0;"
+        }
+    ],
     "canonical_evaluation_results": [
         {
             "eval": "build",
