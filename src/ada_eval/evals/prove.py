@@ -150,20 +150,22 @@ class Prove(GenericEval[GeneratedSparkSample, EvaluatedSparkSample]):
             check_results["low"] + check_results["medium"] + check_results["high"]
         )
         warnings = check_results["warning"]
-        # Count the `pragma Assume`s
-        pragma_assume_count = len(spark_data["pragma_assume"])
         # Treat any errors as an overall error (though it is not clear if a
         # `.spark` file will ever actually be created if there are errors).
         if check_results["error"].total() > 0:
             return empty_prove_stats("error")
-        # Return the `EvaluationStats`
-        if (unproved_checks + warnings).total() > 0:
+        # Count the `pragma Assume`s
+        pragma_assume_count = len(spark_data["pragma_assume"])
+        # Categorise the overall result
+        if unproved_checks.total() > 0:
             result = "unproved"
-        elif pragma_assume_count > 0 or len(missing_proof_checks) > 0:
+        elif not (
+            pragma_assume_count == len(missing_proof_checks) == warnings.total() == 0
+        ):
             result = "proved_incorrectly"
         else:
             result = "proved"
-        # Sort counters by key for stable output
+        # Return the `EvaluationStats` (sorting counters by key for stable output)
         return EvaluationStatsProve_New(
             result=result,
             proved_checks=Counter(sort_dict(proved_checks)),

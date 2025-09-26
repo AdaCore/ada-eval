@@ -637,6 +637,11 @@ def test_prove(
         proof_steps=5,
     )
     assert samples["proves"].canonical_evaluation_results == [expected_eval_stats]
+    assert samples["warns"].canonical_evaluation_results == [
+        expected_eval_stats.model_copy(
+            update={"result": "proved_incorrectly", "warnings": {"INEFFECTIVE": 1}}
+        )
+    ]
     assert samples["fails"].canonical_evaluation_results == [
         expected_eval_stats.model_copy(
             update={
@@ -665,11 +670,6 @@ def test_prove(
                 "missing_required_checks": 1,
                 "proof_steps": 2,
             }
-        )
-    ]
-    assert samples["warns"].canonical_evaluation_results == [
-        expected_eval_stats.model_copy(
-            update={"result": "unproved", "warnings": {"INEFFECTIVE": 1}}
         )
     ]
     assert samples["errors"].canonical_evaluation_results == [
