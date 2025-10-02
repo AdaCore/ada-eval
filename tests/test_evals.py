@@ -555,8 +555,8 @@ def test_build(
     test_datasets = load_datasets(eval_test_datasets)
     evaluate_datasets_canonical([Eval.BUILD], test_datasets, jobs=8)
     assert caplog.text == ""
-    # 21 = 2x4 (build) + 8 (prove) + 5 (test)
-    check_progress_bar(capsys.readouterr(), 21, "build")
+    # 21 = 2x4 (build) + 9 (prove) + 5 (test)
+    check_progress_bar(capsys.readouterr(), 22, "build")
 
     # Verify that the evaluation results are as expected for the build test
     # datasets
@@ -609,7 +609,7 @@ def test_prove(
     test_datasets = [d for d in all_datasets if d.name in ("build", "prove")]
     evaluate_datasets_canonical([Eval.PROVE], test_datasets, jobs=8)
     assert caplog.text == ""
-    check_progress_bar(capsys.readouterr(), 8, "prove")  # 8 spark samples
+    check_progress_bar(capsys.readouterr(), 9, "prove")  # 9 spark samples
 
     # Verify that the evaluation results are as expected for the build dataset
     # (only spark samples are compatible with prove, so this should be an empty
@@ -660,6 +660,20 @@ def test_prove(
     assert samples["wrong_postcondition"].canonical_evaluation_results == [
         expected_eval_stats.model_copy(
             update={"result": "proved_incorrectly", "missing_required_checks": 1}
+        )
+    ]
+    assert samples["delegated_fails"].canonical_evaluation_results == [
+        expected_eval_stats.model_copy(
+            update={
+                "result": "unproved",
+                "proved_checks": {
+                    "SUBPROGRAM_TERMINATION": 2,
+                    "VC_OVERFLOW_CHECK": 2,
+                    "VC_POSTCONDITION": 1,
+                },
+                "unproved_checks": {"VC_OVERFLOW_CHECK": 1, "VC_POSTCONDITION": 1},
+                "proof_steps": 8,
+            }
         )
     ]
     assert samples["no_postcondition"].canonical_evaluation_results == [
