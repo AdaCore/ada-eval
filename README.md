@@ -222,9 +222,26 @@ example_sample
           "location": {
               "path": "src/relative/path/to/file.ads",  // Should be relative to the base/solution directory of the sample
               "subprogram_name": "Name_Of_Subprogram"  // The name of the subprogram that is the focus of the challenge/problem
-          }
+          },
+          "required_checks": [
+              {
+                  "rule": "VC_POSTCONDITION",  // Rule name of a check that must be proved
+                  "src_pattern": "Increment'Result = X \\+ 1;"  // Optional regex pattern which must match the proved source code
+              },
+              ...
+          ]
       }
       ```
+      The `"required_checks"` list is optional, and unnecessary for most
+      samples, since the proof will simply fail unless the problem is solved.
+      However, for checks like postconditions, a desperate agent may "fix" the
+      proof failure by simply removing or relaxing the condition. Where the
+      proof of a postcondition or similar is a key part of a challenge/problem,
+      a corresponding `required_check` should be added to ensure that such
+      "fixes" are not erroneously evaluated as correct. The `"src_pattern"` must
+      match starting from the location reported by `gnatprove` (run `gnatprove`
+      on the solution with `--report=all` for an output which includes the line
+      and column numbers of these locations).
 3.  Verify that the solution builds, proves, etc. by running
     ```sh
     make evaluate-canonical
