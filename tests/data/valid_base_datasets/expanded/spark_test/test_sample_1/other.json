@@ -3,6 +3,13 @@
         "path": "source_file_0",
         "subprogram_name": "My_Subprogram"
     },
+    "required_checks": [
+        {
+            "rule": "RULE_NAME",
+            "entity_name": "My_Package.My_Subprogram",
+            "src_pattern": "pattern"
+        }
+    ],
     "canonical_evaluation_results": [
         {
             "eval": "prove",

@@ -44,6 +44,7 @@ from ada_eval.datasets.types.samples import (
     GeneratedSample,
     GenerationStats,
     Location,
+    ProofCheck,
     Sample,
     SampleKind,
     SampleStage,
@@ -127,6 +128,13 @@ def expected_spark_sample(sample_name: str, dataset_dirname: str) -> SparkSample
     """Return a `SparkSample` mostly matching those expected from the test datasets."""
     return SparkSample(
         **expected_ada_sample(sample_name, dataset_dirname).model_dump(),
+        required_checks=[
+            ProofCheck(
+                rule="RULE_NAME",
+                entity_name="My_Package.My_Subprogram",
+                src_pattern="pattern",
+            )
+        ],
     )
 
 
