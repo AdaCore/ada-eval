@@ -48,6 +48,7 @@ def empty_prove_stats(
 class ProofResult(BaseModel):
     """A single `proof_result` entry from a GNATprove `.spark` file."""
 
+    entity_name: str
     rule: str
     severity: Literal["info", "low", "medium", "high", "warning", "error"]
     file: str
@@ -65,6 +66,17 @@ def extract_proof_results(spark_data: dict[str, object]) -> list[ProofResult]:
             structure
 
     """
+    # Collect the entity names
+    entities = type_checked(spark_data["entities"], dict)
+    if len(entities) != len({int(s) for s in entities}):
+        # Verify that the entity keys are unique as ints, not just as strings
+        # (for some reason the keys of `entities` include whitespace)
+        msg = "Duplicate entity `int()` values found"
+        raise ValueError(msg)
+    entity_names: dict[int, str] = {}
+    for entity_num_str, entity in entities.items():
+        entity_names[int(entity_num_str)] = type_checked(entity["name"], str)
+    # Parse the actual `proof_result`s
     results: list[ProofResult] = []
     for check_kind in ("flow", "proof"):
         for proof_result_unchecked in type_checked(spark_data[check_kind], list):
@@ -80,6 +92,7 @@ def extract_proof_results(spark_data: dict[str, object]) -> list[ProofResult]:
             )
             results.append(
                 ProofResult(
+                    entity_name=entity_names[type_checked(proof_result["entity"], int)],
                     rule=type_checked(proof_result["rule"], str),
                     severity=type_checked(proof_result["severity"], str),
                     file=type_checked(proof_result["file"], str),
@@ -106,8 +119,15 @@ def proof_check_is_satisfied(
             `check.src_pattern`)
 
     """
-    if proof_result.rule != check.rule or proof_result.severity != "info":
-        # Not the right rule or not successfully proven
+    if (
+        proof_result.rule != check.rule
+        or (
+            check.entity_name is not None
+            and proof_result.entity_name != check.entity_name
+        )
+        or proof_result.severity != "info"
+    ):
+        # Not the right rule and/or entity, or not successfully proven
         return False
     if check.src_pattern is None:
         # Successfully proven, and no source pattern to check

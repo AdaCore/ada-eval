@@ -325,6 +325,12 @@ class ProofCheck(BaseModel):
 
     rule: str
     """The rule name of the check, e.g. `"VC_POSTCONDITION"`."""
+    entity_name: str | None = None
+    """
+    Optional name of an entity to which the check must be attached.
+
+    Includes package prefix.
+    """
     src_pattern: str | None = None
     """
     An optional regex pattern that must match the source code.
