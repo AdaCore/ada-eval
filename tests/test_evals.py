@@ -754,14 +754,14 @@ def test_prove_ci(
 ):
     """A version of `test_prove()` which can be run without `gnatprove` on PATH."""
     # Mock `gnatprove` with a script which simulates the behaviour of the
-    # real tool on the eval test datasets; i.e. copies `./expected_spark_file`
-    # to `./obj/gnatprove/increment.spark` (and returns non-zero exit code if
-    # there is no such file).
+    # real tool on the eval test datasets; i.e. moves the
+    # `./expected_spark_files/` directory to `./obj/gnatprove/` (and returns
+    # non-zero exit code if there is no such directory).
     script = dedent(
         """\
         #!/usr/bin/env sh
-        mkdir -p ./obj/gnatprove
-        cp ./expected_spark_file ./obj/gnatprove/increment.spark
+        mkdir ./obj
+        mv ./expected_spark_files ./obj/gnatprove
         """
     )
     path_dir = tmp_path / "path_dir"
