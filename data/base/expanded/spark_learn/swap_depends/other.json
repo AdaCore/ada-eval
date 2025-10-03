@@ -6,6 +6,7 @@
     "required_checks": [
         {
             "rule": "DEPENDS_WRONG",
+            "entity_name": "Show_Swap.Identity",
             "src_pattern": "Depends => \\(X => X, Y => Y\\);"
         }
     ],

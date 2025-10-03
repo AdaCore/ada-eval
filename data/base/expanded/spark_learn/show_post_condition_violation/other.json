@@ -6,6 +6,7 @@
     "required_checks": [
         {
             "rule": "VC_POSTCONDITION",
+            "entity_name": "Integer_Utils.Absolute",
             "src_pattern": "X >= 0;"
         }
     ],

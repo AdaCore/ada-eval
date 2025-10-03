@@ -6,6 +6,7 @@
     "required_checks": [
         {
             "rule": "VC_POSTCONDITION",
+            "entity_name": "String_Utils.Count",
             "src_pattern": "Count'Result = Count_Ghost \\(Str, Char, Str'Last\\);"
         }
     ],

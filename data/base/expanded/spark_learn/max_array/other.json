@@ -6,6 +6,7 @@
     "required_checks": [
         {
             "rule": "VC_POSTCONDITION",
+            "entity_name": "Array_Utils.Max_Array",
             "src_pattern": "\\(for all I in A'Range => Max_Array'Result >= A \\(I\\)\\);"
         }
     ],
