@@ -6,7 +6,7 @@ from collections import Counter
 from collections.abc import Sequence
 from enum import Enum
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 from pydantic import BaseModel
 
@@ -38,6 +38,24 @@ def subtract_counters[T](minuend: Counter[T], subtrahend: Counter[T]) -> Counter
 def make_files_relative_to(path: Path, files: list[Path]) -> list[Path]:
     """Make a list of files relative to a given path."""
     return [file.relative_to(path) for file in files]
+
+
+class TextPositionOutOfRangeError(ValueError):
+    """Raised when a line or column number is out of range."""
+
+    def __init__(self, kind: Literal["line", "column"], value: int, upper_limit: int):
+        super().__init__(f"{kind} {value} is out of range [1, {upper_limit}].")
+
+
+def index_from_line_and_col(text: str, line: int, col: int) -> int:
+    """Return the index of the character at the given line and column in the text."""
+    lines = text.splitlines(keepends=True)
+    if not (1 <= line <= len(lines)):
+        raise TextPositionOutOfRangeError("line", line, len(lines))
+    line_str = lines[line - 1]
+    if not (1 <= col <= len(line_str)):
+        raise TextPositionOutOfRangeError("column", col, len(line_str))
+    return sum(len(line) for line in lines[: line - 1]) + col - 1
 
 
 def serialise_sequence(seq: Sequence[BaseModel]) -> list[dict[str, object]]:
