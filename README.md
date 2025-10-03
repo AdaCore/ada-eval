@@ -226,6 +226,7 @@ example_sample
           "required_checks": [
               {
                   "rule": "VC_POSTCONDITION",  // Rule name of a check that must be proved
+                  "entity_name": "Integer_Utils.Increment",  // Optional name of the entity the check must be attached to
                   "src_pattern": "Increment'Result = X \\+ 1;"  // Optional regex pattern which must match the proved source code
               },
               ...
