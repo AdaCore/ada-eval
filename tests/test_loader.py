@@ -50,6 +50,7 @@ from ada_eval.datasets.types.samples import (
     SampleStage,
     SparkSample,
 )
+from ada_eval.utils import UnexpectedTypeError
 
 
 def expected_base_sample_fields(
@@ -426,6 +427,11 @@ def test_load_invalid_samples(
     )
     error_msg = "Expecting value: line 1 column 1 (char 0)" + location_note
     with pytest.raises(json.decoder.JSONDecodeError, match=re.escape(error_msg)):
+        load_datasets(expanded_test_datasets)
+    # Make the `other.json` file valid JSON, but with the wrong top-level type
+    other_json_path.write_text("null")
+    error_msg = "Expected type dict, but got NoneType." + location_note
+    with pytest.raises(UnexpectedTypeError, match=re.escape(error_msg)):
         load_datasets(expanded_test_datasets)
     # Restore the `other.json` file, but with an invalid `Location`
     other_json_invalid_location = json.loads(original_other_json)
