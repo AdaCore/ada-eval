@@ -2,6 +2,7 @@ import json
 import logging
 import re
 from collections import Counter
+from pathlib import Path
 from typing import ClassVar, Literal
 
 from pydantic import BaseModel
@@ -104,6 +105,10 @@ def extract_proof_results(spark_data: dict[str, object]) -> list[ProofResult]:
     return results
 
 
+class ProofResultSourceNotFoundError(ValueError):
+    """Raised if a source file reported by GNATprove cannot be unambiguously located."""
+
+
 def proof_check_is_satisfied(
     check: ProofCheck, proof_result: ProofResult, sample: GeneratedSparkSample
 ) -> bool:
@@ -132,14 +137,61 @@ def proof_check_is_satisfied(
     if check.src_pattern is None:
         # Successfully proven, and no source pattern to check
         return True
-    # The check may occur in either the body or spec file
-    source_files = sample.generated_solution.files.keys() & {
-        sample.location.path.with_suffix(".ads"),
-        sample.location.path.with_suffix(".adb"),
+    # Find the contents of the source file corresponding to `proof_result.file`
+    # (which specifies only the basename).
+    src_files = {
+        p for p in sample.generated_solution.files if p.name == proof_result.file
     }
-    # Get the contents of the source file of interest
-    src_file_path = next(p for p in source_files if p.name == proof_result.file)
-    src_str = sample.generated_solution.files[src_file_path]
+    if len(src_files) == 0:
+        # All source files reported by GNATprove should be somewhere in the
+        # generated solution
+        msg = (
+            f"file '{proof_result.file}' reported by GNATprove, but not found "
+            f"in generated solution for sample '{sample.name}'."
+        )
+        raise ProofResultSourceNotFoundError(msg)
+    if len(src_files) != 1:
+        # In the (hopefully unlikely) event that there are multiple files with
+        # the same basename, use `gprls` to find which one is actually part of
+        # the project.
+        logger.debug(
+            "Multiple files found for '%s' in sample '%s'; disambiguating with gprls.",
+            proof_result.file,
+            sample.name,
+        )
+        with sample.generated_solution.unpacked() as working_dir:
+            gprls_result, _ = run_cmd_with_timeout(
+                [
+                    "gprls",
+                    "-Pmain.gpr",
+                    "-s",  # Print source file paths (not object files)
+                    "-d",  # Print dependencies (i.e. include `.ads` files)
+                    # No positional args implicitly specifies all `.adb` files
+                ],
+                working_dir,
+                PROVE_TIMEOUT_S,
+                check=True,
+            )
+        # The output should be a newline-separated list of the absolute
+        # paths of all source files in the project, with some whitespace and
+        # potentially duplicates.
+        src_files = {
+            Path(line.strip())
+            for line in gprls_result.stdout.split("\n")
+            if line.strip() != ""
+        }
+        src_files = sample.generated_solution.files.keys() & {
+            p.relative_to(working_dir) for p in src_files if p.name == proof_result.file
+        }
+        if len(src_files) != 1:
+            # Ada source file basenames should be unique within a project.
+            msg = (
+                f"Expected exactly 1 '{proof_result.file}' file in generated "
+                f"solution of sample '{sample.name}', but gprls found {len(src_files)}."
+            )
+            raise ProofResultSourceNotFoundError(msg)
+    src_file = next(iter(src_files))
+    src_str = sample.generated_solution.files[src_file]
     # We only want to match starting from the check location reported by
     # GNATprove
     src_str = src_str[

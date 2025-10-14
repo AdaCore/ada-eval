@@ -642,11 +642,6 @@ def test_prove(
             update={"result": "proved_incorrectly", "warnings": {"INEFFECTIVE": 1}}
         )
     ]
-    assert samples["wrong_check_entity"].canonical_evaluation_results == [
-        expected_eval_stats.model_copy(
-            update={"result": "proved_incorrectly", "missing_required_checks": 1}
-        )
-    ]
     assert samples["fails"].canonical_evaluation_results == [
         expected_eval_stats.model_copy(
             update={
@@ -667,6 +662,21 @@ def test_prove(
             update={"result": "proved_incorrectly", "missing_required_checks": 1}
         )
     ]
+    assert samples["decoy_postcondition"].canonical_evaluation_results == [
+        expected_eval_stats.model_copy(
+            update={"result": "proved_incorrectly", "missing_required_checks": 1}
+        )
+    ]
+    assert samples["no_postcondition"].canonical_evaluation_results == [
+        expected_eval_stats.model_copy(
+            update={
+                "result": "proved_incorrectly",
+                "proved_checks": {"SUBPROGRAM_TERMINATION": 1, "VC_OVERFLOW_CHECK": 1},
+                "missing_required_checks": 1,
+                "proof_steps": 2,
+            }
+        )
+    ]
     assert samples["delegated_fails"].canonical_evaluation_results == [
         expected_eval_stats.model_copy(
             update={
@@ -678,16 +688,6 @@ def test_prove(
                 },
                 "unproved_checks": {"VC_OVERFLOW_CHECK": 1, "VC_POSTCONDITION": 1},
                 "proof_steps": 8,
-            }
-        )
-    ]
-    assert samples["no_postcondition"].canonical_evaluation_results == [
-        expected_eval_stats.model_copy(
-            update={
-                "result": "proved_incorrectly",
-                "proved_checks": {"SUBPROGRAM_TERMINATION": 1, "VC_OVERFLOW_CHECK": 1},
-                "missing_required_checks": 1,
-                "proof_steps": 2,
             }
         )
     ]
