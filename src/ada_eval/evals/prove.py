@@ -40,10 +40,32 @@ def empty_prove_stats(
         proved_checks=Counter(),
         unproved_checks=Counter(),
         warnings=Counter(),
+        non_spark_entities=[],
         missing_required_checks=0,
         pragma_assume_count=0,
         proof_steps=0,
     )
+
+
+def extract_entities(spark_data: dict[str, object]) -> dict[int, str]:
+    """
+    Extract an entity number-to-name mapping from a GNATprove `.spark` file's JSON data.
+
+    Raises:
+        KeyError, UnexpectedTypeError or ValueError: if `spark_data` has an
+            unexpected structure
+
+    """
+    entities = type_checked(spark_data["entities"], dict)
+    if len(entities) != len({int(s) for s in entities}):
+        # Verify that the entity keys are unique as ints, not just as strings
+        # (for some reason the keys of `entities` include whitespace)
+        msg = "Duplicate entity `int()` values found"
+        raise ValueError(msg)
+    return {
+        int(entity_num_str): type_checked(entity["name"], str)
+        for entity_num_str, entity in entities.items()
+    }
 
 
 class ProofResult(BaseModel):
@@ -63,21 +85,11 @@ def extract_proof_results(spark_data: dict[str, object]) -> list[ProofResult]:
     Extract a list of `ProofResult`s from a GNATprove `.spark` file's JSON data.
 
     Raises:
-        KeyError or UnexpectedTypeError: if `spark_data` has an unexpected
-            structure
+        KeyError, UnexpectedTypeError or ValueError: if `spark_data` has an
+            unexpected structure
 
     """
-    # Collect the entity names
-    entities = type_checked(spark_data["entities"], dict)
-    if len(entities) != len({int(s) for s in entities}):
-        # Verify that the entity keys are unique as ints, not just as strings
-        # (for some reason the keys of `entities` include whitespace)
-        msg = "Duplicate entity `int()` values found"
-        raise ValueError(msg)
-    entity_names: dict[int, str] = {}
-    for entity_num_str, entity in entities.items():
-        entity_names[int(entity_num_str)] = type_checked(entity["name"], str)
-    # Parse the actual `proof_result`s
+    entity_names = extract_entities(spark_data)
     results: list[ProofResult] = []
     for check_kind in ("flow", "proof"):
         for proof_result_unchecked in type_checked(spark_data[check_kind], list):
@@ -262,6 +274,15 @@ class Prove(GenericEval[GeneratedSparkSample, EvaluatedSparkSample]):
         # `.spark` file will ever actually be created if there are errors).
         if rule_counts["error"].total() > 0:
             return empty_prove_stats("error")
+        # Find any entities for which SPARK was disabled
+        non_spark_entities: list[str] = []
+        for spark_file in spark_files:
+            entity_names = extract_entities(spark_file)
+            non_spark_entities.extend(
+                entity_names[int(num_str)]
+                for num_str, value in type_checked(spark_file["spark"], dict).items()
+                if value != "all"
+            )
         # Determine which `required_checks` have been satisfied
         missing_proof_checks = list(sample.required_checks)
         for proof_result in proof_results:
@@ -282,17 +303,21 @@ class Prove(GenericEval[GeneratedSparkSample, EvaluatedSparkSample]):
         if unproved_checks.total() > 0:
             result = "unproved"
         elif not (
-            pragma_assume_count == len(missing_proof_checks) == warnings.total() == 0
+            len(non_spark_entities) == 0
+            and len(missing_proof_checks) == 0
+            and warnings.total() == 0
+            and pragma_assume_count == 0
         ):
             result = "proved_incorrectly"
         else:
             result = "proved"
-        # Return the `EvaluationStats` (sorting counters by key for stable output)
+        # Return the `EvaluationStats` (sorting for stable output)
         return EvaluationStatsProve_New(
             result=result,
             proved_checks=Counter(sort_dict(proved_checks)),
             unproved_checks=Counter(sort_dict(unproved_checks)),
             warnings=Counter(sort_dict(warnings)),
+            non_spark_entities=sorted(non_spark_entities),
             missing_required_checks=len(missing_proof_checks),
             pragma_assume_count=pragma_assume_count,
             proof_steps=total_proof_steps,

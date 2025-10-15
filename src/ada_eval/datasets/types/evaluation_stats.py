@@ -59,6 +59,7 @@ class EvaluationStatsProve_New(EvaluationStatsBase):  # noqa: N801
     proved_checks: Counter[str]
     unproved_checks: Counter[str]
     warnings: Counter[str]
+    non_spark_entities: Sequence[str]
     missing_required_checks: int
     pragma_assume_count: int
     proof_steps: int
