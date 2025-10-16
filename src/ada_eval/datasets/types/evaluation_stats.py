@@ -51,6 +51,25 @@ class EvaluationStatsProve(EvaluationStatsBase):
     subprogram_found: bool
 
 
+class ProofCheck(BaseModel):
+    """A check that a `SparkSample`'s solution must prove to be considered correct."""
+
+    rule: str
+    """The rule name of the check, e.g. `"VC_POSTCONDITION"`."""
+    entity_name: str | None = None
+    """
+    Optional name of an entity to which the check must be attached.
+
+    Includes package prefix.
+    """
+    src_pattern: str | None = None
+    """
+    An optional regex pattern that must match the source code.
+
+    Matches starting from the check location as reported by GNATprove.
+    """
+
+
 class EvaluationStatsProve_New(EvaluationStatsBase):  # noqa: N801
     eval: Literal[Eval.PROVE] = Eval.PROVE
     result: Literal[
@@ -60,7 +79,7 @@ class EvaluationStatsProve_New(EvaluationStatsBase):  # noqa: N801
     unproved_checks: Counter[str]
     warnings: Counter[str]
     non_spark_entities: Sequence[str]
-    missing_required_checks: int
+    missing_required_checks: Sequence[ProofCheck]
     pragma_assume_count: int
     proof_steps: int
 

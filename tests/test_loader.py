@@ -33,6 +33,7 @@ from ada_eval.datasets.types.evaluation_stats import (
     EvaluationStatsFailed,
     EvaluationStatsProve,
     EvaluationStatsTimedOut,
+    ProofCheck,
 )
 from ada_eval.datasets.types.samples import (
     EVALUATED_SAMPLE_TYPES,
@@ -44,7 +45,6 @@ from ada_eval.datasets.types.samples import (
     GeneratedSample,
     GenerationStats,
     Location,
-    ProofCheck,
     Sample,
     SampleKind,
     SampleStage,

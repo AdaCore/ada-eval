@@ -41,7 +41,7 @@ def empty_prove_stats(
         unproved_checks=Counter(),
         warnings=Counter(),
         non_spark_entities=[],
-        missing_required_checks=0,
+        missing_required_checks=[],
         pragma_assume_count=0,
         proof_steps=0,
     )
@@ -319,7 +319,7 @@ class Prove(GenericEval[GeneratedSparkSample, EvaluatedSparkSample]):
             unproved_checks=Counter(sort_dict(unproved_checks)),
             warnings=Counter(sort_dict(warnings)),
             non_spark_entities=sorted(non_spark_entities),
-            missing_required_checks=len(missing_proof_checks),
+            missing_required_checks=missing_proof_checks,
             pragma_assume_count=pragma_assume_count,
             proof_steps=total_proof_steps,
         )

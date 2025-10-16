@@ -15,7 +15,7 @@ from ada_eval.datasets.utils import get_file_or_empty
 from ada_eval.utils import serialise_sequence, type_checked
 
 from .directory_contents import DirectoryContents, get_contents_git_aware
-from .evaluation_stats import EvaluationStats
+from .evaluation_stats import EvaluationStats, ProofCheck
 
 
 class InvalidSampleNameError(ValueError):
@@ -318,25 +318,6 @@ class ExplainSample(Sample):
             incorrect_statements=other_data.get(INCORRECT_STATEMENTS_KEY, []),
             canonical_evaluation_results=base_sample.canonical_evaluation_results,
         )
-
-
-class ProofCheck(BaseModel):
-    """A check that a `SparkSample`'s solution must prove to be considered correct."""
-
-    rule: str
-    """The rule name of the check, e.g. `"VC_POSTCONDITION"`."""
-    entity_name: str | None = None
-    """
-    Optional name of an entity to which the check must be attached.
-
-    Includes package prefix.
-    """
-    src_pattern: str | None = None
-    """
-    An optional regex pattern that must match the source code.
-
-    Matches starting from the check location as reported by GNATprove.
-    """
 
 
 class SparkSample(AdaSample):

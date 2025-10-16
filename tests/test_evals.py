@@ -31,6 +31,7 @@ from ada_eval.datasets.types.evaluation_stats import (
     EvaluationStatsProve_New,
     EvaluationStatsTest,
     EvaluationStatsTimedOut,
+    ProofCheck,
 )
 from ada_eval.datasets.types.samples import (
     EVALUATED_SAMPLE_TYPES,
@@ -633,9 +634,14 @@ def test_prove(
         unproved_checks={},
         warnings={},
         non_spark_entities=[],
-        missing_required_checks=0,
+        missing_required_checks=[],
         pragma_assume_count=0,
         proof_steps=5,
+    )
+    expected_proof_check = ProofCheck(
+        rule="VC_POSTCONDITION",
+        entity_name="Increment",
+        src_pattern="Increment'Result\\s+=\\s+X\\s+\\+\\s+1;",
     )
     assert samples["proves"].canonical_evaluation_results == [expected_eval_stats]
     assert samples["warns"].canonical_evaluation_results == [
@@ -649,7 +655,7 @@ def test_prove(
                 "result": "unproved",
                 "proved_checks": {"SUBPROGRAM_TERMINATION": 1, "VC_OVERFLOW_CHECK": 1},
                 "unproved_checks": {"VC_OVERFLOW_CHECK": 1, "VC_POSTCONDITION": 1},
-                "missing_required_checks": 1,
+                "missing_required_checks": [expected_proof_check],
             }
         )
     ]
@@ -670,7 +676,10 @@ def test_prove(
     ]
     assert samples["wrong_postcondition"].canonical_evaluation_results == [
         expected_eval_stats.model_copy(
-            update={"result": "proved_incorrectly", "missing_required_checks": 1}
+            update={
+                "result": "proved_incorrectly",
+                "missing_required_checks": [expected_proof_check],
+            }
         )
     ]
     assert samples["no_postcondition"].canonical_evaluation_results == [
@@ -678,7 +687,9 @@ def test_prove(
             update={
                 "result": "proved_incorrectly",
                 "proved_checks": {"SUBPROGRAM_TERMINATION": 1, "VC_OVERFLOW_CHECK": 1},
-                "missing_required_checks": 1,
+                "missing_required_checks": [
+                    expected_proof_check.model_copy(update={"src_pattern": None})
+                ],
                 "proof_steps": 2,
             }
         )

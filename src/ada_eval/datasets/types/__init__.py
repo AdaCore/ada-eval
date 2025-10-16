@@ -18,6 +18,7 @@ from .evaluation_stats import (
     EvaluationStatsProve_New,
     EvaluationStatsTest,
     EvaluationStatsTimedOut,
+    ProofCheck,
 )
 from .samples import (
     EVALUATED_SAMPLE_TYPES,
@@ -35,7 +36,6 @@ from .samples import (
     GeneratedSparkSample,
     GenerationStats,
     Location,
-    ProofCheck,
     Sample,
     SampleKind,
     SampleStage,
