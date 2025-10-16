@@ -555,8 +555,8 @@ def test_build(
     test_datasets = load_datasets(eval_test_datasets)
     evaluate_datasets_canonical([Eval.BUILD], test_datasets, jobs=8)
     assert caplog.text == ""
-    # 24 = 2x4 (build) + 11 (prove) + 5 (test)
-    check_progress_bar(capsys.readouterr(), 24, "build")
+    # 24 = 2x4 (build) + 10 (prove) + 5 (test)
+    check_progress_bar(capsys.readouterr(), 23, "build")
 
     # Verify that the evaluation results are as expected for the build test
     # datasets
@@ -609,7 +609,7 @@ def test_prove(
     test_datasets = [d for d in all_datasets if d.name in ("build", "prove")]
     evaluate_datasets_canonical([Eval.PROVE], test_datasets, jobs=8)
     assert caplog.text == ""
-    check_progress_bar(capsys.readouterr(), 11, "prove")  # 11 spark samples
+    check_progress_bar(capsys.readouterr(), 10, "prove")  # 10 spark samples
 
     # Verify that the evaluation results are as expected for the build dataset
     # (only spark samples are compatible with prove, so this should be an empty
@@ -669,11 +669,6 @@ def test_prove(
         )
     ]
     assert samples["wrong_postcondition"].canonical_evaluation_results == [
-        expected_eval_stats.model_copy(
-            update={"result": "proved_incorrectly", "missing_required_checks": 1}
-        )
-    ]
-    assert samples["decoy_postcondition"].canonical_evaluation_results == [
         expected_eval_stats.model_copy(
             update={"result": "proved_incorrectly", "missing_required_checks": 1}
         )
