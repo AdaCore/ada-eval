@@ -12,8 +12,18 @@
         },
         {
             "eval": "prove",
-            "successfully_proven": true,
-            "subprogram_found": true
+            "result": "proved",
+            "proved_checks": {
+                "VC_OVERFLOW_CHECK": 3,
+                "VC_POSTCONDITION": 2,
+                "VC_PRECONDITION": 2
+            },
+            "unproved_checks": {},
+            "warnings": {},
+            "non_spark_entities": [],
+            "missing_required_checks": [],
+            "pragma_assume_count": 0,
+            "proof_steps": 10
         },
         {
             "eval": "test",

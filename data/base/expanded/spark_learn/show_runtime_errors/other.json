@@ -12,8 +12,19 @@
         },
         {
             "eval": "prove",
-            "successfully_proven": true,
-            "subprogram_found": true
+            "result": "proved",
+            "proved_checks": {
+                "VC_DIVISION_CHECK": 2,
+                "VC_INDEX_CHECK": 1,
+                "VC_OVERFLOW_CHECK": 6,
+                "VC_RANGE_CHECK": 1
+            },
+            "unproved_checks": {},
+            "warnings": {},
+            "non_spark_entities": [],
+            "missing_required_checks": [],
+            "pragma_assume_count": 0,
+            "proof_steps": 18
         },
         {
             "eval": "test",
