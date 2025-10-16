@@ -178,6 +178,7 @@ def proof_check_is_satisfied(
                     "-Pmain.gpr",
                     "-s",  # Print source file paths (not object files)
                     "-d",  # Print dependencies (i.e. include `.ads` files)
+                    "-U",  # Include `with`ed projects
                     # No positional args implicitly specifies all `.adb` files
                 ],
                 working_dir,
