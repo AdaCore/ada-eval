@@ -139,7 +139,7 @@ class UnexpectedTypeError(TypeError):
 
 def type_checked[T](value: object, expected_type: type[T]) -> T:
     """
-    Assert that `value` is an instance of `expected_type` and return it.
+    Verify that `value` is an instance of `expected_type` and return it.
 
     Raises:
         UnexpectedTypeError: If `value` is not of type `expected_type`.

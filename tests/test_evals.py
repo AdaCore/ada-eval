@@ -76,7 +76,7 @@ MOCK_PROVE_EVAL_STATS = EvaluationStatsProve(
             src_pattern="pattern",
         )
     ],
-    pragma_assume_count=5,
+    pragma_assume_count=4,
     proof_steps=42,
 )
 
@@ -568,7 +568,7 @@ def test_build(
     test_datasets = load_datasets(eval_test_datasets)
     evaluate_datasets_canonical([Eval.BUILD], test_datasets, jobs=8)
     assert caplog.text == ""
-    # 24 = 2x4 (build) + 10 (prove) + 5 (test)
+    # 23 = 2x4 (build) + 10 (prove) + 5 (test)
     check_progress_bar(capsys.readouterr(), 23, "build")
 
     # Verify that the evaluation results are as expected for the build test
@@ -598,8 +598,8 @@ def test_build(
             )
         ]
 
-    # Verify that all the spark samples in the prove dataset compiled without
-    # issue (except `"errors"`, which is intended to be non-compilable).
+    # Verify that all the spark samples in the prove dataset (except the
+    # deliberately invalid `"errors"`) compiled without issue.
     prove_test_datasets = [d for d in test_datasets if d.name == "prove"]
     assert len(prove_test_datasets) == 1
     for sample in prove_test_datasets[0].samples:
@@ -611,6 +611,7 @@ def test_build(
 
 
 @pytest.mark.skipif(not shutil.which("gnatprove"), reason="gnatprove not available")
+@pytest.mark.skipif(not shutil.which("gprls"), reason="gprls not available")
 def test_prove(
     eval_test_datasets: Path,  # noqa: F811  # pytest fixture
     capsys: pytest.CaptureFixture[str],

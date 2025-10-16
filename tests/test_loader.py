@@ -179,7 +179,7 @@ def expected_evaluated_sample(base_sample: Sample) -> EvaluatedSample:
                         src_pattern="pattern",
                     )
                 ],
-                pragma_assume_count=5,
+                pragma_assume_count=4,
                 proof_steps=42,
             ),
             EvaluationStatsBuild(

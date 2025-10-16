@@ -56,15 +56,9 @@ def extract_entities(spark_data: dict[str, object]) -> dict[int, str]:
             unexpected structure
 
     """
-    entities = type_checked(spark_data["entities"], dict)
-    if len(entities) != len({int(s) for s in entities}):
-        # Verify that the entity keys are unique as ints, not just as strings
-        # (for some reason the keys of `entities` include whitespace)
-        msg = "Duplicate entity `int()` values found"
-        raise ValueError(msg)
     return {
         int(entity_num_str): type_checked(entity["name"], str)
-        for entity_num_str, entity in entities.items()
+        for entity_num_str, entity in type_checked(spark_data["entities"], dict).items()
     }
 
 
@@ -144,7 +138,7 @@ def proof_check_is_satisfied(
         )
         or proof_result.severity != "info"
     ):
-        # Not the right rule and/or entity, or not successfully proven
+        # Not the right rule and entity name, or not successfully proven
         return False
     if check.src_pattern is None:
         # Successfully proven, and no source pattern to check
@@ -199,7 +193,7 @@ def proof_check_is_satisfied(
         if len(src_files) != 1:
             # Ada source file basenames should be unique within a project.
             msg = (
-                f"Expected exactly 1 '{proof_result.file}' file in generated "
+                f"expected exactly 1 '{proof_result.file}' file in generated "
                 f"solution of sample '{sample.name}', but gprls found {len(src_files)}."
             )
             raise ProofResultSourceNotFoundError(msg)
@@ -224,6 +218,7 @@ class Prove(GenericEval[GeneratedSparkSample, EvaluatedSparkSample]):
         # Detect missing `gnatprove` before attempting any evaluation for a
         # cleaner error output.
         check_on_path("gnatprove")
+        check_on_path("gprls")
 
     def evaluate(self, sample: GeneratedSparkSample) -> EvaluationStatsProve:
         with sample.generated_solution.unpacked() as working_dir:
@@ -231,19 +226,18 @@ class Prove(GenericEval[GeneratedSparkSample, EvaluatedSparkSample]):
                 "Evaluating '%s' with GNATprove in %s", sample.name, working_dir
             )
             # Search for the subprogram of interest.
+            #
+            # We no longer use the line number, but it is still useful to fail
+            # fast if the subprogram of interest is completely missing (there
+            # are potentially edge cases with nested subprograms etc. though,
+            # so the real test for absence is the unit test evaluation).
             try:
                 sample.location.find_line_number(working_dir)
             except SubprogramNotFoundError:
                 return empty_prove_stats("subprogram_not_found")
-            # Run `gnatprove` on the unit and subprogram specified by
-            # `sample.location`.
+            # Run `gnatprove` on the unit specified by `sample.location`.
             proc_result, _ = run_cmd_with_timeout(
-                [
-                    "gnatprove",
-                    "-Pmain.gpr",
-                    "-k",
-                    str(sample.location.path),
-                ],
+                ["gnatprove", "-Pmain.gpr", "-k", str(sample.location.path)],
                 working_dir,
                 PROVE_TIMEOUT_S,
             )

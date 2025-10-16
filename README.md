@@ -233,16 +233,20 @@ example_sample
           ]
       }
       ```
+      The `"path"` from the `"location"` is used as the argument to `gnatprove`,
+      so only the corresponding unit, and any it (recursively) depends on,
+      is/are analysed during evaluation.
+
       The `"required_checks"` list is optional, and unnecessary for most
-      samples, since the proof will simply fail unless the problem is solved.
-      However, for checks like postconditions, a desperate agent may "fix" the
-      proof failure by simply removing or relaxing the condition. Where the
-      proof of a postcondition or similar is a key part of a challenge/problem,
-      a corresponding `required_check` should be added to ensure that such
-      "fixes" are not erroneously evaluated as correct. The `"src_pattern"` must
-      match starting from the location reported by `gnatprove` (run `gnatprove`
-      on the solution with `--report=all` for an output which includes the line
-      and column numbers of these locations).
+      samples, since the proof and/or tests will simply fail unless the problem
+      is solved. However, for checks like postconditions, a desperate agent may
+      "fix" the proof failure by simply removing or relaxing the condition.
+      Where the proof of a postcondition or similar is a key part of a
+      challenge/problem, a corresponding `required_check` should be added to
+      ensure that such "fixes" are not erroneously evaluated as correct. The
+      `"src_pattern"` must match starting from the location reported by
+      `gnatprove` (run `gnatprove` on the solution with `--report=all` for an
+      output which includes the line and column numbers of these locations).
 3.  Verify that the solution builds, proves, etc. by running
     ```sh
     make evaluate-canonical
