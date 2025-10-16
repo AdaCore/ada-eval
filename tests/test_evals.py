@@ -28,7 +28,6 @@ from ada_eval.datasets.types.evaluation_stats import (
     EvaluationStatsBuild,
     EvaluationStatsFailed,
     EvaluationStatsProve,
-    EvaluationStatsProve_New,
     EvaluationStatsTest,
     EvaluationStatsTimedOut,
     ProofCheck,
@@ -65,7 +64,20 @@ MOCK_BUILD_EVAL_STATS = EvaluationStatsBuild(
     compiled=False, pre_format_warnings=True, post_format_warnings=True
 )
 MOCK_PROVE_EVAL_STATS = EvaluationStatsProve(
-    successfully_proven=False, subprogram_found=True
+    result="unproved",
+    proved_checks={"PROVED_CHECK_NAME": 1},
+    unproved_checks={"UNPROVED_CHECK_NAME": 2},
+    warnings={"WARNING_NAME": 3},
+    non_spark_entities=["Entity_Name"],
+    missing_required_checks=[
+        ProofCheck(
+            rule="RULE_NAME",
+            entity_name="My_Package.My_Subprogram",
+            src_pattern="pattern",
+        )
+    ],
+    pragma_assume_count=5,
+    proof_steps=42,
 )
 
 
@@ -624,7 +636,7 @@ def test_prove(
     prove_test_datasets = [d for d in test_datasets if d.name == "prove"]
     assert len(prove_test_datasets) == 1
     samples = {s.name: s for s in prove_test_datasets[0].samples}
-    expected_eval_stats = EvaluationStatsProve_New(
+    expected_eval_stats = EvaluationStatsProve(
         result="proved",
         proved_checks={
             "SUBPROGRAM_TERMINATION": 1,

@@ -166,7 +166,22 @@ def expected_evaluated_sample(base_sample: Sample) -> EvaluatedSample:
     return EVALUATED_SAMPLE_TYPES[generated_sample.kind](
         **generated_sample.model_dump(),
         evaluation_results=[
-            EvaluationStatsProve(successfully_proven=False, subprogram_found=True),
+            EvaluationStatsProve(
+                result="unproved",
+                proved_checks={"PROVED_CHECK_NAME": 1},
+                unproved_checks={"UNPROVED_CHECK_NAME": 2},
+                warnings={"WARNING_NAME": 3},
+                non_spark_entities=["Entity_Name"],
+                missing_required_checks=[
+                    ProofCheck(
+                        rule="RULE_NAME",
+                        entity_name="My_Package.My_Subprogram",
+                        src_pattern="pattern",
+                    )
+                ],
+                pragma_assume_count=5,
+                proof_steps=42,
+            ),
             EvaluationStatsBuild(
                 compiled=False, pre_format_warnings=True, post_format_warnings=True
             ),
@@ -237,7 +252,16 @@ def check_loaded_datasets(
         "The addition of this file is part of the canonical solution.\n"
     )
     expected_spark_sample_1.canonical_evaluation_results = [
-        EvaluationStatsProve(successfully_proven=True, subprogram_found=True),
+        EvaluationStatsProve(
+            result="proved",
+            proved_checks={"PROVED_CHECK_NAME": 123},
+            unproved_checks={},
+            warnings={},
+            non_spark_entities=[],
+            missing_required_checks=[],
+            pragma_assume_count=0,
+            proof_steps=42,
+        ),
         EvaluationStatsBuild(
             compiled=True, pre_format_warnings=False, post_format_warnings=False
         ),

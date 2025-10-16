@@ -10,7 +10,7 @@ from pydantic import BaseModel
 from ada_eval.datasets import (
     Eval,
     EvaluatedSparkSample,
-    EvaluationStatsProve_New,
+    EvaluationStatsProve,
     GeneratedSparkSample,
     ProofCheck,
     SubprogramNotFoundError,
@@ -33,9 +33,9 @@ PROVE_TIMEOUT_S = 60
 
 def empty_prove_stats(
     result: Literal["subprogram_not_found", "error"],
-) -> EvaluationStatsProve_New:
+) -> EvaluationStatsProve:
     """Return a new `EvaluationStatsProve` which is empty apart from the `result`."""
-    return EvaluationStatsProve_New(
+    return EvaluationStatsProve(
         result=result,
         proved_checks=Counter(),
         unproved_checks=Counter(),
@@ -225,7 +225,7 @@ class Prove(GenericEval[GeneratedSparkSample, EvaluatedSparkSample]):
         # cleaner error output.
         check_on_path("gnatprove")
 
-    def evaluate(self, sample: GeneratedSparkSample) -> EvaluationStatsProve_New:
+    def evaluate(self, sample: GeneratedSparkSample) -> EvaluationStatsProve:
         with sample.generated_solution.unpacked() as working_dir:
             logger.debug(
                 "Evaluating '%s' with GNATprove in %s", sample.name, working_dir
@@ -313,7 +313,7 @@ class Prove(GenericEval[GeneratedSparkSample, EvaluatedSparkSample]):
         else:
             result = "proved"
         # Return the `EvaluationStats` (sorting for stable output)
-        return EvaluationStatsProve_New(
+        return EvaluationStatsProve(
             result=result,
             proved_checks=Counter(sort_dict(proved_checks)),
             unproved_checks=Counter(sort_dict(unproved_checks)),

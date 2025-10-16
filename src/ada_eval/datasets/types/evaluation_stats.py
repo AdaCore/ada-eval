@@ -45,12 +45,6 @@ class EvaluationStatsBuild(EvaluationStatsBase):
     post_format_warnings: bool
 
 
-class EvaluationStatsProve(EvaluationStatsBase):
-    eval: Literal[Eval.PROVE] = Eval.PROVE
-    successfully_proven: bool
-    subprogram_found: bool
-
-
 class ProofCheck(BaseModel):
     """A check that a `SparkSample`'s solution must prove to be considered correct."""
 
@@ -70,7 +64,7 @@ class ProofCheck(BaseModel):
     """
 
 
-class EvaluationStatsProve_New(EvaluationStatsBase):  # noqa: N801
+class EvaluationStatsProve(EvaluationStatsBase):
     eval: Literal[Eval.PROVE] = Eval.PROVE
     result: Literal[
         "subprogram_not_found", "error", "unproved", "proved_incorrectly", "proved"
@@ -93,7 +87,6 @@ class EvaluationStatsTest(EvaluationStatsBase):
 EvaluationStats = (
     EvaluationStatsBuild
     | EvaluationStatsProve
-    | EvaluationStatsProve_New
     | EvaluationStatsTest
     | EvaluationStatsFailed
     | EvaluationStatsTimedOut
