@@ -166,6 +166,10 @@ def proof_check_is_satisfied(
             sample.name,
         )
         with sample.generated_solution.unpacked() as working_dir:
+            # Community versions of `gprls` require that the project is built first.
+            run_cmd_with_timeout(
+                ["gprbuild", "-Pmain.gpr"], working_dir, PROVE_TIMEOUT_S, check=True
+            )
             gprls_result, _ = run_cmd_with_timeout(
                 [
                     "gprls",
@@ -218,6 +222,7 @@ class Prove(GenericEval[GeneratedSparkSample, EvaluatedSparkSample]):
         # Detect missing `gnatprove` before attempting any evaluation for a
         # cleaner error output.
         check_on_path("gnatprove")
+        check_on_path("gprbuild")
         check_on_path("gprls")
 
     def evaluate(self, sample: GeneratedSparkSample) -> EvaluationStatsProve:
