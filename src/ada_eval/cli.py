@@ -3,6 +3,7 @@ import logging
 from os import cpu_count
 from pathlib import Path
 
+from ada_eval.check_datasets import check_base_datasets
 from ada_eval.datasets.pack_unpack import pack_datasets, unpack_datasets
 from ada_eval.datasets.types import Eval
 from ada_eval.evals import evaluate_directory
@@ -46,6 +47,10 @@ def evaluate(args):
         jobs=args.jobs,
         canonical_evaluation=args.canonical,
     )
+
+
+def call_check_base_datasets(_) -> None:
+    check_base_datasets(EXPANDED_DATASETS_DIR, COMPACTED_DATASETS_DIR)
 
 
 def main() -> None:
@@ -193,6 +198,13 @@ def main() -> None:
         help=f"Number of evaluations to run in parallel. (Default: {default_num_jobs})",
         default=default_num_jobs,
     )
+
+    # Check correctness of base datasets
+    check_datasets_parser = subparsers.add_parser(
+        "check-base-datasets",
+        help="Check that the base datasets are correct",
+    )
+    check_datasets_parser.set_defaults(func=call_check_base_datasets)
 
     args = parser.parse_args()
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO)

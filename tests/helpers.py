@@ -104,3 +104,4 @@ evaluated_test_datasets = _create_test_data_fixture(
     Path("valid_evaluated_datasets/compacted")
 )
 eval_test_datasets = _create_test_data_fixture(Path("eval_test_datasets"))
+check_test_datasets = _create_test_data_fixture(Path("check_test_datasets"))

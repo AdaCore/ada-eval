@@ -21,6 +21,30 @@ def sort_dict[K: SupportsRichComparison, V](d: dict[K, V]) -> dict[K, V]:
     return dict(sorted(d.items(), key=lambda item: item[0]))
 
 
+def diff_dict[K, V](
+    dict1: dict[K, V], dict2: dict[K, V]
+) -> tuple[dict[K, V | dict[object, object]], dict[K, V | dict[object, object]]]:
+    """
+    Return the differences between two dictionaries.
+
+    Returns the remainders of the two dicts after removing the key-value pairs
+    which are present in both and have the same value.
+
+    Nested dictionaries are diffed recursively.
+    """
+    diff1: dict[K, V | dict[object, object]] = {
+        k: v for k, v in dict1.items() if k not in dict2 or dict2[k] != v
+    }
+    diff2: dict[K, V | dict[object, object]] = {
+        k: v for k, v in dict2.items() if k not in dict1 or dict1[k] != v
+    }
+    for k in diff1.keys() & diff2.keys():
+        v1, v2 = diff1[k], diff2[k]
+        if isinstance(v1, dict) and isinstance(v2, dict):
+            diff1[k], diff2[k] = diff_dict(v1, v2)
+    return diff1, diff2
+
+
 def subtract_counters[T](minuend: Counter[T], subtrahend: Counter[T]) -> Counter[T]:
     """
     Equivalent to `minuend - subtrahend`, except negative counts are not dropped.
