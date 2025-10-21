@@ -17,6 +17,7 @@ from .evaluation_stats import (
     EvaluationStatsProve,
     EvaluationStatsTest,
     EvaluationStatsTimedOut,
+    ProofCheck,
 )
 from .samples import (
     EVALUATED_SAMPLE_TYPES,
@@ -66,6 +67,7 @@ __all__ = [
     "GeneratedSparkSample",
     "GenerationStats",
     "Location",
+    "ProofCheck",
     "Sample",
     "SampleKind",
     "SampleOperation",

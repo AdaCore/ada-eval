@@ -3,6 +3,13 @@
         "path": "src/array_utils.ads",
         "subprogram_name": "Max_Array"
     },
+    "required_checks": [
+        {
+            "rule": "VC_POSTCONDITION",
+            "entity_name": "Array_Utils.Max_Array",
+            "src_pattern": "\\(for all I in A'Range => Max_Array'Result >= A \\(I\\)\\);"
+        }
+    ],
     "canonical_evaluation_results": [
         {
             "eval": "build",
@@ -12,8 +19,21 @@
         },
         {
             "eval": "prove",
-            "successfully_proven": true,
-            "subprogram_found": true
+            "result": "proved",
+            "proved_checks": {
+                "SUBPROGRAM_TERMINATION": 1,
+                "VC_INDEX_CHECK": 2,
+                "VC_LOOP_INVARIANT_INIT": 1,
+                "VC_LOOP_INVARIANT_PRESERV": 1,
+                "VC_OVERFLOW_CHECK": 1,
+                "VC_POSTCONDITION": 1
+            },
+            "unproved_checks": {},
+            "warnings": {},
+            "non_spark_entities": [],
+            "missing_required_checks": [],
+            "pragma_assume_count": 0,
+            "proof_steps": 17
         },
         {
             "eval": "test",

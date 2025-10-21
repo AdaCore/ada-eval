@@ -33,6 +33,7 @@ from ada_eval.datasets.types.evaluation_stats import (
     EvaluationStatsFailed,
     EvaluationStatsProve,
     EvaluationStatsTimedOut,
+    ProofCheck,
 )
 from ada_eval.datasets.types.samples import (
     EVALUATED_SAMPLE_TYPES,
@@ -49,6 +50,7 @@ from ada_eval.datasets.types.samples import (
     SampleStage,
     SparkSample,
 )
+from ada_eval.utils import UnexpectedTypeError
 
 
 def expected_base_sample_fields(
@@ -127,6 +129,13 @@ def expected_spark_sample(sample_name: str, dataset_dirname: str) -> SparkSample
     """Return a `SparkSample` mostly matching those expected from the test datasets."""
     return SparkSample(
         **expected_ada_sample(sample_name, dataset_dirname).model_dump(),
+        required_checks=[
+            ProofCheck(
+                rule="RULE_NAME",
+                entity_name="My_Package.My_Subprogram",
+                src_pattern="pattern",
+            )
+        ],
     )
 
 
@@ -157,7 +166,22 @@ def expected_evaluated_sample(base_sample: Sample) -> EvaluatedSample:
     return EVALUATED_SAMPLE_TYPES[generated_sample.kind](
         **generated_sample.model_dump(),
         evaluation_results=[
-            EvaluationStatsProve(successfully_proven=False, subprogram_found=True),
+            EvaluationStatsProve(
+                result="unproved",
+                proved_checks={"PROVED_CHECK_NAME": 1},
+                unproved_checks={"UNPROVED_CHECK_NAME": 2},
+                warnings={"WARNING_NAME": 3},
+                non_spark_entities=["Entity_Name"],
+                missing_required_checks=[
+                    ProofCheck(
+                        rule="RULE_NAME",
+                        entity_name="My_Package.My_Subprogram",
+                        src_pattern="pattern",
+                    )
+                ],
+                pragma_assume_count=4,
+                proof_steps=42,
+            ),
             EvaluationStatsBuild(
                 compiled=False, pre_format_warnings=True, post_format_warnings=True
             ),
@@ -228,7 +252,16 @@ def check_loaded_datasets(
         "The addition of this file is part of the canonical solution.\n"
     )
     expected_spark_sample_1.canonical_evaluation_results = [
-        EvaluationStatsProve(successfully_proven=True, subprogram_found=True),
+        EvaluationStatsProve(
+            result="proved",
+            proved_checks={"PROVED_CHECK_NAME": 123},
+            unproved_checks={},
+            warnings={},
+            non_spark_entities=[],
+            missing_required_checks=[],
+            pragma_assume_count=0,
+            proof_steps=42,
+        ),
         EvaluationStatsBuild(
             compiled=True, pre_format_warnings=False, post_format_warnings=False
         ),
@@ -418,6 +451,11 @@ def test_load_invalid_samples(
     )
     error_msg = "Expecting value: line 1 column 1 (char 0)" + location_note
     with pytest.raises(json.decoder.JSONDecodeError, match=re.escape(error_msg)):
+        load_datasets(expanded_test_datasets)
+    # Make the `other.json` file valid JSON, but with the wrong top-level type
+    other_json_path.write_text("null")
+    error_msg = "Expected type dict, but got NoneType." + location_note
+    with pytest.raises(UnexpectedTypeError, match=re.escape(error_msg)):
         load_datasets(expanded_test_datasets)
     # Restore the `other.json` file, but with an invalid `Location`
     other_json_invalid_location = json.loads(original_other_json)

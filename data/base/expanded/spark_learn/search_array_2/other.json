@@ -12,8 +12,19 @@
         },
         {
             "eval": "prove",
-            "successfully_proven": true,
-            "subprogram_found": true
+            "result": "proved",
+            "proved_checks": {
+                "SUBPROGRAM_TERMINATION": 1,
+                "UNINITIALIZED": 1,
+                "VC_EXCEPTIONAL_CASE": 1,
+                "VC_RAISE": 1
+            },
+            "unproved_checks": {},
+            "warnings": {},
+            "non_spark_entities": [],
+            "missing_required_checks": [],
+            "pragma_assume_count": 0,
+            "proof_steps": 3
         },
         {
             "eval": "test",

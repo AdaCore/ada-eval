@@ -4,6 +4,7 @@ import shutil
 import subprocess
 from logging import ERROR, WARN
 from pathlib import Path
+from textwrap import dedent
 from typing import Any, ClassVar, cast
 from unittest.mock import patch
 
@@ -29,6 +30,7 @@ from ada_eval.datasets.types.evaluation_stats import (
     EvaluationStatsProve,
     EvaluationStatsTest,
     EvaluationStatsTimedOut,
+    ProofCheck,
 )
 from ada_eval.datasets.types.samples import (
     EVALUATED_SAMPLE_TYPES,
@@ -62,7 +64,20 @@ MOCK_BUILD_EVAL_STATS = EvaluationStatsBuild(
     compiled=False, pre_format_warnings=True, post_format_warnings=True
 )
 MOCK_PROVE_EVAL_STATS = EvaluationStatsProve(
-    successfully_proven=False, subprogram_found=True
+    result="unproved",
+    proved_checks={"PROVED_CHECK_NAME": 1},
+    unproved_checks={"UNPROVED_CHECK_NAME": 2},
+    warnings={"WARNING_NAME": 3},
+    non_spark_entities=["Entity_Name"],
+    missing_required_checks=[
+        ProofCheck(
+            rule="RULE_NAME",
+            entity_name="My_Package.My_Subprogram",
+            src_pattern="pattern",
+        )
+    ],
+    pragma_assume_count=4,
+    proof_steps=42,
 )
 
 
@@ -553,8 +568,8 @@ def test_build(
     test_datasets = load_datasets(eval_test_datasets)
     evaluate_datasets_canonical([Eval.BUILD], test_datasets, jobs=8)
     assert caplog.text == ""
-    # 16 = 2x4 (build) + 3 (prove) + 5 (test)
-    check_progress_bar(capsys.readouterr(), 16, "build")
+    # 23 = 2x4 (build) + 10 (prove) + 5 (test)
+    check_progress_bar(capsys.readouterr(), 23, "build")
 
     # Verify that the evaluation results are as expected for the build test
     # datasets
@@ -583,12 +598,12 @@ def test_build(
             )
         ]
 
-    # Verify that all the spark samples in the prove dataset compiled without
-    # issue.
+    # Verify that all the spark samples in the prove dataset (except the
+    # deliberately invalid `"errors"`) compiled without issue.
     prove_test_datasets = [d for d in test_datasets if d.name == "prove"]
     assert len(prove_test_datasets) == 1
     for sample in prove_test_datasets[0].samples:
-        assert sample.canonical_evaluation_results == [
+        assert sample.name == "errors" or sample.canonical_evaluation_results == [
             EvaluationStatsBuild(
                 compiled=True, pre_format_warnings=False, post_format_warnings=False
             )
@@ -596,6 +611,7 @@ def test_build(
 
 
 @pytest.mark.skipif(not shutil.which("gnatprove"), reason="gnatprove not available")
+@pytest.mark.skipif(not shutil.which("gprls"), reason="gprls not available")
 def test_prove(
     eval_test_datasets: Path,  # noqa: F811  # pytest fixture
     capsys: pytest.CaptureFixture[str],
@@ -607,7 +623,7 @@ def test_prove(
     test_datasets = [d for d in all_datasets if d.name in ("build", "prove")]
     evaluate_datasets_canonical([Eval.PROVE], test_datasets, jobs=8)
     assert caplog.text == ""
-    check_progress_bar(capsys.readouterr(), 3, "prove")  # 3 spark samples
+    check_progress_bar(capsys.readouterr(), 10, "prove")  # 10 spark samples
 
     # Verify that the evaluation results are as expected for the build dataset
     # (only spark samples are compatible with prove, so this should be an empty
@@ -621,14 +637,103 @@ def test_prove(
     prove_test_datasets = [d for d in test_datasets if d.name == "prove"]
     assert len(prove_test_datasets) == 1
     samples = {s.name: s for s in prove_test_datasets[0].samples}
-    assert samples["proves"].canonical_evaluation_results == [
-        EvaluationStatsProve(successfully_proven=True, subprogram_found=True)
+    expected_eval_stats = EvaluationStatsProve(
+        result="proved",
+        proved_checks={
+            "SUBPROGRAM_TERMINATION": 1,
+            "VC_OVERFLOW_CHECK": 2,
+            "VC_POSTCONDITION": 1,
+        },
+        unproved_checks={},
+        warnings={},
+        non_spark_entities=[],
+        missing_required_checks=[],
+        pragma_assume_count=0,
+        proof_steps=5,
+    )
+    expected_proof_check = ProofCheck(
+        rule="VC_POSTCONDITION",
+        entity_name="Increment",
+        src_pattern="Increment'Result\\s+=\\s+X\\s+\\+\\s+1;",
+    )
+    assert samples["proves"].canonical_evaluation_results == [expected_eval_stats]
+    assert samples["warns"].canonical_evaluation_results == [
+        expected_eval_stats.model_copy(
+            update={"result": "proved_incorrectly", "warnings": {"INEFFECTIVE": 1}}
+        )
     ]
     assert samples["fails"].canonical_evaluation_results == [
-        EvaluationStatsProve(successfully_proven=False, subprogram_found=True)
+        expected_eval_stats.model_copy(
+            update={
+                "result": "unproved",
+                "proved_checks": {"SUBPROGRAM_TERMINATION": 1, "VC_OVERFLOW_CHECK": 1},
+                "unproved_checks": {"VC_OVERFLOW_CHECK": 1, "VC_POSTCONDITION": 1},
+                "missing_required_checks": [expected_proof_check],
+            }
+        )
+    ]
+    assert samples["assumes"].canonical_evaluation_results == [
+        expected_eval_stats.model_copy(
+            update={"result": "proved_incorrectly", "pragma_assume_count": 1}
+        )
+    ]
+    assert samples["disables_spark_mode"].canonical_evaluation_results == [
+        expected_eval_stats.model_copy(
+            update={
+                "result": "proved_incorrectly",
+                "proved_checks": {"SUBPROGRAM_TERMINATION": 1},
+                "non_spark_entities": ["Increment.Increment"],
+                "proof_steps": 0,
+            }
+        )
+    ]
+    assert samples["wrong_postcondition"].canonical_evaluation_results == [
+        expected_eval_stats.model_copy(
+            update={
+                "result": "proved_incorrectly",
+                "missing_required_checks": [expected_proof_check],
+            }
+        )
+    ]
+    assert samples["no_postcondition"].canonical_evaluation_results == [
+        expected_eval_stats.model_copy(
+            update={
+                "result": "proved_incorrectly",
+                "proved_checks": {"SUBPROGRAM_TERMINATION": 1, "VC_OVERFLOW_CHECK": 1},
+                "missing_required_checks": [
+                    expected_proof_check.model_copy(update={"src_pattern": None})
+                ],
+                "proof_steps": 2,
+            }
+        )
+    ]
+    assert samples["delegated_fails"].canonical_evaluation_results == [
+        expected_eval_stats.model_copy(
+            update={
+                "result": "unproved",
+                "proved_checks": {
+                    "SUBPROGRAM_TERMINATION": 2,
+                    "VC_OVERFLOW_CHECK": 2,
+                    "VC_POSTCONDITION": 1,
+                },
+                "unproved_checks": {"VC_OVERFLOW_CHECK": 1, "VC_POSTCONDITION": 1},
+                "proof_steps": 8,
+            }
+        )
+    ]
+    assert samples["errors"].canonical_evaluation_results == [
+        expected_eval_stats.model_copy(
+            update={"result": "error", "proved_checks": {}, "proof_steps": 0}
+        )
     ]
     assert samples["not_found"].canonical_evaluation_results == [
-        EvaluationStatsProve(successfully_proven=False, subprogram_found=False)
+        expected_eval_stats.model_copy(
+            update={
+                "result": "subprogram_not_found",
+                "proved_checks": {},
+                "proof_steps": 0,
+            }
+        )
     ]
 
 
@@ -684,9 +789,16 @@ def test_prove_ci(
 ):
     """A version of `test_prove()` which can be run without `gnatprove` on PATH."""
     # Mock `gnatprove` with a script which simulates the behaviour of the
-    # real tool on the eval test datasets; i.e. returns exit code 0 iff
-    # `./src/increment.ads` contains the substring "Pre => X < Integer'Last".
-    script = '#!/usr/bin/env sh\ngrep "Pre => X < Integer\'Last" ./src/increment.ads'
+    # real tool on the eval test datasets; i.e. moves the
+    # `./expected_spark_files/` directory to `./obj/gnatprove/` (and returns
+    # non-zero exit code if there is no such directory).
+    script = dedent(
+        """\
+        #!/usr/bin/env sh
+        mkdir ./obj
+        mv ./expected_spark_files ./obj/gnatprove
+        """
+    )
     path_dir = tmp_path / "path_dir"
     path_dir.mkdir()
     (path_dir / "gnatprove").write_text(script)

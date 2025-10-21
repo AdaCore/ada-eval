@@ -3,6 +3,13 @@
         "path": "src/integer_utils.ads",
         "subprogram_name": "Absolute"
     },
+    "required_checks": [
+        {
+            "rule": "VC_POSTCONDITION",
+            "entity_name": "Integer_Utils.Absolute",
+            "src_pattern": "X >= 0;"
+        }
+    ],
     "canonical_evaluation_results": [
         {
             "eval": "build",
@@ -12,8 +19,17 @@
         },
         {
             "eval": "prove",
-            "successfully_proven": true,
-            "subprogram_found": true
+            "result": "proved",
+            "proved_checks": {
+                "VC_OVERFLOW_CHECK": 1,
+                "VC_POSTCONDITION": 1
+            },
+            "unproved_checks": {},
+            "warnings": {},
+            "non_spark_entities": [],
+            "missing_required_checks": [],
+            "pragma_assume_count": 0,
+            "proof_steps": 3
         },
         {
             "eval": "test",

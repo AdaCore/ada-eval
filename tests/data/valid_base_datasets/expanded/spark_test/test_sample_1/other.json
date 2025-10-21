@@ -3,11 +3,26 @@
         "path": "source_file_0",
         "subprogram_name": "My_Subprogram"
     },
+    "required_checks": [
+        {
+            "rule": "RULE_NAME",
+            "entity_name": "My_Package.My_Subprogram",
+            "src_pattern": "pattern"
+        }
+    ],
     "canonical_evaluation_results": [
         {
             "eval": "prove",
-            "successfully_proven": true,
-            "subprogram_found": true
+            "result": "proved",
+            "proved_checks": {
+                "PROVED_CHECK_NAME": 123
+            },
+            "unproved_checks": {},
+            "warnings": {},
+            "non_spark_entities": [],
+            "missing_required_checks": [],
+            "pragma_assume_count": 0,
+            "proof_steps": 42
         },
         {
             "eval": "build",

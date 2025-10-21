@@ -2,15 +2,65 @@ import logging
 import shutil
 import subprocess
 import time
+from collections import Counter
+from collections.abc import Sequence
 from enum import Enum
 from pathlib import Path
+from typing import TYPE_CHECKING, Literal
+
+from pydantic import BaseModel
+
+if TYPE_CHECKING:
+    from _typeshed import SupportsRichComparison
 
 logger = logging.getLogger(__name__)
+
+
+def sort_dict[K: SupportsRichComparison, V](d: dict[K, V]) -> dict[K, V]:
+    """Return a copy of `d` sorted by key."""
+    return dict(sorted(d.items(), key=lambda item: item[0]))
+
+
+def subtract_counters[T](minuend: Counter[T], subtrahend: Counter[T]) -> Counter[T]:
+    """
+    Equivalent to `minuend - subtrahend`, except negative counts are not dropped.
+
+    Zero counts are still dropped.
+    """
+    difference = Counter[T]()
+    for key in minuend.keys() | subtrahend.keys():
+        count = minuend[key] - subtrahend[key]
+        if count != 0:
+            difference[key] = count
+    return difference
 
 
 def make_files_relative_to(path: Path, files: list[Path]) -> list[Path]:
     """Make a list of files relative to a given path."""
     return [file.relative_to(path) for file in files]
+
+
+class TextPositionOutOfRangeError(ValueError):
+    """Raised when a line or column number is out of range."""
+
+    def __init__(self, kind: Literal["line", "column"], value: int, upper_limit: int):
+        super().__init__(f"{kind} {value} is out of range [1, {upper_limit}].")
+
+
+def index_from_line_and_col(text: str, line: int, col: int) -> int:
+    """Return the index of the character at the given line and column in the text."""
+    lines = text.splitlines(keepends=True)
+    if not (1 <= line <= len(lines)):
+        raise TextPositionOutOfRangeError("line", line, len(lines))
+    line_str = lines[line - 1]
+    if not (1 <= col <= len(line_str)):
+        raise TextPositionOutOfRangeError("column", col, len(line_str))
+    return sum(len(line) for line in lines[: line - 1]) + col - 1
+
+
+def serialise_sequence(seq: Sequence[BaseModel]) -> list[dict[str, object]]:
+    """Serialise a sequence of Pydantic models to a list of dictionaries."""
+    return [item.model_dump() for item in seq]
 
 
 def construct_enum_case_insensitive(cls: type[Enum], value: object) -> Enum | None:
@@ -85,6 +135,19 @@ class UnexpectedTypeError(TypeError):
         super().__init__(
             f"Expected type {expected_type.__name__}, but got {actual_type.__name__}."
         )
+
+
+def type_checked[T](value: object, expected_type: type[T]) -> T:
+    """
+    Verify that `value` is an instance of `expected_type` and return it.
+
+    Raises:
+        UnexpectedTypeError: If `value` is not of type `expected_type`.
+
+    """
+    if isinstance(value, expected_type):
+        return value
+    raise UnexpectedTypeError(expected_type, type(value))
 
 
 class ExecutableNotFoundError(RuntimeError):

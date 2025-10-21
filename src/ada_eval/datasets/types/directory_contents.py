@@ -25,6 +25,7 @@ class _UnpackedDirectoryContextManager:
     def __enter__(self) -> Path:
         self.temp_dir = TemporaryDirectory()
         temp_dir_path = Path(self.temp_dir.__enter__())
+        temp_dir_path = temp_dir_path.resolve()  # Don't return symlinks on macOS
         self.contents.unpack_to(temp_dir_path)
         return temp_dir_path
 
