@@ -2,6 +2,7 @@ variables:
   UV_PYTHON_DOWNLOADS: never
 
 stages:
+  - validate-datasets
   - lint
   - test
 
@@ -15,6 +16,13 @@ stages:
     - uv sync
     - git config --global user.email "ci@adacore.com"
     - git config --global user.name "CI"
+
+check-base-datasets:
+  extends: .default
+  stage: validate-datasets
+  needs: []
+  script:
+    - uv run ada-eval check-base-datasets
 
 .lint:
   extends: .default
