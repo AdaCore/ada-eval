@@ -139,7 +139,7 @@ def test_generic_eval(
     # a subprocess timeout on "test_sample_1", and raises a subprocess error on
     # "test_sample_2".
     class MockEvaluationStats(EvaluationStatsBase):
-        pass
+        passed: ClassVar = True
 
     class MockEval0(GenericEval[GeneratedSample, EvaluatedSample]):
         eval: ClassVar = Eval.BUILD

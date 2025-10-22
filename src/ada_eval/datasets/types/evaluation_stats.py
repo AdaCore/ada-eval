@@ -1,7 +1,8 @@
+from abc import abstractmethod
 from collections import Counter
 from collections.abc import Sequence
 from enum import StrEnum
-from typing import Literal
+from typing import ClassVar, Literal
 
 from pydantic import BaseModel, model_serializer
 
@@ -28,14 +29,21 @@ class EvaluationStatsBase(BaseModel):
     def serialize_eval(self, next_):
         return {"eval": str(self.eval)} | next_(self)
 
+    @property
+    @abstractmethod
+    def passed(self) -> bool:
+        """Whether the evaluation stats indicate a passing result with no issues."""
+
 
 class EvaluationStatsFailed(EvaluationStatsBase):
     exception: str
+    passed: ClassVar = False
 
 
 class EvaluationStatsTimedOut(EvaluationStatsBase):
     cmd_timed_out: Sequence[str]
     timeout: float
+    passed: ClassVar = False
 
 
 class EvaluationStatsBuild(EvaluationStatsBase):
@@ -43,6 +51,12 @@ class EvaluationStatsBuild(EvaluationStatsBase):
     compiled: bool
     pre_format_warnings: bool
     post_format_warnings: bool
+
+    @property
+    def passed(self) -> bool:
+        return self.compiled and not (
+            self.pre_format_warnings or self.post_format_warnings
+        )
 
 
 class ProofCheck(BaseModel):
@@ -77,11 +91,19 @@ class EvaluationStatsProve(EvaluationStatsBase):
     pragma_assume_count: int
     proof_steps: int
 
+    @property
+    def passed(self) -> bool:
+        return self.result == "proved"
+
 
 class EvaluationStatsTest(EvaluationStatsBase):
     eval: Literal[Eval.TEST] = Eval.TEST
     compiled: bool
     passed_tests: bool
+
+    @property
+    def passed(self) -> bool:
+        return self.compiled and self.passed_tests
 
 
 EvaluationStats = (
