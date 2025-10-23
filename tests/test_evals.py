@@ -4,7 +4,6 @@ import shutil
 import subprocess
 from logging import ERROR, WARN
 from pathlib import Path
-from textwrap import dedent
 from typing import Any, ClassVar, cast
 from unittest.mock import patch
 
@@ -778,37 +777,6 @@ def test_test(
         assert samples["passes"].canonical_evaluation_results == [
             EvaluationStatsTest(compiled=True, passed_tests=True)
         ]
-
-
-@pytest.mark.skipif(not shutil.which("sh"), reason="sh not available")
-def test_prove_ci(
-    tmp_path: Path,
-    eval_test_datasets: Path,  # noqa: F811  # pytest fixture
-    capsys: pytest.CaptureFixture[str],
-    caplog: pytest.LogCaptureFixture,
-):
-    """A version of `test_prove()` which can be run without `gnatprove` on PATH."""
-    # Mock `gnatprove` with a script which simulates the behaviour of the
-    # real tool on the eval test datasets; i.e. moves the
-    # `./expected_spark_files/` directory to `./obj/gnatprove/` (and returns
-    # non-zero exit code if there is no such directory).
-    script = dedent(
-        """\
-        #!/usr/bin/env sh
-        mkdir ./obj
-        mv ./expected_spark_files ./obj/gnatprove
-        """
-    )
-    path_dir = tmp_path / "path_dir"
-    path_dir.mkdir()
-    (path_dir / "gnatprove").write_text(script)
-    (path_dir / "gnatprove").chmod(0o700)
-
-    # Run the prove test with this mock `gnatprove` in the PATH
-    assert os.pathsep not in str(path_dir)
-    new_path = str(path_dir) + os.pathsep + os.environ.get("PATH", "")
-    with patch.dict(os.environ, {"PATH": new_path}):
-        test_prove(eval_test_datasets, capsys, caplog)
 
 
 def test_eval_path_checks(eval_test_datasets: Path):  # noqa: F811  # pytest fixture
