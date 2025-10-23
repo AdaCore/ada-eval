@@ -6,6 +6,21 @@ stages:
   - lint
   - test
 
+
+.script-snippets:
+  # Install the tools needed to run evaluations
+  install-eval-tools:
+    - anod init wave /it/wave
+    - |
+      for x in gnat gnatformat; do
+        eval "$(cd "/it/wave"; anod install $x; anod printenv $x)"
+      done
+    - download_generic_package eng/ai/ada-eval /it/gnatprove.tar.gz x86_64-linux-15.1.0
+    - tar -xzf /it/gnatprove.tar.gz -C /it/
+    - chmod +x /it/gnatprove-x86_64-linux-15.1.0-1/bin/gnatprove
+    - export PATH="$PATH:/it/gnatprove-x86_64-linux-15.1.0-1/bin/"
+
+
 .default:
   services:
     - image:pe-base
@@ -22,6 +37,7 @@ check-base-datasets:
   stage: validate-datasets
   needs: []
   script:
+    - !reference [.script-snippets, install-eval-tools]
     - uv run ada-eval check-base-datasets
 
 .lint:
@@ -48,17 +64,7 @@ pytest:
   stage: test
   needs: []
   script:
-    # Install tools for eval tests
-    - anod init wave /it/wave
-    - |
-      for x in gnat gnatformat; do
-        eval "$(cd "/it/wave"; anod install $x; anod printenv $x)"
-      done
-    - download_generic_package eng/ai/ada-eval /it/gnatprove.tar.gz x86_64-linux-15.1.0
-    - tar -xzf /it/gnatprove.tar.gz -C /it/
-    - chmod +x /it/gnatprove-x86_64-linux-15.1.0-1/bin/gnatprove
-    - export PATH="$PATH:/it/gnatprove-x86_64-linux-15.1.0-1/bin/"
-    # Run tests
+    - !reference [.script-snippets, install-eval-tools]
     - uv run pytest --junitxml=report.xml --cov-report xml:coverage.xml
   artifacts:
     when: always
