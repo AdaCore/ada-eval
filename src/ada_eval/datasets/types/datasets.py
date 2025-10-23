@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TypeGuard
 
-from ada_eval.utils import diff_dict
+from ada_eval.utils import diff_dicts
 
 from .samples import (
     GeneratedSample,
@@ -295,7 +295,7 @@ def verify_datasets_equal(
             sample1 = samples1[sample_name]
             sample2 = samples2[sample_name]
             if sample1 != sample2:
-                diff1, diff2 = diff_dict(sample1.model_dump(), sample2.model_dump())
+                diff1, diff2 = diff_dicts(sample1.model_dump(), sample2.model_dump())
                 msg = (
                     f"sample '{sample_name}' of dataset '{dataset_dirname}' "
                     f"differs between {datasets1_name} and {datasets2_name}:\n\n"

@@ -1,11 +1,19 @@
 import re
 import shutil
+from logging import INFO
 from pathlib import Path
 
 import pytest
-from helpers import check_test_datasets  # noqa: F401  # Fixtures used implicitly
+from helpers import (
+    assert_log,
+    check_test_datasets,  # noqa: F401  # Fixtures used implicitly
+)
 
-from ada_eval.check_datasets import CanonicalEvaluationFailedError, check_base_datasets
+from ada_eval.check_datasets import (
+    CanonicalEvaluationFailedError,
+    WrongCanonicalEvaluationResultsError,
+    check_base_datasets,
+)
 from ada_eval.datasets import (
     Dataset,
     EvaluationStatsBuild,
@@ -23,12 +31,19 @@ from ada_eval.datasets.types.samples import (
 )
 
 
+@pytest.mark.skipif(not shutil.which("gprbuild"), reason="gprbuild not available")
+@pytest.mark.skipif(not shutil.which("gprclean"), reason="gprclean not available")
+@pytest.mark.skipif(not shutil.which("gnatformat"), reason="gnatformat not available")
+@pytest.mark.skipif(not shutil.which("gnatprove"), reason="gnatprove not available")
+@pytest.mark.skipif(not shutil.which("gprls"), reason="gprls not available")
 def test_check_base_datasets(
     tmp_path: Path,
     check_test_datasets: Path,  # noqa: F811  # pytest fixture
     caplog: pytest.LogCaptureFixture,
     capsys: pytest.CaptureFixture[str],
 ):
+    caplog.set_level("INFO")
+
     # Load a dataset with one sample which passes all checks, and one sample
     # with bad evaluation results.
     dataset = load_datasets(check_test_datasets / "spark_check.jsonl")[0]
@@ -51,10 +66,13 @@ def test_check_base_datasets(
     save_both(dataset)
 
     # Check that a missing dataset is detected
+    def run_check() -> None:
+        check_base_datasets(expanded_dir, compacted_dir, jobs=8)
+
     shutil.copytree(expanded_dir / "spark_check", expanded_dir / "spark_other")
     error_msg = "dataset 'spark_other' is only present in the expanded datasets."
     with pytest.raises(DatasetsMismatchError, match=re.escape(error_msg)):
-        check_base_datasets(expanded_dir, compacted_dir)
+        run_check()
 
     # Check that differing sample types are detected
     generated_sample = GeneratedSparkSample(
@@ -73,7 +91,7 @@ def test_check_base_datasets(
         "type 'GeneratedSparkSample' in the compacted datasets."
     )
     with pytest.raises(DatasetsMismatchError, match=re.escape(error_msg)):
-        check_base_datasets(expanded_dir, compacted_dir)
+        run_check()
 
     # Check that missing samples are detected
     one_sample_dataset = Dataset(
@@ -87,7 +105,7 @@ def test_check_base_datasets(
         "compacted datasets."
     )
     with pytest.raises(DatasetsMismatchError, match=re.escape(error_msg)):
-        check_base_datasets(expanded_dir, compacted_dir)
+        run_check()
 
     # Check that differing samples are detected
     modified_sample_0 = good_sample.model_copy(deep=True)
@@ -112,20 +130,20 @@ def test_check_base_datasets(
         " 'canonical_solution': {PosixPath('src/foo.adb'): 'compacted nested'}}"
     )
     with pytest.raises(DatasetsMismatchError, match=re.escape(error_msg)):
-        check_base_datasets(expanded_dir, compacted_dir)
+        run_check()
 
     # Check that non-passing canonical evaluation results are detected
     save_both(dataset)
     error_msg = (
         "Sample 'bad' of dataset 'spark_check' has non-passing canonical "
-        "evaluation results: ['build', 'prove', 'test']"
+        "evaluation results: ['prove', 'build', 'test']"
     )
     with pytest.raises(CanonicalEvaluationFailedError, match=re.escape(error_msg)):
-        check_base_datasets(expanded_dir, compacted_dir)
+        run_check()
 
     # Fix one of the canonical results and check that the message changes
     # appropriately
-    bad_sample_build_stats = bad_sample.canonical_evaluation_results[0]
+    bad_sample_build_stats = bad_sample.canonical_evaluation_results[1]
     assert isinstance(bad_sample_build_stats, EvaluationStatsBuild)
     bad_sample_build_stats.pre_format_warnings = False
     save_both(dataset)
@@ -134,15 +152,57 @@ def test_check_base_datasets(
         "evaluation results: ['prove', 'test']"
     )
     with pytest.raises(CanonicalEvaluationFailedError, match=re.escape(error_msg)):
-        check_base_datasets(expanded_dir, compacted_dir)
+        run_check()
 
-    # Fix the remaining canonical results and check that `check_base_datasets()`
-    # raises no exceptions
-    bad_sample.canonical_evaluation_results = good_sample.canonical_evaluation_results
-    save_both(dataset)
-    check_base_datasets(expanded_dir, compacted_dir)
-
-    # Nothing should be logged or printed
-    assert caplog.text == ""
+    # Nothing should have been output or logged up to this point
     output = capsys.readouterr()
     assert output.out == output.err == ""
+    assert caplog.text == ""
+
+    # Fix the remaining canonical results and check that the discrepancy is
+    # detected by re-evaluating
+    bad_sample.canonical_evaluation_results = good_sample.canonical_evaluation_results
+    save_both(dataset)
+    error_msg = re.escape(
+        "Mismatch found on re-evaluating sample 'bad' of dataset 'spark_check':\n\n"
+        "[{'result': 'proved', "
+        "'proved_checks': {'VC_POSTCONDITION': 1}, 'unproved_checks': {}}, "
+        "{'pre_format_warnings': False}, {'passed_tests': True}]\n\n"
+        "[{'result': 'unproved', "
+        "'proved_checks': {}, 'unproved_checks': {'VC_POSTCONDITION': 1}}, "
+        "{'pre_format_warnings': True}, {'passed_tests': False}]"
+    )
+    with pytest.raises(WrongCanonicalEvaluationResultsError, match=error_msg):
+        run_check()
+
+    # There should have been an info log and a loading bar for each evaluation
+    reeval_msg = "Re-evaluating to check canonical evaluation results are correct ..."
+    assert_log(caplog, INFO, reeval_msg)
+    caplog.clear()
+    output = capsys.readouterr()
+    for e in ("build", "prove", "test"):
+        assert f"Evaluating with {e}" in output.err
+    assert output.out == ""
+
+    # Check that a missing canonical result is detected
+    bad_sample.canonical_evaluation_results = [
+        good_sample.canonical_evaluation_results[1]
+    ]
+    save_both(dataset)
+    error_msg = re.escape(
+        "Sample 'bad' of dataset 'spark_check' does not have the expected set of "
+        "canonical evaluation results:\n['build'] != ['build', 'prove', 'test']"
+    )
+    with pytest.raises(WrongCanonicalEvaluationResultsError, match=error_msg):
+        run_check()
+    assert_log(caplog, INFO, reeval_msg)
+    caplog.clear()
+
+    # Fix the actual issues with the bad sample's canonical solution and check
+    # that `check_base_datasets()` raises no exceptions
+    bad_sample.canonical_evaluation_results = good_sample.canonical_evaluation_results
+    bad_sample.canonical_solution = good_sample.canonical_solution
+    save_both(dataset)
+    run_check()
+    assert_log(caplog, INFO, reeval_msg)
+    assert_log(caplog, INFO, "Base datasets are correct.")

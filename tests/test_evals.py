@@ -610,6 +610,7 @@ def test_build(
 
 
 @pytest.mark.skipif(not shutil.which("gnatprove"), reason="gnatprove not available")
+@pytest.mark.skipif(not shutil.which("gprbuild"), reason="gprbuild not available")
 @pytest.mark.skipif(not shutil.which("gprls"), reason="gprls not available")
 def test_prove(
     eval_test_datasets: Path,  # noqa: F811  # pytest fixture

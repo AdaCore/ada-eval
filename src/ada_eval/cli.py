@@ -49,8 +49,8 @@ def evaluate(args):
     )
 
 
-def call_check_base_datasets(_) -> None:
-    check_base_datasets(EXPANDED_DATASETS_DIR, COMPACTED_DATASETS_DIR)
+def call_check_base_datasets(args) -> None:
+    check_base_datasets(EXPANDED_DATASETS_DIR, COMPACTED_DATASETS_DIR, args.jobs)
 
 
 def main() -> None:
@@ -203,8 +203,19 @@ def main() -> None:
     check_datasets_parser = subparsers.add_parser(
         "check-base-datasets",
         help="Check that the base datasets are correct",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     check_datasets_parser.set_defaults(func=call_check_base_datasets)
+    check_datasets_parser.add_argument(
+        "-j",
+        "--jobs",
+        type=int,
+        help=(
+            "Number of evaluations to run in parallel (when checking that "
+            "stored results are accurate)."
+        ),
+        default=default_num_jobs,
+    )
 
     args = parser.parse_args()
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO)
