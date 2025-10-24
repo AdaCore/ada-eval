@@ -130,7 +130,7 @@ class EvaluationError(ValueError):
         bad_eval_stats = next(
             es
             for es in sample.evaluation_results
-            if isinstance(es, (EvaluationStatsTimedOut, EvaluationStatsFailed))
+            if isinstance(es, EvaluationStatsTimedOut | EvaluationStatsFailed)
         )
         super().__init__(
             f"error during baseline evaluation of sample '{sample.name}' of "
@@ -159,7 +159,7 @@ def check_evaluation_baseline(datasets: Sequence[Dataset[Sample]], jobs: int) ->
             if all(es.passed for es in sample.evaluation_results):
                 raise BaselineEvaluationPassedError(dataset, sample)
             if any(
-                isinstance(es, (EvaluationStatsTimedOut, EvaluationStatsFailed))
+                isinstance(es, EvaluationStatsTimedOut | EvaluationStatsFailed)
                 for es in sample.evaluation_results
             ):
                 raise EvaluationError(dataset, sample)
