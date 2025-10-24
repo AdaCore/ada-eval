@@ -1,7 +1,9 @@
 import re
 import shutil
-from logging import INFO
+from logging import ERROR, INFO
 from pathlib import Path
+from typing import ClassVar
+from unittest.mock import patch
 
 import pytest
 from helpers import (
@@ -10,14 +12,21 @@ from helpers import (
 )
 
 from ada_eval.check_datasets import (
+    BaselineEvaluationPassedError,
     CanonicalEvaluationFailedError,
+    EvaluationError,
     WrongCanonicalEvaluationResultsError,
     check_base_datasets,
 )
 from ada_eval.datasets import (
+    EVALUATED_SAMPLE_TYPES,
+    GENERATED_SAMPLE_TYPES,
     Dataset,
+    Eval,
     EvaluationStatsBuild,
+    GeneratedAdaSample,
     Sample,
+    SampleKind,
     dataset_has_sample_type,
     load_datasets,
     save_datasets,
@@ -25,10 +34,14 @@ from ada_eval.datasets import (
 from ada_eval.datasets.types.datasets import DatasetsMismatchError
 from ada_eval.datasets.types.directory_contents import DirectoryContents
 from ada_eval.datasets.types.samples import (
+    EvaluatedSample,
+    GeneratedSample,
     GeneratedSparkSample,
     GenerationStats,
     SparkSample,
 )
+from ada_eval.evals.evaluate import create_eval
+from ada_eval.evals.generic_eval import GenericEval
 
 
 @pytest.mark.skipif(not shutil.which("gprbuild"), reason="gprbuild not available")
@@ -135,7 +148,7 @@ def test_check_base_datasets(
     # Check that non-passing canonical evaluation results are detected
     save_both(dataset)
     error_msg = (
-        "Sample 'bad' of dataset 'spark_check' has non-passing canonical "
+        "sample 'bad' of dataset 'spark_check' has non-passing canonical "
         "evaluation results: ['prove', 'build', 'test']"
     )
     with pytest.raises(CanonicalEvaluationFailedError, match=re.escape(error_msg)):
@@ -148,7 +161,7 @@ def test_check_base_datasets(
     bad_sample_build_stats.pre_format_warnings = False
     save_both(dataset)
     error_msg = (
-        "Sample 'bad' of dataset 'spark_check' has non-passing canonical "
+        "sample 'bad' of dataset 'spark_check' has non-passing canonical "
         "evaluation results: ['prove', 'test']"
     )
     with pytest.raises(CanonicalEvaluationFailedError, match=re.escape(error_msg)):
@@ -164,13 +177,11 @@ def test_check_base_datasets(
     bad_sample.canonical_evaluation_results = good_sample.canonical_evaluation_results
     save_both(dataset)
     error_msg = re.escape(
-        "Mismatch found on re-evaluating sample 'bad' of dataset 'spark_check':\n\n"
-        "[{'result': 'proved', "
-        "'proved_checks': {'VC_POSTCONDITION': 1}, 'unproved_checks': {}}, "
-        "{'pre_format_warnings': False}, {'passed_tests': True}]\n\n"
-        "[{'result': 'unproved', "
-        "'proved_checks': {}, 'unproved_checks': {'VC_POSTCONDITION': 1}}, "
-        "{'pre_format_warnings': True}, {'passed_tests': False}]"
+        "mismatch found on re-evaluating sample 'bad' of dataset 'spark_check':\n\n"
+        "[{'pre_format_warnings': False}, {'result': 'proved', 'proved_checks': "
+        "{'VC_POSTCONDITION': 1}, 'unproved_checks': {}}, {'passed_tests': True}]\n\n"
+        "[{'pre_format_warnings': True}, {'result': 'unproved', 'proved_checks': {}, "
+        "'unproved_checks': {'VC_POSTCONDITION': 1}}, {'passed_tests': False}]"
     )
     with pytest.raises(WrongCanonicalEvaluationResultsError, match=error_msg):
         run_check()
@@ -178,31 +189,92 @@ def test_check_base_datasets(
     # There should have been an info log and a loading bar for each evaluation
     reeval_msg = "Re-evaluating to check canonical evaluation results are correct ..."
     assert_log(caplog, INFO, reeval_msg)
+    assert len(caplog.records) == 1
     caplog.clear()
     output = capsys.readouterr()
     for e in ("build", "prove", "test"):
         assert f"Evaluating with {e}" in output.err
     assert output.out == ""
 
-    # Check that a missing canonical result is detected
+    # Check that a missing canonical result yields a more readable error message
     bad_sample.canonical_evaluation_results = [
         good_sample.canonical_evaluation_results[1]
     ]
     save_both(dataset)
     error_msg = re.escape(
-        "Sample 'bad' of dataset 'spark_check' does not have the expected set of "
+        "sample 'bad' of dataset 'spark_check' does not have the expected set of "
         "canonical evaluation results:\n['build'] != ['build', 'prove', 'test']"
     )
     with pytest.raises(WrongCanonicalEvaluationResultsError, match=error_msg):
         run_check()
     assert_log(caplog, INFO, reeval_msg)
+    assert len(caplog.records) == 1
     caplog.clear()
 
     # Fix the actual issues with the bad sample's canonical solution and check
-    # that `check_base_datasets()` raises no exceptions
+    # that the passing baseline evaluation is detected
     bad_sample.canonical_evaluation_results = good_sample.canonical_evaluation_results
     bad_sample.canonical_solution = good_sample.canonical_solution
     save_both(dataset)
+    error_msg = re.escape(
+        "all evaluations passed on the unmodified sources of sample 'bad' of "
+        "dataset 'spark_check'."
+    )
+    with pytest.raises(BaselineEvaluationPassedError, match=error_msg):
+        run_check()
+    baseline_msg = "Checking evaluation baseline ..."
+    assert_log(caplog, INFO, reeval_msg)
+    assert_log(caplog, INFO, baseline_msg)
+    assert len(caplog.records) == 2
+    caplog.clear()
+
+    # Modify the bad sample's `sources` to fail the evaluations and check that
+    # `check_base_datasets()` raises no exceptions
+    bad_sample.sources = good_sample.sources
+    save_both(dataset)
     run_check()
     assert_log(caplog, INFO, reeval_msg)
+    assert_log(caplog, INFO, baseline_msg)
     assert_log(caplog, INFO, "Base datasets are correct.")
+    assert len(caplog.records) == 3
+    caplog.clear()
+
+    # Mock `create_eval()` so that an exception is raised during evaluation of
+    # the base sources (but not the canonical solutions), and check that this is
+    # detected
+    class MockEval(GenericEval[GeneratedSample, EvaluatedSample]):
+        """Mock build eval suitable for reproducing `evaluated_test_datasets`."""
+
+        eval: ClassVar = Eval.BUILD
+        supported_types: ClassVar = {
+            GENERATED_SAMPLE_TYPES[k]: EVALUATED_SAMPLE_TYPES[k] for k in SampleKind
+        }
+
+        def evaluate(self, sample: GeneratedSample) -> EvaluationStatsBuild:
+            assert isinstance(sample, GeneratedAdaSample)
+            if "return 1" in sample.generated_solution.files[Path("src/foo.adb")]:
+                raise RuntimeError("Mock evaluation error")
+            return EvaluationStatsBuild(
+                compiled=True, pre_format_warnings=False, post_format_warnings=False
+            )
+
+    def mock_create_eval(evaluation: Eval):
+        if evaluation == Eval.BUILD:
+            return MockEval()
+        return create_eval(evaluation)
+
+    error_msg = (
+        "error during baseline evaluation of sample 'bad' of dataset 'spark_check': "
+        "EvaluationStatsFailed(eval=<Eval.BUILD: 'build'>, "
+        "exception=\"RuntimeError('Mock evaluation error')\")"
+    )
+    with (
+        patch("ada_eval.evals.evaluate.create_eval", mock_create_eval),
+        pytest.raises(EvaluationError, match=re.escape(error_msg)),
+    ):
+        run_check()
+    assert_log(caplog, INFO, reeval_msg)
+    assert_log(caplog, INFO, baseline_msg)
+    assert_log(caplog, ERROR, "Error during evaluation of sample bad")
+    assert_log(caplog, ERROR, "Error during evaluation of sample good")
+    assert len(caplog.records) == 4

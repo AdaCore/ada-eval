@@ -3,13 +3,12 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from ada_eval.datasets.loader import load_datasets
+from ada_eval.datasets.trivial_generations import generate_canonical
 from ada_eval.datasets.types import (
-    GENERATED_SAMPLE_TYPES,
     Dataset,
     Eval,
     EvaluatedSample,
     GeneratedSample,
-    GenerationStats,
     Sample,
     dataset_has_sample_type,
     save_datasets_auto_format,
@@ -98,29 +97,8 @@ def evaluate_datasets_canonical[SampleType: Sample](
     # sample for future reference.
     original_samples = {(d.dirname, s.name): s for d in datasets for s in d.samples}
     # Create fake `GeneratedSample`s with the canonical solution as their
-    # "generated" solutions.
-    dummy_gen_stats = GenerationStats(exit_code=0, stdout="", stderr="", runtime_ms=0)
-    generated_datasets: list[Dataset[GeneratedSample]] = []
-    for dataset in datasets:
-        sample_type = GENERATED_SAMPLE_TYPES[dataset.kind]
-        samples = [
-            sample_type(
-                **sample.model_dump(
-                    exclude={
-                        "generation_stats",
-                        "generated_solution",
-                        "evaluation_results",
-                    }
-                ),
-                generation_stats=dummy_gen_stats,
-                generated_solution=sample.canonical_solution,
-            )
-            for sample in dataset.samples
-        ]
-        generated_datasets.append(
-            Dataset(name=dataset.name, sample_type=sample_type, samples=samples)
-        )
-    # Evaluate the "generated" datasets
+    # "generated" solutions, and evaluate these "generated" datasets.
+    generated_datasets = generate_canonical(datasets)
     evaluated_datasets = evaluate_datasets(evals, generated_datasets, jobs=jobs)
     # Record the evaluation results in the `canonical_evaluation_results` field
     # of the original `Sample`s.
