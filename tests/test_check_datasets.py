@@ -114,7 +114,7 @@ def test_check_base_datasets(
     )
     save_both([explain_dataset, one_sample_dataset], [spark_dataset, explain_dataset])
     error_msg = (
-        f"sample 'bad' of dataset 'spark_check' is only present in '{compacted_dir}'."
+        f"sample 'bad' in dataset 'spark_check' is only present in '{compacted_dir}'."
     )
     with pytest.raises(DatasetsMismatchError, match=re.escape(error_msg)):
         run_check()
@@ -134,7 +134,7 @@ def test_check_base_datasets(
     )
     save_both([modified_dataset_0], [modified_dataset_1])
     error_msg = (
-        "sample 'good' of dataset 'spark_check' differs between "
+        "sample 'good' in dataset 'spark_check' differs between "
         f"'{expanded_dir}' and '{compacted_dir}':\n\n"
         "{'prompt': 'Modified prompt', 'sources': {PosixPath('new_file'): 'new'},"
         " 'canonical_solution': {PosixPath('src/foo.adb'): 'expanded nested'}}"
@@ -147,7 +147,7 @@ def test_check_base_datasets(
     # Check that non-passing canonical evaluation results are detected
     save_both(datasets)
     error_msg = (
-        "sample 'bad' of dataset 'spark_check' has non-passing canonical "
+        "sample 'bad' in dataset 'spark_check' has non-passing canonical "
         "evaluation results: ['prove', 'build', 'test']"
     )
     with pytest.raises(CanonicalEvaluationFailedError, match=re.escape(error_msg)):
@@ -160,7 +160,7 @@ def test_check_base_datasets(
     bad_sample_build_stats.pre_format_warnings = False
     save_both(datasets)
     error_msg = (
-        "sample 'bad' of dataset 'spark_check' has non-passing canonical "
+        "sample 'bad' in dataset 'spark_check' has non-passing canonical "
         "evaluation results: ['prove', 'test']"
     )
     with pytest.raises(CanonicalEvaluationFailedError, match=re.escape(error_msg)):
@@ -176,7 +176,7 @@ def test_check_base_datasets(
     bad_sample.canonical_evaluation_results = good_sample.canonical_evaluation_results
     save_both(datasets)
     error_msg = re.escape(
-        "mismatch found on re-evaluating sample 'bad' of dataset 'spark_check':\n\n"
+        "mismatch found on re-evaluating sample 'bad' in dataset 'spark_check':\n\n"
         "[{'pre_format_warnings': False}, {'result': 'proved', 'proved_checks': "
         "{'VC_POSTCONDITION': 1}, 'unproved_checks': {}}, {'passed_tests': True}]\n\n"
         "[{'pre_format_warnings': True}, {'result': 'unproved', 'proved_checks': {}, "
@@ -201,7 +201,7 @@ def test_check_base_datasets(
     ]
     save_both(datasets)
     error_msg = re.escape(
-        "sample 'bad' of dataset 'spark_check' does not have the expected set of "
+        "sample 'bad' in dataset 'spark_check' does not have the expected set of "
         "canonical evaluation results:\n['build'] != ['build', 'prove', 'test']"
     )
     with pytest.raises(WrongCanonicalEvaluationResultsError, match=error_msg):
@@ -216,7 +216,7 @@ def test_check_base_datasets(
     bad_sample.canonical_solution = good_sample.canonical_solution
     save_both(datasets)
     error_msg = re.escape(
-        "sample 'explain' of dataset 'explain_check' does not have the "
+        "sample 'explain' in dataset 'explain_check' does not have the "
         "expected set of canonical evaluation results:\n['test'] != []"
     )
     with pytest.raises(WrongCanonicalEvaluationResultsError, match=error_msg):
@@ -230,7 +230,7 @@ def test_check_base_datasets(
     explain_sample.canonical_evaluation_results = []
     save_both(datasets)
     error_msg = re.escape(
-        "all evaluations passed on the unmodified sources of sample 'bad' of "
+        "all evaluations passed on the unmodified sources of sample 'bad' in "
         "dataset 'spark_check'."
     )
     with pytest.raises(BaselineEvaluationPassedError, match=error_msg):
@@ -274,7 +274,7 @@ def test_check_base_datasets(
         return create_eval(evaluation)
 
     error_msg = (
-        "error during baseline evaluation of sample 'bad' of dataset 'spark_check': "
+        "error during baseline evaluation of sample 'bad' in dataset 'spark_check': "
         "EvaluationStatsFailed(eval=<Eval.BUILD: 'build'>, "
         "exception=\"RuntimeError('Mock evaluation error')\")"
     )

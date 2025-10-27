@@ -31,7 +31,7 @@ class CanonicalEvaluationFailedError(ValueError):
             es.eval.value for es in sample.canonical_evaluation_results if not es.passed
         ]
         super().__init__(
-            f"sample '{sample.name}' of dataset '{dataset.dirname}' has "
+            f"sample '{sample.name}' in dataset '{dataset.dirname}' has "
             f"non-passing canonical evaluation results: {failed}"
         )
 
@@ -67,7 +67,7 @@ class WrongCanonicalEvaluationResultsError(ValueError):
         expected_evals = {es.eval.value for es in expected}
         if actual_evals != expected_evals:
             super().__init__(
-                f"sample '{sample.name}' of dataset '{dataset.dirname}' does "
+                f"sample '{sample.name}' in dataset '{dataset.dirname}' does "
                 f"not have the expected set of canonical evaluation results:\n"
                 f"{sorted(actual_evals)} != {sorted(expected_evals)}"
             )
@@ -79,7 +79,7 @@ class WrongCanonicalEvaluationResultsError(ValueError):
             )
             super().__init__(
                 f"mismatch found on re-evaluating sample '{sample.name}' "
-                f"of dataset '{dataset.dirname}':\n\n{diff_left}\n\n{diff_right}"
+                f"in dataset '{dataset.dirname}':\n\n{diff_left}\n\n{diff_right}"
             )
 
 
@@ -127,7 +127,7 @@ class BaselineEvaluationPassedError(ValueError):
             else "the empty string for"
         )
         super().__init__(
-            f"all evaluations passed on {desc} sample '{sample.name}' of "
+            f"all evaluations passed on {desc} sample '{sample.name}' in "
             f"dataset '{dataset.dirname}'."
         )
 
@@ -143,7 +143,7 @@ class EvaluationError(ValueError):
             if isinstance(es, EvaluationStatsTimedOut | EvaluationStatsFailed)
         )
         super().__init__(
-            f"error during baseline evaluation of sample '{sample.name}' of "
+            f"error during baseline evaluation of sample '{sample.name}' in "
             f"dataset '{dataset.dirname}': {bad_eval_stats!r}"
         )
 

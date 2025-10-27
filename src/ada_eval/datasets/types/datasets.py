@@ -286,7 +286,7 @@ def verify_datasets_equal(
         for sample_name in samples1.keys() ^ samples2.keys():
             present_in = datasets1_name if sample_name in samples1 else datasets2_name
             msg = (
-                f"sample '{sample_name}' of dataset '{dataset_dirname}' "
+                f"sample '{sample_name}' in dataset '{dataset_dirname}' "
                 f"is only present in {present_in}."
             )
             raise DatasetsMismatchError(msg)
@@ -297,7 +297,7 @@ def verify_datasets_equal(
             if sample1 != sample2:
                 diff1, diff2 = diff_dicts(sample1.model_dump(), sample2.model_dump())
                 msg = (
-                    f"sample '{sample_name}' of dataset '{dataset_dirname}' "
+                    f"sample '{sample_name}' in dataset '{dataset_dirname}' "
                     f"differs between {datasets1_name} and {datasets2_name}:\n\n"
                     f"{diff1!r}\n\n{diff2!r}"
                 )
