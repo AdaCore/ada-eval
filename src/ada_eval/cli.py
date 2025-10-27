@@ -201,7 +201,7 @@ def main() -> None:
 
     # Check correctness of base datasets
     check_datasets_parser = subparsers.add_parser(
-        "check-base-datasets",
+        "check-datasets",
         help="Check that the base datasets are correct",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )

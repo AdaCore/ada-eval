@@ -168,7 +168,7 @@ def test_evaluate(capsys):
 def test_check_datasets(capsys):
     # Helper function to patch `sys.argv`
     def patch_args(datasets: list[str] | None = None, jobs: str | None = None):
-        test_args = ["ada-eval", "check-base-datasets"]
+        test_args = ["ada-eval", "check-datasets"]
         if datasets is not None:
             test_args += ["--datasets", *datasets]
         if jobs is not None:
