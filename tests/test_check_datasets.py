@@ -19,14 +19,10 @@ from ada_eval.check_datasets import (
     check_base_datasets,
 )
 from ada_eval.datasets import (
-    EVALUATED_SAMPLE_TYPES,
-    GENERATED_SAMPLE_TYPES,
     Dataset,
     Eval,
     EvaluationStatsBuild,
-    GeneratedAdaSample,
     Sample,
-    SampleKind,
     dataset_has_sample_type,
     load_datasets,
     save_datasets,
@@ -34,8 +30,8 @@ from ada_eval.datasets import (
 from ada_eval.datasets.types.datasets import DatasetsMismatchError
 from ada_eval.datasets.types.directory_contents import DirectoryContents
 from ada_eval.datasets.types.samples import (
-    EvaluatedSample,
-    GeneratedSample,
+    EvaluatedSparkSample,
+    ExplainSample,
     GeneratedSparkSample,
     GenerationStats,
     SparkSample,
@@ -59,24 +55,28 @@ def test_check_base_datasets(
 
     # Load a dataset with one sample which passes all checks, and one sample
     # with bad evaluation results.
-    dataset = load_datasets(check_test_datasets / "spark_check.jsonl")[0]
-    assert dataset_has_sample_type(dataset, SparkSample)
-    good_sample = next(s for s in dataset.samples if s.name == "good")
-    bad_sample = next(s for s in dataset.samples if s.name == "bad")
+    datasets = load_datasets(check_test_datasets)
+    explain_dataset = next(
+        d for d in datasets if dataset_has_sample_type(d, ExplainSample)
+    )
+    explain_sample = explain_dataset.samples[0]
+    spark_dataset = next(d for d in datasets if dataset_has_sample_type(d, SparkSample))
+    good_sample = next(s for s in spark_dataset.samples if s.name == "good")
+    bad_sample = next(s for s in spark_dataset.samples if s.name == "bad")
 
     # Save this dataset in both expanded and compacted forms
     expanded_dir = tmp_path / "expanded"
     compacted_dir = tmp_path / "compacted"
 
     def save_both(
-        expanded: Dataset[Sample], compacted: Dataset[Sample] | None = None
+        expanded: list[Dataset[Sample]], compacted: list[Dataset[Sample]] | None = None
     ) -> None:
         if compacted is None:
             compacted = expanded
-        save_datasets([expanded], expanded_dir, unpacked=True)
-        save_datasets([compacted], compacted_dir, unpacked=False)
+        save_datasets(expanded, expanded_dir, unpacked=True)
+        save_datasets(compacted, compacted_dir, unpacked=False)
 
-    save_both(dataset)
+    save_both(datasets)
 
     # Check that a missing dataset is detected
     def run_check() -> None:
@@ -98,7 +98,7 @@ def test_check_base_datasets(
     generated_dataset = Dataset(
         name="check", sample_type=GeneratedSparkSample, samples=[generated_sample]
     )
-    save_both(dataset, generated_dataset)
+    save_both([spark_dataset, explain_dataset], [explain_dataset, generated_dataset])
     error_msg = (
         "dataset 'spark_check' has type 'SparkSample' in the expanded datasets but "
         "type 'GeneratedSparkSample' in the compacted datasets."
@@ -112,7 +112,7 @@ def test_check_base_datasets(
         sample_type=SparkSample,
         samples=[good_sample],
     )
-    save_both(one_sample_dataset, dataset)
+    save_both([explain_dataset, one_sample_dataset], [spark_dataset, explain_dataset])
     error_msg = (
         "sample 'bad' of dataset 'spark_check' is only present in the "
         "compacted datasets."
@@ -133,7 +133,7 @@ def test_check_base_datasets(
     modified_dataset_1 = Dataset(
         name="check", sample_type=SparkSample, samples=[modified_sample_1, bad_sample]
     )
-    save_both(modified_dataset_0, modified_dataset_1)
+    save_both([modified_dataset_0], [modified_dataset_1])
     error_msg = (
         "sample 'good' of dataset 'spark_check' differs between the "
         "expanded datasets and the compacted datasets:\n\n"
@@ -146,7 +146,7 @@ def test_check_base_datasets(
         run_check()
 
     # Check that non-passing canonical evaluation results are detected
-    save_both(dataset)
+    save_both(datasets)
     error_msg = (
         "sample 'bad' of dataset 'spark_check' has non-passing canonical "
         "evaluation results: ['prove', 'build', 'test']"
@@ -159,7 +159,7 @@ def test_check_base_datasets(
     bad_sample_build_stats = bad_sample.canonical_evaluation_results[1]
     assert isinstance(bad_sample_build_stats, EvaluationStatsBuild)
     bad_sample_build_stats.pre_format_warnings = False
-    save_both(dataset)
+    save_both(datasets)
     error_msg = (
         "sample 'bad' of dataset 'spark_check' has non-passing canonical "
         "evaluation results: ['prove', 'test']"
@@ -175,7 +175,7 @@ def test_check_base_datasets(
     # Fix the remaining canonical results and check that the discrepancy is
     # detected by re-evaluating
     bad_sample.canonical_evaluation_results = good_sample.canonical_evaluation_results
-    save_both(dataset)
+    save_both(datasets)
     error_msg = re.escape(
         "mismatch found on re-evaluating sample 'bad' of dataset 'spark_check':\n\n"
         "[{'pre_format_warnings': False}, {'result': 'proved', 'proved_checks': "
@@ -200,7 +200,7 @@ def test_check_base_datasets(
     bad_sample.canonical_evaluation_results = [
         good_sample.canonical_evaluation_results[1]
     ]
-    save_both(dataset)
+    save_both(datasets)
     error_msg = re.escape(
         "sample 'bad' of dataset 'spark_check' does not have the expected set of "
         "canonical evaluation results:\n['build'] != ['build', 'prove', 'test']"
@@ -212,10 +212,24 @@ def test_check_base_datasets(
     caplog.clear()
 
     # Fix the actual issues with the bad sample's canonical solution and check
-    # that the passing baseline evaluation is detected
+    # that the presence of a test result for the explain sample is detected.
     bad_sample.canonical_evaluation_results = good_sample.canonical_evaluation_results
     bad_sample.canonical_solution = good_sample.canonical_solution
-    save_both(dataset)
+    save_both(datasets)
+    error_msg = re.escape(
+        "sample 'explain' of dataset 'explain_check' does not have the "
+        "expected set of canonical evaluation results:\n['test'] != []"
+    )
+    with pytest.raises(WrongCanonicalEvaluationResultsError, match=error_msg):
+        run_check()
+    assert_log(caplog, INFO, reeval_msg)
+    assert len(caplog.records) == 1
+    caplog.clear()
+
+    # Clear the `ExplainSample`'s canonical results and check that the passing
+    # baseline evaluation of the 'bad' sample is detected
+    explain_sample.canonical_evaluation_results = []
+    save_both(datasets)
     error_msg = re.escape(
         "all evaluations passed on the unmodified sources of sample 'bad' of "
         "dataset 'spark_check'."
@@ -231,7 +245,7 @@ def test_check_base_datasets(
     # Modify the bad sample's `sources` to fail the evaluations and check that
     # `check_base_datasets()` raises no exceptions
     bad_sample.sources = good_sample.sources
-    save_both(dataset)
+    save_both(datasets)
     run_check()
     assert_log(caplog, INFO, reeval_msg)
     assert_log(caplog, INFO, baseline_msg)
@@ -242,16 +256,13 @@ def test_check_base_datasets(
     # Mock `create_eval()` so that an exception is raised during evaluation of
     # the base sources (but not the canonical solutions), and check that this is
     # detected
-    class MockEval(GenericEval[GeneratedSample, EvaluatedSample]):
-        """Mock build eval suitable for reproducing `evaluated_test_datasets`."""
+    class MockEval(GenericEval[GeneratedSparkSample, EvaluatedSparkSample]):
+        """Mock build eval which raises if `src/foo.adb` contains 'return 1'."""
 
         eval: ClassVar = Eval.BUILD
-        supported_types: ClassVar = {
-            GENERATED_SAMPLE_TYPES[k]: EVALUATED_SAMPLE_TYPES[k] for k in SampleKind
-        }
+        supported_types: ClassVar = {GeneratedSparkSample: EvaluatedSparkSample}
 
-        def evaluate(self, sample: GeneratedSample) -> EvaluationStatsBuild:
-            assert isinstance(sample, GeneratedAdaSample)
+        def evaluate(self, sample: GeneratedSparkSample) -> EvaluationStatsBuild:
             if "return 1" in sample.generated_solution.files[Path("src/foo.adb")]:
                 raise RuntimeError("Mock evaluation error")
             return EvaluationStatsBuild(
