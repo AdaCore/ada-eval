@@ -80,10 +80,10 @@ def test_check_base_datasets(
 
     # Check that a missing dataset is detected
     def run_check() -> None:
-        check_base_datasets(expanded_dir, compacted_dir, jobs=8)
+        check_base_datasets([expanded_dir, compacted_dir], jobs=8)
 
     shutil.copytree(expanded_dir / "spark_check", expanded_dir / "spark_other")
-    error_msg = "dataset 'spark_other' is only present in the expanded datasets."
+    error_msg = f"dataset 'spark_other' is only present in '{expanded_dir}'."
     with pytest.raises(DatasetsMismatchError, match=re.escape(error_msg)):
         run_check()
 
@@ -100,8 +100,8 @@ def test_check_base_datasets(
     )
     save_both([spark_dataset, explain_dataset], [explain_dataset, generated_dataset])
     error_msg = (
-        "dataset 'spark_check' has type 'SparkSample' in the expanded datasets but "
-        "type 'GeneratedSparkSample' in the compacted datasets."
+        f"dataset 'spark_check' has type 'SparkSample' in '{expanded_dir}' but "
+        f"type 'GeneratedSparkSample' in '{compacted_dir}'."
     )
     with pytest.raises(DatasetsMismatchError, match=re.escape(error_msg)):
         run_check()
@@ -114,8 +114,7 @@ def test_check_base_datasets(
     )
     save_both([explain_dataset, one_sample_dataset], [spark_dataset, explain_dataset])
     error_msg = (
-        "sample 'bad' of dataset 'spark_check' is only present in the "
-        "compacted datasets."
+        f"sample 'bad' of dataset 'spark_check' is only present in '{compacted_dir}'."
     )
     with pytest.raises(DatasetsMismatchError, match=re.escape(error_msg)):
         run_check()
@@ -135,8 +134,8 @@ def test_check_base_datasets(
     )
     save_both([modified_dataset_0], [modified_dataset_1])
     error_msg = (
-        "sample 'good' of dataset 'spark_check' differs between the "
-        "expanded datasets and the compacted datasets:\n\n"
+        "sample 'good' of dataset 'spark_check' differs between "
+        f"'{expanded_dir}' and '{compacted_dir}':\n\n"
         "{'prompt': 'Modified prompt', 'sources': {PosixPath('new_file'): 'new'},"
         " 'canonical_solution': {PosixPath('src/foo.adb'): 'expanded nested'}}"
         "\n\n{'prompt': '', 'sources': {},"
@@ -289,3 +288,9 @@ def test_check_base_datasets(
     assert_log(caplog, ERROR, "Error during evaluation of sample bad")
     assert_log(caplog, ERROR, "Error during evaluation of sample good")
     assert len(caplog.records) == 4
+    caplog.clear()
+
+    # Test checking an empty list of dataset directories
+    check_base_datasets([], jobs=8)
+    assert_log(caplog, INFO, "No dataset directories specified; nothing to check.")
+    assert len(caplog.records) == 1

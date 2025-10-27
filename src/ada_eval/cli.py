@@ -50,7 +50,7 @@ def evaluate(args):
 
 
 def call_check_base_datasets(args) -> None:
-    check_base_datasets(EXPANDED_DATASETS_DIR, COMPACTED_DATASETS_DIR, args.jobs)
+    check_base_datasets(dataset_dirs=args.datasets, jobs=args.jobs)
 
 
 def main() -> None:
@@ -206,6 +206,13 @@ def main() -> None:
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     check_datasets_parser.set_defaults(func=call_check_base_datasets)
+    check_datasets_parser.add_argument(
+        "--datasets",
+        type=Path,
+        nargs="+",
+        help="Paths of dataset directories to check.",
+        default=[EXPANDED_DATASETS_DIR, COMPACTED_DATASETS_DIR],
+    )
     check_datasets_parser.add_argument(
         "-j",
         "--jobs",

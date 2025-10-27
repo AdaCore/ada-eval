@@ -16,6 +16,7 @@ from ada_eval.datasets import (
 from ada_eval.datasets.trivial_generations import generate_canonical, generate_null
 from ada_eval.datasets.types.datasets import verify_datasets_equal
 from ada_eval.evals.evaluate import evaluate_datasets
+from ada_eval.paths import COMPACTED_DATASETS_DIR, EXPANDED_DATASETS_DIR
 from ada_eval.utils import diff_sequences, serialise_sequence
 
 logger = logging.getLogger(__name__)
@@ -174,12 +175,12 @@ def check_evaluation_baseline(datasets: Sequence[Dataset[Sample]], jobs: int) ->
                 raise EvaluationError(dataset, sample)
 
 
-def check_base_datasets(expanded_dir: Path, compacted_dir: Path, jobs: int) -> None:
+def check_base_datasets(dataset_dirs: Sequence[Path], jobs: int) -> None:
     """
     Check the correctness of a set of base datasets.
 
     Checks that:
-    - the datasets in `expanded_dir` and `compacted_dir` are equivalent.
+    - the specified directories all contain identical datasets.
     - all canonical evaluation results in the datasets represent passing results.
     - all canonical evaluation results in the datasets are accurate.
     - a no-op generation fails at least one eval on all samples.
@@ -194,13 +195,23 @@ def check_base_datasets(expanded_dir: Path, compacted_dir: Path, jobs: int) -> N
             canonical evaluation.
 
     """
-    # Verify that the compacted and expanded datasets match
-    expanded = load_datasets(expanded_dir)
-    compacted = load_datasets(compacted_dir)
-    verify_datasets_equal(
-        expanded, "the expanded datasets", compacted, "the compacted datasets"
-    )
-    datasets = expanded
+    if len(dataset_dirs) == 0:
+        logger.info("No dataset directories specified; nothing to check.")
+        return
+    datasets = load_datasets(dataset_dirs[0])
+    # Verify that all datasets are equivalent
+    dataset_names = {
+        EXPANDED_DATASETS_DIR: "the expanded datasets",
+        COMPACTED_DATASETS_DIR: "the compacted datasets",
+    }
+    for other_datasets_dir in dataset_dirs[1:]:
+        other_datasets = load_datasets(other_datasets_dir)
+        verify_datasets_equal(
+            datasets,
+            dataset_names.get(dataset_dirs[0].resolve(), f"'{dataset_dirs[0]}'"),
+            other_datasets,
+            dataset_names.get(other_datasets_dir.resolve(), f"'{other_datasets_dir}'"),
+        )
     # Verify that all canonical evaluation results represent passing results
     check_canonical_evaluation_results(datasets)
     # Re-run a full canonical evaluation and verify that we get the same results
