@@ -1,5 +1,5 @@
 import logging
-from collections.abc import Sequence
+from collections.abc import Collection, Sequence
 from pathlib import Path
 
 from ada_eval.datasets import (
@@ -7,6 +7,7 @@ from ada_eval.datasets import (
     Dataset,
     Eval,
     EvaluatedSample,
+    EvaluationStats,
     EvaluationStatsFailed,
     EvaluationStatsTimedOut,
     Sample,
@@ -55,26 +56,28 @@ def check_canonical_evaluation_results(datasets: Sequence[Dataset[Sample]]) -> N
 class WrongCanonicalEvaluationResultsError(ValueError):
     """Raised when a sample's `canonical_evaluation_results` are not accurate."""
 
-    def __init__(self, dataset: Dataset[Sample], reevaluated_sample: EvaluatedSample):
-        original_evals = {
-            es.eval.value for es in reevaluated_sample.canonical_evaluation_results
-        }
-        reevaluated_evals = {
-            es.eval.value for es in reevaluated_sample.evaluation_results
-        }
-        if original_evals != reevaluated_evals:
+    def __init__(
+        self,
+        dataset: Dataset[Sample],
+        sample: Sample,
+        expected: Collection[EvaluationStats],
+    ) -> None:
+        actual_evals = {es.eval.value for es in sample.canonical_evaluation_results}
+        expected_evals = {es.eval.value for es in expected}
+        if actual_evals != expected_evals:
             super().__init__(
-                f"sample '{reevaluated_sample.name}' of dataset '{dataset.dirname}' "
-                f"does not have the expected set of canonical evaluation results:\n"
-                f"{sorted(original_evals)} != {sorted(reevaluated_evals)}"
+                f"sample '{sample.name}' of dataset '{dataset.dirname}' does "
+                f"not have the expected set of canonical evaluation results:\n"
+                f"{sorted(actual_evals)} != {sorted(expected_evals)}"
             )
         else:
+            actual = sorted(sample.canonical_evaluation_results, key=lambda es: es.eval)
+            expected = sorted(expected, key=lambda es: es.eval)
             diff_left, diff_right = diff_sequences(
-                serialise_sequence(reevaluated_sample.canonical_evaluation_results),
-                serialise_sequence(reevaluated_sample.evaluation_results),
+                serialise_sequence(actual), serialise_sequence(expected)
             )
             super().__init__(
-                f"mismatch found on re-evaluating sample '{reevaluated_sample.name}' "
+                f"mismatch found on re-evaluating sample '{sample.name}' "
                 f"of dataset '{dataset.dirname}':\n\n{diff_left}\n\n{diff_right}"
             )
 
@@ -96,14 +99,20 @@ def check_canonical_evaluation_results_accuracy(
     reevaluated_datasets = evaluate_datasets(list(Eval), generated_datasets, jobs=jobs)
     for dataset in reevaluated_datasets:
         for sample in dataset.samples:
-            sample.canonical_evaluation_results = sorted(
-                sample.canonical_evaluation_results, key=lambda es: es.eval.value
-            )
-            sample.evaluation_results = sorted(
-                sample.evaluation_results, key=lambda es: es.eval.value
-            )
-            if sample.canonical_evaluation_results != sample.evaluation_results:
-                raise WrongCanonicalEvaluationResultsError(dataset, sample)
+            actual = sorted(sample.canonical_evaluation_results, key=lambda es: es.eval)
+            expected = sorted(sample.evaluation_results, key=lambda es: es.eval)
+            if actual != expected:
+                raise WrongCanonicalEvaluationResultsError(dataset, sample, expected)
+    # `evaluate_datasets()` only returns datasets compatible with at least one
+    # eval. Incompatible datasets should have empty results.
+    compatible_datasets = {d.dirname for d in reevaluated_datasets}
+    for initial_dataset in datasets:
+        if initial_dataset.dirname not in compatible_datasets:
+            for initial_sample in initial_dataset.samples:
+                if len(initial_sample.canonical_evaluation_results) > 0:
+                    raise WrongCanonicalEvaluationResultsError(
+                        initial_dataset, initial_sample, []
+                    )
 
 
 class BaselineEvaluationPassedError(ValueError):
