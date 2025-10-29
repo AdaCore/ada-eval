@@ -46,6 +46,9 @@ class EvaluationStatsTimedOut(EvaluationStatsBase):
     passed: ClassVar = False
 
 
+EvaluationStatsInvalid = EvaluationStatsFailed | EvaluationStatsTimedOut
+
+
 class EvaluationStatsBuild(EvaluationStatsBase):
     eval: Literal[Eval.BUILD] = Eval.BUILD
     compiled: bool
@@ -110,6 +113,5 @@ EvaluationStats = (
     EvaluationStatsBuild
     | EvaluationStatsProve
     | EvaluationStatsTest
-    | EvaluationStatsFailed
-    | EvaluationStatsTimedOut
+    | EvaluationStatsInvalid
 )

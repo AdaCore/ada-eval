@@ -8,8 +8,7 @@ from ada_eval.datasets import (
     Eval,
     EvaluatedSample,
     EvaluationStats,
-    EvaluationStatsFailed,
-    EvaluationStatsTimedOut,
+    EvaluationStatsInvalid,
     Sample,
     load_datasets,
 )
@@ -145,7 +144,7 @@ class InvalidBaselineEvaluationError(IncorrectDatasetError):
         bad_eval_stats = next(
             es
             for es in sample.evaluation_results
-            if isinstance(es, EvaluationStatsTimedOut | EvaluationStatsFailed)
+            if isinstance(es, EvaluationStatsInvalid)
         )
         super().__init__(
             f"error during baseline evaluation of sample '{sample.name}' in "
@@ -174,7 +173,7 @@ def check_evaluation_baseline(datasets: Sequence[Dataset[Sample]], jobs: int) ->
             if all(es.passed for es in sample.evaluation_results):
                 raise PassedBaselineEvaluationError(dataset, sample)
             if any(
-                isinstance(es, EvaluationStatsTimedOut | EvaluationStatsFailed)
+                isinstance(es, EvaluationStatsInvalid)
                 for es in sample.evaluation_results
             ):
                 raise InvalidBaselineEvaluationError(dataset, sample)
