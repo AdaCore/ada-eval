@@ -12,10 +12,10 @@ from helpers import (
 )
 
 from ada_eval.check_datasets import (
-    BaselineEvaluationPassedError,
-    CanonicalEvaluationFailedError,
-    EvaluationError,
-    WrongCanonicalEvaluationResultsError,
+    FailedCanonicalEvaluationError,
+    InaccurateCanonicalEvaluationError,
+    InvalidBaselineEvaluationError,
+    PassedBaselineEvaluationError,
     check_base_datasets,
 )
 from ada_eval.datasets import (
@@ -53,8 +53,9 @@ def test_check_base_datasets(
 ):
     caplog.set_level("INFO")
 
-    # Load a dataset with one sample which passes all checks, and one sample
-    # with bad evaluation results.
+    # Load datasets consisting of one `SparkSample` which passes all checks, one
+    # bad `SparkSample`, and one `ExplainSample` (which has some canonical
+    # results it shouldn't, but is otherwise correct).
     datasets = load_datasets(check_test_datasets)
     explain_dataset = next(
         d for d in datasets if dataset_has_sample_type(d, ExplainSample)
@@ -150,7 +151,7 @@ def test_check_base_datasets(
         "sample 'bad' in dataset 'spark_check' has non-passing canonical "
         "evaluation results: ['prove', 'build', 'test']"
     )
-    with pytest.raises(CanonicalEvaluationFailedError, match=re.escape(error_msg)):
+    with pytest.raises(FailedCanonicalEvaluationError, match=re.escape(error_msg)):
         run_check()
 
     # Fix one of the canonical results and check that the message changes
@@ -163,7 +164,7 @@ def test_check_base_datasets(
         "sample 'bad' in dataset 'spark_check' has non-passing canonical "
         "evaluation results: ['prove', 'test']"
     )
-    with pytest.raises(CanonicalEvaluationFailedError, match=re.escape(error_msg)):
+    with pytest.raises(FailedCanonicalEvaluationError, match=re.escape(error_msg)):
         run_check()
 
     # Nothing should have been output or logged up to this point
@@ -182,11 +183,11 @@ def test_check_base_datasets(
         "[{'pre_format_warnings': True}, {'result': 'unproved', 'proved_checks': {}, "
         "'unproved_checks': {'VC_POSTCONDITION': 1}}, {'passed_tests': False}]"
     )
-    with pytest.raises(WrongCanonicalEvaluationResultsError, match=error_msg):
+    with pytest.raises(InaccurateCanonicalEvaluationError, match=error_msg):
         run_check()
 
     # There should have been an info log and a loading bar for each evaluation
-    reeval_msg = "Re-evaluating to check canonical evaluation results are correct ..."
+    reeval_msg = "Re-evaluating to check canonical evaluation results are accurate ..."
     assert_log(caplog, INFO, reeval_msg)
     assert len(caplog.records) == 1
     caplog.clear()
@@ -204,7 +205,7 @@ def test_check_base_datasets(
         "sample 'bad' in dataset 'spark_check' does not have the expected set of "
         "canonical evaluation results:\n['build'] != ['build', 'prove', 'test']"
     )
-    with pytest.raises(WrongCanonicalEvaluationResultsError, match=error_msg):
+    with pytest.raises(InaccurateCanonicalEvaluationError, match=error_msg):
         run_check()
     assert_log(caplog, INFO, reeval_msg)
     assert len(caplog.records) == 1
@@ -219,7 +220,7 @@ def test_check_base_datasets(
         "sample 'explain' in dataset 'explain_check' does not have the "
         "expected set of canonical evaluation results:\n['test'] != []"
     )
-    with pytest.raises(WrongCanonicalEvaluationResultsError, match=error_msg):
+    with pytest.raises(InaccurateCanonicalEvaluationError, match=error_msg):
         run_check()
     assert_log(caplog, INFO, reeval_msg)
     assert len(caplog.records) == 1
@@ -233,7 +234,7 @@ def test_check_base_datasets(
         "all evaluations passed on the unmodified sources of sample 'bad' in "
         "dataset 'spark_check'."
     )
-    with pytest.raises(BaselineEvaluationPassedError, match=error_msg):
+    with pytest.raises(PassedBaselineEvaluationError, match=error_msg):
         run_check()
     baseline_msg = "Checking evaluation baseline ..."
     assert_log(caplog, INFO, reeval_msg)
@@ -280,7 +281,7 @@ def test_check_base_datasets(
     )
     with (
         patch("ada_eval.evals.evaluate.create_eval", mock_create_eval),
-        pytest.raises(EvaluationError, match=re.escape(error_msg)),
+        pytest.raises(InvalidBaselineEvaluationError, match=re.escape(error_msg)),
     ):
         run_check()
     assert_log(caplog, INFO, reeval_msg)
