@@ -253,7 +253,7 @@ example_sample
     ```
     to populate `other.json` and then
     ```sh
-    uv run ada-eval check-datasets
+    make check-datasets
     ```
     to verify everything is correct.
 
