@@ -22,6 +22,7 @@ def test_diff_dicts_and_sequences():
         "h": {"i": 16, "j": 17},
         "k": [18],
         "l": "hello",
+        "m": ["n", "o", "p"],
     }
     right: dict[str, Any] = copy.deepcopy(left)
     right["b"]["c"] = [30, 31]
@@ -31,20 +32,23 @@ def test_diff_dicts_and_sequences():
     right["f"][:2] = 11, 10
     right["k"] = ["18"]
     right["l"] = "hello!"
-    right["m"] = 20
+    right["m"] = tuple(right["m"])
+    right["q"] = 20
     left_diff, right_diff = diff_dicts(left, right)
     assert left_diff == {
         "b": {"c": 3, "d": [{}, [], [9]]},
         "f": [10, 11],
         "k": [18],
         "l": "hello",
+        "m": ["n", "o", "p"],
     }
     assert right_diff == {
         "b": {"c": [30, 31], "d": [{"g": 50}, [9.5], []]},
         "f": [11, 10],
         "k": ["18"],
         "l": "hello!",
-        "m": 20,
+        "m": ("n", "o", "p"),
+        "q": 20,
     }
 
 

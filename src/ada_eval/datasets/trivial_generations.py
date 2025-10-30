@@ -4,12 +4,6 @@ from ada_eval.datasets import Dataset, ExplainSample, GeneratedSample, Sample
 from ada_eval.datasets.types import GENERATED_SAMPLE_TYPES, GenerationStats
 
 
-def _null_solution(sample: Sample) -> object:
-    if isinstance(sample, ExplainSample):
-        return ""
-    return sample.sources
-
-
 def _generate_null_or_canonical(
     datasets: Iterable[Dataset[Sample]], *, canonical: bool
 ) -> list[Dataset[GeneratedSample]]:
@@ -29,7 +23,9 @@ def _generate_null_or_canonical(
                     exit_code=0, stdout="", stderr="", runtime_ms=0
                 ),
                 generated_solution=(
-                    sample.canonical_solution if canonical else _null_solution(sample)
+                    sample.canonical_solution
+                    if canonical
+                    else ("" if isinstance(sample, ExplainSample) else sample.sources)
                 ),
             )
             for sample in dataset.samples

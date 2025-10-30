@@ -44,12 +44,11 @@ def diff_dicts[K, V](
     }
     for k in diff1.keys() & diff2.keys():
         v1, v2 = diff1[k], diff2[k]
-        if isinstance(v1, dict) and isinstance(v2, dict):
-            diff1[k], diff2[k] = diff_dicts(v1, v2)
-        elif (isinstance(v1, Sequence) and isinstance(v2, Sequence)) and not (
-            isinstance(v1, str) or isinstance(v2, str)
-        ):
-            diff1[k], diff2[k] = diff_sequences(v1, v2)
+        if type(v1) is type(v2) and not isinstance(v1, str):
+            if isinstance(v1, dict) and isinstance(v2, dict):
+                diff1[k], diff2[k] = diff_dicts(v1, v2)
+            elif isinstance(v1, Sequence) and isinstance(v2, Sequence):
+                diff1[k], diff2[k] = diff_sequences(v1, v2)
     return diff1, diff2
 
 
@@ -68,16 +67,13 @@ def diff_sequences[T](
     diff2: list[T | AnyDict | AnyList] = []
     for elem1, elem2 in zip(seq1, seq2, strict=False):
         if elem1 != elem2:
-            new_elem1: T | AnyDict | AnyList
-            new_elem2: T | AnyDict | AnyList
-            if isinstance(elem1, dict) and isinstance(elem2, dict):
-                new_elem1, new_elem2 = diff_dicts(elem1, elem2)
-            elif (isinstance(elem1, Sequence) and isinstance(elem2, Sequence)) and not (
-                isinstance(elem1, str) or isinstance(elem2, str)
-            ):
-                new_elem1, new_elem2 = diff_sequences(elem1, elem2)
-            else:
-                new_elem1, new_elem2 = elem1, elem2
+            new_elem1: T | AnyDict | AnyList = elem1
+            new_elem2: T | AnyDict | AnyList = elem2
+            if type(elem1) is type(elem2) and not isinstance(elem1, str):
+                if isinstance(elem1, dict) and isinstance(elem2, dict):
+                    new_elem1, new_elem2 = diff_dicts(elem1, elem2)
+                elif isinstance(elem1, Sequence) and isinstance(elem2, Sequence):
+                    new_elem1, new_elem2 = diff_sequences(elem1, elem2)
             diff1.append(new_elem1)
             diff2.append(new_elem2)
     if len(seq1) > len(seq2):

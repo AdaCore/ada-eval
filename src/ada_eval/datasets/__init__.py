@@ -32,6 +32,7 @@ from .types import (
     dataset_has_sample_type,
     get_contents,
     save_datasets,
+    verify_datasets_equal,
 )
 
 __all__ = [
@@ -68,4 +69,5 @@ __all__ = [
     "get_contents",
     "load_datasets",
     "save_datasets",
+    "verify_datasets_equal",
 ]

@@ -268,7 +268,8 @@ def verify_datasets_equal(
         raise DatasetsMismatchError(msg)
     # Check for any remaining differences in dataset type (this will only arise
     # from differences in sample stage, since the kind is part of the dirname)
-    for dataset_dirname in datasets1_dict:  # noqa: PLC0206  # For symmetry
+    dataset_dirnames = datasets1_dict.keys()  # To avoid PLC0206 (for symmetry)
+    for dataset_dirname in dataset_dirnames:
         dataset1_type = datasets1_dict[dataset_dirname].sample_type
         dataset2_type = datasets2_dict[dataset_dirname].sample_type
         if dataset1_type is not dataset2_type:
@@ -278,21 +279,20 @@ def verify_datasets_equal(
                 f"'{dataset2_type.__name__}' in {datasets2_name}."
             )
             raise DatasetsMismatchError(msg)
-    # Check for differences in the samples within each dataset
-    for dataset_dirname in datasets1_dict:  # noqa: PLC0206  # For symmetry
+    # Check for differences in the samples
+    for dataset_dirname in dataset_dirnames:
         samples1 = {s.name: s for s in datasets1_dict[dataset_dirname].samples}
         samples2 = {s.name: s for s in datasets2_dict[dataset_dirname].samples}
         # Check for missing samples
         for sample_name in samples1.keys() ^ samples2.keys():
             present_in = datasets1_name if sample_name in samples1 else datasets2_name
             msg = (
-                f"sample '{sample_name}' in dataset '{dataset_dirname}' "
-                f"is only present in {present_in}."
+                f"sample '{sample_name}' in dataset '{dataset_dirname}' is "
+                f"only present in {present_in}."
             )
             raise DatasetsMismatchError(msg)
         # Check for differing samples
-        for sample_name in samples1:  # noqa: PLC0206  # For symmetry
-            sample1 = samples1[sample_name]
+        for sample_name, sample1 in samples1.items():
             sample2 = samples2[sample_name]
             if sample1 != sample2:
                 diff1, diff2 = diff_dicts(sample1.model_dump(), sample2.model_dump())

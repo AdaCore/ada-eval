@@ -202,7 +202,7 @@ def main() -> None:
     # Check correctness of base datasets
     check_datasets_parser = subparsers.add_parser(
         "check-datasets",
-        help="Check that the base datasets are correct",
+        help="Check that base datasets are correct and equivalent",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     check_datasets_parser.set_defaults(func=call_check_base_datasets)
@@ -217,10 +217,7 @@ def main() -> None:
         "-j",
         "--jobs",
         type=int,
-        help=(
-            "Number of evaluations to run in parallel (when checking that "
-            "stored results are accurate)."
-        ),
+        help="Number of evaluations to run in parallel.",
         default=default_num_jobs,
     )
 

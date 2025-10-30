@@ -3,17 +3,17 @@ from collections.abc import Collection, Sequence
 from pathlib import Path
 
 from ada_eval.datasets import (
-    AdaSample,
     Dataset,
     Eval,
     EvaluatedSample,
     EvaluationStats,
     EvaluationStatsInvalid,
+    ExplainSample,
     Sample,
     load_datasets,
+    verify_datasets_equal,
 )
 from ada_eval.datasets.trivial_generations import generate_canonical, generate_null
-from ada_eval.datasets.types.datasets import verify_datasets_equal
 from ada_eval.evals.evaluate import evaluate_datasets
 from ada_eval.paths import COMPACTED_DATASETS_DIR, EXPANDED_DATASETS_DIR
 from ada_eval.utils import diff_sequences, serialise_sequence
@@ -126,9 +126,9 @@ class PassedBaselineEvaluationError(IncorrectDatasetError):
     def __init__(self, dataset: Dataset[Sample], sample: Sample):
         self.dataset, self.sample = dataset, sample
         desc = (
-            "the unmodified sources of"
-            if isinstance(sample, AdaSample)
-            else "the empty string for"
+            "the empty string for"
+            if isinstance(sample, ExplainSample)
+            else "the unmodified sources of"
         )
         super().__init__(
             f"all evaluations passed on {desc} sample '{sample.name}' in "
@@ -181,7 +181,7 @@ def check_evaluation_baseline(datasets: Sequence[Dataset[Sample]], jobs: int) ->
 
 def check_base_datasets(dataset_dirs: Sequence[Path], jobs: int) -> None:
     """
-    Check the correctness of a set of base datasets.
+    Check the correctness of a collection of base datasets.
 
     Checks that:
     - the specified directories all contain identical datasets.
@@ -190,8 +190,8 @@ def check_base_datasets(dataset_dirs: Sequence[Path], jobs: int) -> None:
     - a null generation fails at least one eval on all samples.
 
     Raises:
-        DatasetsMismatchError: If any difference is found between the expanded and
-            and compacted datasets.
+        DatasetsMismatchError: If any difference is found between any of the
+            datasets.
         FailedCanonicalEvaluationError: If any canonical evaluation result does
             not represent a passing result.
         InaccurateCanonicalEvaluationError: If any of the current canonical
@@ -213,11 +213,10 @@ def check_base_datasets(dataset_dirs: Sequence[Path], jobs: int) -> None:
         COMPACTED_DATASETS_DIR: "the compacted datasets",
     }
     for other_datasets_dir in dataset_dirs[1:]:
-        other_datasets = load_datasets(other_datasets_dir)
         verify_datasets_equal(
             datasets,
             dataset_names.get(dataset_dirs[0].resolve(), f"'{dataset_dirs[0]}'"),
-            other_datasets,
+            load_datasets(other_datasets_dir),
             dataset_names.get(other_datasets_dir.resolve(), f"'{other_datasets_dir}'"),
         )
     # Verify that all canonical evaluation results represent passing results
