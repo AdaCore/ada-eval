@@ -268,8 +268,7 @@ def verify_datasets_equal(
         raise DatasetsMismatchError(msg)
     # Check for any remaining differences in dataset type (this will only arise
     # from differences in sample stage, since the kind is part of the dirname)
-    dataset_dirnames = datasets1_dict.keys()  # To avoid PLC0206 (for symmetry)
-    for dataset_dirname in dataset_dirnames:
+    for dataset_dirname in datasets1_dict:  # noqa: PLC0206 (for symmetry)
         dataset1_type = datasets1_dict[dataset_dirname].sample_type
         dataset2_type = datasets2_dict[dataset_dirname].sample_type
         if dataset1_type is not dataset2_type:
@@ -279,8 +278,7 @@ def verify_datasets_equal(
                 f"'{dataset2_type.__name__}' in {datasets2_name}."
             )
             raise DatasetsMismatchError(msg)
-    # Check for differences in the samples
-    for dataset_dirname in dataset_dirnames:
+        # Check for differences in the samples
         samples1 = {s.name: s for s in datasets1_dict[dataset_dirname].samples}
         samples2 = {s.name: s for s in datasets2_dict[dataset_dirname].samples}
         # Check for missing samples
