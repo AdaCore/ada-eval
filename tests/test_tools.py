@@ -6,12 +6,7 @@ from pathlib import Path
 from typing import ClassVar
 
 import pytest
-from helpers import (
-    assert_log,
-    compacted_test_datasets,  # noqa: F401  # Fixtures used implicitly
-    expanded_test_datasets,  # noqa: F401  # Fixtures used implicitly
-    generated_test_datasets,  # noqa: F401  # Fixtures used implicitly
-)
+from helpers import assert_log
 
 from ada_eval.datasets.loader import load_datasets
 from ada_eval.datasets.types.datasets import (
@@ -47,8 +42,8 @@ def check_progress_bar(capsys: pytest.CaptureFixture[str], total: int, tool_name
 
 def test_generic_tool(
     tmp_path: Path,
-    compacted_test_datasets: Path,  # noqa: F811  # pytest fixture
-    expanded_test_datasets: Path,  # noqa: F811  # pytest fixture
+    compacted_test_datasets: Path,
+    expanded_test_datasets: Path,
     capsys: pytest.CaptureFixture[str],
     caplog: pytest.LogCaptureFixture,
 ):
@@ -252,8 +247,8 @@ def test_generic_tool(
 @pytest.mark.skipif(not shutil.which("sh"), reason="sh not available")
 def test_shell_script(
     tmp_path: Path,
-    compacted_test_datasets: Path,  # noqa: F811  # pytest fixture
-    generated_test_datasets: Path,  # noqa: F811  # pytest fixture
+    compacted_test_datasets: Path,
+    generated_test_datasets: Path,
     capsys: pytest.CaptureFixture[str],
     caplog: pytest.LogCaptureFixture,
 ):

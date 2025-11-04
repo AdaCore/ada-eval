@@ -2,12 +2,7 @@ import shutil
 import subprocess
 from pathlib import Path
 
-from helpers import (
-    assert_git_status,
-    compacted_test_datasets,  # noqa: F401  # Fixtures used implicitly
-    expanded_test_datasets,  # noqa: F401  # Fixtures used implicitly
-    setup_git_repo,
-)
+from helpers import assert_git_status, setup_git_repo
 
 from ada_eval.datasets.loader import load_unpacked_dataset
 from ada_eval.datasets.pack_unpack import pack_datasets, unpack_datasets
@@ -27,7 +22,7 @@ from ada_eval.datasets.types.samples import (
 from ada_eval.datasets.utils import git_ls_files, is_git_up_to_date
 
 
-def test_is_unpacked_dataset_with_valid_dataset(expanded_test_datasets: Path):  # noqa: F811  # pytest fixture
+def test_is_unpacked_dataset_with_valid_dataset(expanded_test_datasets: Path):
     assert is_unpacked_dataset(expanded_test_datasets / "spark_test") is True
 
 
@@ -35,7 +30,7 @@ def test_is_unpacked_dataset_with_no_samples(tmp_path: Path):
     assert is_unpacked_dataset(tmp_path) is False
 
 
-def test_is_collection_of_datasets_with_valid_datasets(expanded_test_datasets: Path):  # noqa: F811  # pytest fixture
+def test_is_collection_of_datasets_with_valid_datasets(expanded_test_datasets: Path):
     assert is_collection_of_unpacked_datasets(expanded_test_datasets) is True
 
 
@@ -43,7 +38,7 @@ def test_is_collection_of_datasets_with_no_datasets(tmp_path: Path):
     assert is_collection_of_unpacked_datasets(tmp_path) is False
 
 
-def test_is_unpacked_sample(expanded_test_datasets: Path):  # noqa: F811  # pytest fixture
+def test_is_unpacked_sample(expanded_test_datasets: Path):
     sample_paths = list(expanded_test_datasets.glob("*/*"))
     assert len(sample_paths) > 0
     for path in sample_paths:
@@ -62,14 +57,14 @@ def test_is_unpacked_sample_with_non_directory_path(tmp_path: Path):
     assert is_unpacked_sample(non_dir_file) is False
 
 
-def test_get_unpacked_dataset_dirs_with_single_dataset(expanded_test_datasets: Path):  # noqa: F811  # pytest fixture
+def test_get_unpacked_dataset_dirs_with_single_dataset(expanded_test_datasets: Path):
     datasets = get_unpacked_dataset_dirs(expanded_test_datasets / "spark_test")
     assert len(datasets) == 1
     dataset = load_unpacked_dataset(datasets[0])
     assert dataset.sample_type == SparkSample
 
 
-def test_get_unpacked_dataset_dirs_with_multiple_datasets(expanded_test_datasets: Path):  # noqa: F811  # pytest fixture
+def test_get_unpacked_dataset_dirs_with_multiple_datasets(expanded_test_datasets: Path):
     datasets = get_unpacked_dataset_dirs(expanded_test_datasets)
     assert len(datasets) == 3
 
@@ -79,7 +74,7 @@ def test_get_unpacked_dataset_dirs_with_no_datasets(tmp_path: Path):
     assert len(datasets) == 0
 
 
-def test_get_unpacked_dataset_dirs_with_invalid_dataset(expanded_test_datasets: Path):  # noqa: F811  # pytest fixture
+def test_get_unpacked_dataset_dirs_with_invalid_dataset(expanded_test_datasets: Path):
     dataset_dir = expanded_test_datasets / "spark_test"
     for other_json in dataset_dir.glob("**/other.json"):
         other_json.unlink()
@@ -95,7 +90,7 @@ def test_get_unpacked_dataset_dirs_with_non_directory_path(tmp_path: Path):
 
 
 def test_get_unpacked_dataset_dirs_with_non_dataset_in_collection(
-    expanded_test_datasets: Path,  # noqa: F811  # pytest fixture
+    expanded_test_datasets: Path,
 ):
     invalid_dir = expanded_test_datasets / "INVALID"
     invalid_dir.mkdir()
@@ -103,7 +98,7 @@ def test_get_unpacked_dataset_dirs_with_non_dataset_in_collection(
     assert len(datasets) == 3
 
 
-def test_git_ls_files_non_existent(tmp_path):
+def test_git_ls_files_non_existent(tmp_path: Path):
     assert git_ls_files(tmp_path / "nonexistent") == []
 
 
@@ -158,7 +153,7 @@ def test_git_ls_files_modified(tmp_path: Path):
     assert len(git_ls_files(tmp_path)) == 1
 
 
-def test_is_packed_dataset_valid(compacted_test_datasets: Path):  # noqa: F811  # pytest fixture
+def test_is_packed_dataset_valid(compacted_test_datasets: Path):
     dataset_files = list(compacted_test_datasets.glob("*"))
     assert len(dataset_files) > 0
     assert all(is_packed_dataset(path) is True for path in dataset_files)
@@ -180,7 +175,7 @@ def test_is_packed_dataset_invalid(tmp_path: Path):
     assert is_collection_of_packed_datasets(fake_dataset) is False
 
 
-def test_get_packed_dataset_files(tmp_path: Path, compacted_test_datasets: Path):  # noqa: F811  # pytest fixture
+def test_get_packed_dataset_files(tmp_path: Path, compacted_test_datasets: Path):
     empty_dir = tmp_path / "empty_dir"
     empty_dir.mkdir()
     assert get_packed_dataset_files(empty_dir) == []
@@ -192,7 +187,9 @@ def test_get_packed_dataset_files(tmp_path: Path, compacted_test_datasets: Path)
     assert len(get_packed_dataset_files(compacted_test_datasets / "ada_test")) == 0
 
 
-def test_pack_unpack(compacted_test_datasets, expanded_test_datasets, tmp_path):  # noqa: F811  # pytest fixtures
+def test_pack_unpack(
+    compacted_test_datasets: Path, expanded_test_datasets: Path, tmp_path: Path
+):
     """Packing then unpacking datasets should result in the same datasets."""
     packed_dir = compacted_test_datasets
     unpacked_dir = expanded_test_datasets

@@ -8,16 +8,7 @@ from typing import Any, ClassVar, cast
 from unittest.mock import patch
 
 import pytest
-from helpers import (
-    assert_git_status,
-    assert_log,
-    dictify_datasets,
-    eval_test_datasets,  # noqa: F401  # pytest fixture
-    evaluated_test_datasets,  # noqa: F401  # pytest fixture
-    expanded_test_datasets,  # noqa: F401  # pytest fixture
-    generated_test_datasets,  # noqa: F401  # pytest fixture
-    setup_git_repo,
-)
+from helpers import assert_git_status, assert_log, dictify_datasets, setup_git_repo
 
 from ada_eval.datasets import Dataset, dataset_has_sample_type
 from ada_eval.datasets.loader import load_datasets
@@ -130,7 +121,7 @@ def check_progress_bar(output: Any, total: int, eval_name: str):
 
 
 def test_generic_eval(
-    generated_test_datasets: Path,  # noqa: F811  # pytest fixture
+    generated_test_datasets: Path,
     capsys: pytest.CaptureFixture[str],
     caplog: pytest.LogCaptureFixture,
 ):
@@ -336,7 +327,7 @@ def test_generic_eval(
 
 
 def test_generic_eval_wrong_output_type(
-    generated_test_datasets: Path,  # noqa: F811  # pytest fixture
+    generated_test_datasets: Path,
     capsys: pytest.CaptureFixture[str],
     caplog: pytest.LogCaptureFixture,
 ):
@@ -382,8 +373,7 @@ def test_generic_eval_wrong_output_type(
 
 
 def test_evaluate_datasets_no_evals(
-    generated_test_datasets: Path,  # noqa: F811  # pytest fixture
-    caplog: pytest.LogCaptureFixture,
+    generated_test_datasets: Path, caplog: pytest.LogCaptureFixture
 ):
     """Test that `evaluate_datasets()` warns when no `Eval`s are provided."""
     with patch("ada_eval.evals.evaluate.create_eval") as mock_create_eval:
@@ -398,8 +388,8 @@ def test_evaluate_datasets_no_evals(
 
 def test_evaluate_directory(
     tmp_path: Path,
-    evaluated_test_datasets: Path,  # noqa: F811  # pytest fixture
-    generated_test_datasets: Path,  # noqa: F811  # pytest fixture
+    evaluated_test_datasets: Path,
+    generated_test_datasets: Path,
     capsys: pytest.CaptureFixture[str],
     caplog: pytest.LogCaptureFixture,
 ):
@@ -484,7 +474,7 @@ def test_evaluate_directory(
 
 def test_evaluate_directory_no_generations(
     tmp_path: Path,
-    expanded_test_datasets: Path,  # noqa: F811  # pytest fixture
+    expanded_test_datasets: Path,
     capsys: pytest.CaptureFixture[str],
     caplog: pytest.LogCaptureFixture,
 ):
@@ -512,10 +502,7 @@ def test_evaluate_directory_no_generations(
     assert output.err == ""
 
 
-def test_evaluate_directory_save_unpacked(
-    tmp_path: Path,
-    expanded_test_datasets: Path,  # noqa: F811  # pytest fixture
-):
+def test_evaluate_directory_save_unpacked(tmp_path: Path, expanded_test_datasets: Path):
     """Test that `evaluate_datasets()` saves in unpacked format when appropriate."""
     # Output should be saved in packed format by default
     output_dir = tmp_path / "output"
@@ -551,7 +538,7 @@ def test_evaluate_directory_save_unpacked(
 @pytest.mark.skipif(not shutil.which("gprclean"), reason="gprclean not available")
 @pytest.mark.skipif(not shutil.which("gnatformat"), reason="gnatformat not available")
 def test_build(
-    eval_test_datasets: Path,  # noqa: F811  # pytest fixture
+    eval_test_datasets: Path,
     capsys: pytest.CaptureFixture[str],
     caplog: pytest.LogCaptureFixture,
 ):
@@ -613,7 +600,7 @@ def test_build(
 @pytest.mark.skipif(not shutil.which("gprbuild"), reason="gprbuild not available")
 @pytest.mark.skipif(not shutil.which("gprls"), reason="gprls not available")
 def test_prove(
-    eval_test_datasets: Path,  # noqa: F811  # pytest fixture
+    eval_test_datasets: Path,
     capsys: pytest.CaptureFixture[str],
     caplog: pytest.LogCaptureFixture,
 ):
@@ -740,7 +727,7 @@ def test_prove(
 @pytest.mark.skipif(not shutil.which("gprbuild"), reason="gprbuild not available")
 @pytest.mark.skipif(not shutil.which("gprclean"), reason="gprclean not available")
 def test_test(
-    eval_test_datasets: Path,  # noqa: F811  # pytest fixture
+    eval_test_datasets: Path,
     capsys: pytest.CaptureFixture[str],
     caplog: pytest.LogCaptureFixture,
 ):
@@ -780,7 +767,7 @@ def test_test(
         ]
 
 
-def test_eval_path_checks(eval_test_datasets: Path):  # noqa: F811  # pytest fixture
+def test_eval_path_checks(eval_test_datasets: Path):
     """Check that evals raise appropriate exceptions when tools are not available."""
     test_datasets = load_datasets(eval_test_datasets)
 

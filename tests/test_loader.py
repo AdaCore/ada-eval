@@ -6,14 +6,7 @@ from pathlib import Path
 
 import pydantic
 import pytest
-from helpers import (
-    assert_log,
-    compacted_test_datasets,  # noqa: F401  # Fixtures used implicitly
-    evaluated_test_datasets,  # noqa: F401  # Fixtures used implicitly
-    expanded_test_datasets,  # noqa: F401  # Fixtures used implicitly
-    generated_test_datasets,  # noqa: F401  # Fixtures used implicitly
-    setup_git_repo,
-)
+from helpers import assert_log, setup_git_repo
 
 from ada_eval.datasets import Dataset, dataset_has_sample_type
 from ada_eval.datasets.loader import (
@@ -291,27 +284,27 @@ def check_loaded_datasets(
     }
 
 
-def test_load_valid_unpacked_datasets(expanded_test_datasets: Path):  # noqa: F811  # pytest fixture
+def test_load_valid_unpacked_datasets(expanded_test_datasets: Path):
     """Check that loading unpacked datasets works correctly."""
     check_loaded_datasets(load_datasets(expanded_test_datasets))
 
 
-def test_load_valid_packed_datasets(compacted_test_datasets: Path):  # noqa: F811  # pytest fixture
+def test_load_valid_packed_datasets(compacted_test_datasets: Path):
     """Check that loading packed datasets works correctly."""
     check_loaded_datasets(load_datasets(compacted_test_datasets))
 
 
-def test_load_valid_packed_generated_datasets(generated_test_datasets: Path):  # noqa: F811  # pytest fixture
+def test_load_valid_packed_generated_datasets(generated_test_datasets: Path):
     """Check that loading packed generated datasets works correctly."""
     check_loaded_datasets(load_datasets(generated_test_datasets), SampleStage.GENERATED)
 
 
-def test_load_valid_packed_evaluated_datasets(evaluated_test_datasets: Path):  # noqa: F811  # pytest fixture
+def test_load_valid_packed_evaluated_datasets(evaluated_test_datasets: Path):
     """Check that loading packed evaluated datasets works correctly."""
     check_loaded_datasets(load_datasets(evaluated_test_datasets), SampleStage.EVALUATED)
 
 
-def test_load_valid_unpacked_datasets_with_gitignore(expanded_test_datasets: Path):  # noqa: F811  # pytest fixture
+def test_load_valid_unpacked_datasets_with_gitignore(expanded_test_datasets: Path):
     """Check loading unpacked datasets with `.gitignore` files works correctly."""
     # Create a `.gitignore` file which ignores any `obj/` directories
     gitignore_path = expanded_test_datasets / ".gitignore"
@@ -384,8 +377,8 @@ def test_load_empty_packed_dataset(
 
 
 def test_load_no_valid_samples(
-    compacted_test_datasets,  # noqa: F811  # pytest fixture
-    expanded_test_datasets,  # noqa: F811  # pytest fixture
+    compacted_test_datasets: Path,
+    expanded_test_datasets: Path,
     caplog: pytest.LogCaptureFixture,
 ):
     """Check that loading a dataset with no valid samples produces a warning."""
@@ -408,9 +401,7 @@ def test_load_no_valid_samples(
 
 
 def test_load_mixed_datasets(
-    tmp_path: Path,
-    compacted_test_datasets,  # noqa: F811  # pytest fixture
-    expanded_test_datasets,  # noqa: F811  # pytest fixture
+    tmp_path: Path, compacted_test_datasets: Path, expanded_test_datasets: Path
 ):
     """Check that loading directory with mixed packed/unpacked datasets gives error."""
     mixed_dir = tmp_path / "mixed"
@@ -424,8 +415,7 @@ def test_load_mixed_datasets(
 
 
 def test_load_invalid_samples(
-    compacted_test_datasets,  # noqa: F811  # pytest fixture
-    expanded_test_datasets,  # noqa: F811  # pytest fixture
+    compacted_test_datasets: Path, expanded_test_datasets: Path
 ):
     """Test that exceptions while loading samples specify which sample raised them."""
     # Make one of the samples in `spark_test.jsonl` invalid
@@ -468,8 +458,7 @@ def test_load_invalid_samples(
 
 
 def test_load_invalid_sample_name(
-    compacted_test_datasets,  # noqa: F811  # pytest fixture
-    expanded_test_datasets,  # noqa: F811  # pytest fixture
+    compacted_test_datasets: Path, expanded_test_datasets: Path
 ):
     """Check that loading a dataset with an invalid sample name raises an error."""
     # Check packed
@@ -507,8 +496,7 @@ def test_load_invalid_sample_name(
 
 
 def test_load_non_sample_warning(
-    expanded_test_datasets: Path,  # noqa: F811  # pytest fixture
-    caplog: pytest.LogCaptureFixture,
+    expanded_test_datasets: Path, caplog: pytest.LogCaptureFixture
 ):
     """Check that a non-sample file/directory is ignored with a warning."""
     # Remove the `other.json` file from one of the spark samples and check that
@@ -521,7 +509,9 @@ def test_load_non_sample_warning(
     assert_log(caplog, WARN, f"Skipping non-sample directory: {spark_sample_path}")
 
 
-def test_load_invalid_dataset_name(compacted_test_datasets, expanded_test_datasets):  # noqa: F811  # pytest fixtures
+def test_load_invalid_dataset_name(
+    compacted_test_datasets: Path, expanded_test_datasets: Path
+):
     """Check that loading a dataset with an invalid name format raises an error."""
     shutil.move(
         compacted_test_datasets / "ada_test.jsonl",
@@ -539,7 +529,9 @@ def test_load_invalid_dataset_name(compacted_test_datasets, expanded_test_datase
         load_datasets(expanded_test_datasets)
 
 
-def test_load_invalid_dataset_kind(compacted_test_datasets, expanded_test_datasets):  # noqa: F811  # pytest fixtures
+def test_load_invalid_dataset_kind(
+    compacted_test_datasets: Path, expanded_test_datasets: Path
+):
     """Check that loading a dataset with an invalid kind raises an error."""
     shutil.move(
         compacted_test_datasets / "ada_test.jsonl",
@@ -556,7 +548,7 @@ def test_load_invalid_dataset_kind(compacted_test_datasets, expanded_test_datase
         load_datasets(expanded_test_datasets)
 
 
-def test_load_duplicate_sample_names(compacted_test_datasets):  # noqa: F811  # pytest fixture
+def test_load_duplicate_sample_names(compacted_test_datasets: Path):
     """Check that loading a dataset with duplicate sample names raises an error."""
     spark_dataset_file = compacted_test_datasets / "spark_test.jsonl"
     spark_dataset_packed_content = spark_dataset_file.read_text()
@@ -569,7 +561,7 @@ def test_load_duplicate_sample_names(compacted_test_datasets):  # noqa: F811  # 
         load_datasets(compacted_test_datasets)
 
 
-def test_load_mixed_sample_types(generated_test_datasets: Path):  # noqa: F811  # pytest fixture
+def test_load_mixed_sample_types(generated_test_datasets: Path):
     """Check that loading a dataset with mixed sample types raises an error."""
     spark_dataset_file = generated_test_datasets / "spark_test.jsonl"
     spark_dataset_content = spark_dataset_file.read_text()
@@ -588,7 +580,7 @@ def test_load_mixed_sample_types(generated_test_datasets: Path):  # noqa: F811  
         load_datasets(generated_test_datasets)
 
 
-def test_load_unpacked_dataset_invalid(expanded_test_datasets: Path):  # noqa: F811  # pytest fixture
+def test_load_unpacked_dataset_invalid(expanded_test_datasets: Path):
     """Check that `load_unpacked_dataset()` defensively raises on an invalid dataset."""
     # Remove the `other.json` file from the ada dataset
     ada_dataset_path = expanded_test_datasets / "ada_test"
@@ -600,7 +592,7 @@ def test_load_unpacked_dataset_invalid(expanded_test_datasets: Path):  # noqa: F
         load_unpacked_dataset(ada_dataset_path)
 
 
-def test_load_packed_dataset_invalid(compacted_test_datasets: Path):  # noqa: F811  # pytest fixture
+def test_load_packed_dataset_invalid(compacted_test_datasets: Path):
     """Check that `load_packed_dataset()` defensively raises on an invalid dataset."""
     # Remove the `.jsonl` suffix from the ada dataset
     ada_dataset_path = compacted_test_datasets / "ada_test.jsonl"

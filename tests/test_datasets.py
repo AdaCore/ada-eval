@@ -3,14 +3,7 @@ from logging import WARN
 from pathlib import Path
 
 import pytest
-from helpers import (
-    assert_git_status,
-    assert_log,
-    compacted_test_datasets,  # noqa: F401  # Fixtures used implicitly
-    expanded_test_datasets,  # noqa: F401  # Fixtures used implicitly
-    generated_test_datasets,  # noqa: F401  # Fixtures used implicitly
-    setup_git_repo,
-)
+from helpers import assert_git_status, assert_log, setup_git_repo
 
 from ada_eval.datasets.loader import load_datasets
 from ada_eval.datasets.types.datasets import (
@@ -93,7 +86,7 @@ def test_dataset_types():
     )
 
 
-def test_save_datasets_packed(tmp_path: Path, generated_test_datasets: Path):  # noqa: F811  # pytest fixture
+def test_save_datasets_packed(tmp_path: Path, generated_test_datasets: Path):
     # Initialise a Git repository to track changes
     setup_git_repo(tmp_path, initial_commit=True)
     assert_git_status(tmp_path, expect_dirty=False)
@@ -131,7 +124,7 @@ def test_save_datasets_packed(tmp_path: Path, generated_test_datasets: Path):  #
     assert_git_status(tmp_path, expect_dirty=False)
 
 
-def test_save_datasets_unpacked(tmp_path: Path, expanded_test_datasets: Path):  # noqa: F811  # pytest fixture
+def test_save_datasets_unpacked(tmp_path: Path, expanded_test_datasets: Path):
     # Initialise a Git repository to track changes
     setup_git_repo(tmp_path, initial_commit=True)
     assert_git_status(tmp_path, expect_dirty=False)
@@ -186,8 +179,8 @@ def test_save_datasets_unpacked(tmp_path: Path, expanded_test_datasets: Path):  
 
 def test_save_datasets_auto_format(
     tmp_path: Path,
-    expanded_test_datasets: Path,  # noqa: F811  # pytest fixture
-    compacted_test_datasets: Path,  # noqa: F811  # pytest fixture
+    expanded_test_datasets: Path,
+    compacted_test_datasets: Path,
     caplog: pytest.LogCaptureFixture,
 ):
     # Touch the `comments.md` and `prompt.md` files in spark sample 2 so that

@@ -6,10 +6,7 @@ from typing import ClassVar
 from unittest.mock import patch
 
 import pytest
-from helpers import (
-    assert_log,
-    check_test_datasets,  # noqa: F401  # Fixtures used implicitly
-)
+from helpers import assert_log
 
 from ada_eval.check_datasets import (
     FailedCanonicalEvaluationError,
@@ -47,7 +44,7 @@ from ada_eval.evals.generic_eval import GenericEval
 @pytest.mark.skipif(not shutil.which("gprls"), reason="gprls not available")
 def test_check_base_datasets(
     tmp_path: Path,
-    check_test_datasets: Path,  # noqa: F811  # pytest fixture
+    check_test_datasets: Path,
     caplog: pytest.LogCaptureFixture,
     capsys: pytest.CaptureFixture[str],
 ):
