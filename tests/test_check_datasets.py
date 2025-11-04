@@ -233,7 +233,7 @@ def test_check_base_datasets(
     )
     with pytest.raises(PassedBaselineEvaluationError, match=error_msg):
         run_check()
-    baseline_msg = "Checking that a null generation fails at least one eval ..."
+    baseline_msg = "Checking that null generations fail at least one eval ..."
     assert_log(caplog, INFO, reeval_msg)
     assert_log(caplog, INFO, baseline_msg)
     assert len(caplog.records) == 2

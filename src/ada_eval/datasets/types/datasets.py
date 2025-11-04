@@ -259,16 +259,18 @@ def verify_datasets_equal(
         DatasetsMismatchError: If the datasets do not match.
 
     """
-    # Check for missing datasets by dirname
     datasets1_dict = {d.dirname: d for d in datasets1}
     datasets2_dict = {d.dirname: d for d in datasets2}
+    # Check for missing datasets by dirname
     for dirname in datasets1_dict.keys() ^ datasets2_dict.keys():
         present_in = datasets1_name if dirname in datasets1_dict else datasets2_name
         msg = f"dataset '{dirname}' is only present in {present_in}."
         raise DatasetsMismatchError(msg)
-    # Check for any remaining differences in dataset type (this will only arise
-    # from differences in sample stage, since the kind is part of the dirname)
+    # Check for differing datasets
     for dataset_dirname in datasets1_dict:  # noqa: PLC0206 (for symmetry)
+        # Check for any remaining difference in dataset type (this will only
+        # arise from differences in sample stage, since the kind is part of the
+        # dirname)
         dataset1_type = datasets1_dict[dataset_dirname].sample_type
         dataset2_type = datasets2_dict[dataset_dirname].sample_type
         if dataset1_type is not dataset2_type:
@@ -278,10 +280,9 @@ def verify_datasets_equal(
                 f"'{dataset2_type.__name__}' in {datasets2_name}."
             )
             raise DatasetsMismatchError(msg)
-        # Check for differences in the samples
+        # Check for missing samples
         samples1 = {s.name: s for s in datasets1_dict[dataset_dirname].samples}
         samples2 = {s.name: s for s in datasets2_dict[dataset_dirname].samples}
-        # Check for missing samples
         for sample_name in samples1.keys() ^ samples2.keys():
             present_in = datasets1_name if sample_name in samples1 else datasets2_name
             msg = (

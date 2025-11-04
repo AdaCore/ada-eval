@@ -226,7 +226,7 @@ def check_base_datasets(dataset_dirs: Sequence[Path], jobs: int) -> None:
     logger.info("Re-evaluating to check canonical evaluation results are accurate ...")
     check_canonical_evaluation_results_accuracy(datasets, jobs=jobs)
     # Check that a null generation fails at least one eval on all samples
-    logger.info("Checking that a null generation fails at least one eval ...")
+    logger.info("Checking that null generations fail at least one eval ...")
     check_evaluation_baseline(datasets, jobs=jobs)
     # Report success
     logger.info("Base datasets are correct.")
