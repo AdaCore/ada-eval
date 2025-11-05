@@ -163,3 +163,50 @@ def test_evaluate(capsys):
                 canonical_evaluation=canonical,
             )
             mock_evaluate_directory.reset_mock()
+
+
+def test_check_datasets(capsys):
+    # Helper function to patch `sys.argv`
+    def patch_args(datasets: list[str] | None = None, jobs: str | None = None):
+        test_args = ["ada-eval", "check-datasets"]
+        if datasets is not None:
+            test_args += ["--datasets", *datasets]
+        if jobs is not None:
+            test_args += ["--jobs", jobs]
+        return patch.object(sys, "argv", test_args)
+
+    # Mock the `check_base_datasets()` and `cpu_count()` functions
+    mock_check_base_datasets = Mock()
+    mock_cpu_count = Mock(return_value=8)
+    check_base_datasets_patch = patch(
+        "ada_eval.cli.check_base_datasets", mock_check_base_datasets
+    )
+    cpu_count_patch = patch("ada_eval.cli.cpu_count", mock_cpu_count)
+    with check_base_datasets_patch, cpu_count_patch:
+        # Test with empty `--datasets`
+        with patch_args([]), pytest.raises(SystemExit):
+            main()
+        output = capsys.readouterr()
+        assert "argument --datasets: expected at least one argument" in output.err
+        assert output.out == ""
+        mock_check_base_datasets.assert_not_called()
+
+        # Test with various valid argument combinations
+        for datasets, jobs in itertools.product(
+            [None, ["path/to/dataset"], ["path/to/dataset1", "path/to/dataset2"]],
+            [None, "2", "4"],
+        ):
+            with patch_args(datasets, jobs):
+                main()
+            output = capsys.readouterr()
+            assert output.err == ""
+            assert output.out == ""
+            mock_check_base_datasets.assert_called_once_with(
+                dataset_dirs=(
+                    [EXPANDED_DATASETS_DIR, COMPACTED_DATASETS_DIR]
+                    if datasets is None
+                    else [Path(d) for d in datasets]
+                ),
+                jobs=8 if jobs is None else int(jobs),
+            )
+            mock_check_base_datasets.reset_mock()

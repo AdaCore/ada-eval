@@ -251,7 +251,11 @@ example_sample
     ```sh
     make evaluate-canonical
     ```
-    and checking the output in `other.json`.
+    to populate `other.json` and then
+    ```sh
+    make check-datasets
+    ```
+    to verify everything is correct.
 
 ### Generating new completions
 

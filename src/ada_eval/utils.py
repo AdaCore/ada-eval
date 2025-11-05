@@ -16,9 +16,71 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+AnyList = list[object]
+AnyDict = dict[object, object]
+
+
 def sort_dict[K: SupportsRichComparison, V](d: dict[K, V]) -> dict[K, V]:
     """Return a copy of `d` sorted by key."""
     return dict(sorted(d.items(), key=lambda item: item[0]))
+
+
+def diff_dicts[K, V](
+    dict1: dict[K, V], dict2: dict[K, V]
+) -> tuple[dict[K, V | AnyDict | AnyList], dict[K, V | AnyDict | AnyList]]:
+    """
+    Return the differences between two dictionaries.
+
+    Returns the remainders of the two dicts after removing the keys which are
+    present in both and have the same value.
+
+    Nested `dict`s and `Sequence`s (except strings) are diffed recursively.
+    """
+    diff1: dict[K, V | AnyDict | AnyList] = {
+        k: v for k, v in dict1.items() if k not in dict2 or dict2[k] != v
+    }
+    diff2: dict[K, V | AnyDict | AnyList] = {
+        k: v for k, v in dict2.items() if k not in dict1 or dict1[k] != v
+    }
+    for k in diff1.keys() & diff2.keys():
+        v1, v2 = diff1[k], diff2[k]
+        if type(v1) is type(v2) and not isinstance(v1, str):
+            if isinstance(v1, dict) and isinstance(v2, dict):
+                diff1[k], diff2[k] = diff_dicts(v1, v2)
+            elif isinstance(v1, Sequence) and isinstance(v2, Sequence):
+                diff1[k], diff2[k] = diff_sequences(v1, v2)
+    return diff1, diff2
+
+
+def diff_sequences[T](
+    seq1: Sequence[T], seq2: Sequence[T]
+) -> tuple[list[T | AnyDict | AnyList], list[T | AnyDict | AnyList]]:
+    """
+    Return the differences between two sequences.
+
+    Returns the remainders of the two sequences after removing the elements
+    which are the same in both.
+
+    Nested `dict`s and `Sequence`s (except strings) are diffed recursively.
+    """
+    diff1: list[T | AnyDict | AnyList] = []
+    diff2: list[T | AnyDict | AnyList] = []
+    for elem1, elem2 in zip(seq1, seq2, strict=False):
+        if elem1 != elem2:
+            new_elem1: T | AnyDict | AnyList = elem1
+            new_elem2: T | AnyDict | AnyList = elem2
+            if type(elem1) is type(elem2) and not isinstance(elem1, str):
+                if isinstance(elem1, dict) and isinstance(elem2, dict):
+                    new_elem1, new_elem2 = diff_dicts(elem1, elem2)
+                elif isinstance(elem1, Sequence) and isinstance(elem2, Sequence):
+                    new_elem1, new_elem2 = diff_sequences(elem1, elem2)
+            diff1.append(new_elem1)
+            diff2.append(new_elem2)
+    if len(seq1) > len(seq2):
+        diff1.extend(seq1[len(seq2) :])
+    elif len(seq2) > len(seq1):
+        diff2.extend(seq2[len(seq1) :])
+    return diff1, diff2
 
 
 def subtract_counters[T](minuend: Counter[T], subtrahend: Counter[T]) -> Counter[T]:

@@ -1,13 +1,55 @@
+import copy
 import re
 from pathlib import Path
+from typing import Any
 
 import pytest
 
 from ada_eval.utils import (
     TextPositionOutOfRangeError,
+    diff_dicts,
     index_from_line_and_col,
     make_files_relative_to,
 )
+
+
+def test_diff_dicts_and_sequences():
+    left = {
+        "a": 1,
+        "b": {"c": 3, "d": [{"e": 5}, [6, 7], [8, 9], [8, 9]]},
+        "f": [10, 11, 12],
+        "g": [13, 14, 15],
+        "h": {"i": 16, "j": 17},
+        "k": [18],
+        "l": "hello",
+        "m": ["n", "o", "p"],
+    }
+    right: dict[str, Any] = copy.deepcopy(left)
+    right["b"]["c"] = [30, 31]
+    right["b"]["d"][0]["g"] = 50
+    right["b"]["d"][2].append(9.5)
+    right["b"]["d"][3].pop()
+    right["f"][:2] = 11, 10
+    right["k"] = ["18"]
+    right["l"] = "hello!"
+    right["m"] = tuple(right["m"])
+    right["q"] = 20
+    left_diff, right_diff = diff_dicts(left, right)
+    assert left_diff == {
+        "b": {"c": 3, "d": [{}, [], [9]]},
+        "f": [10, 11],
+        "k": [18],
+        "l": "hello",
+        "m": ["n", "o", "p"],
+    }
+    assert right_diff == {
+        "b": {"c": [30, 31], "d": [{"g": 50}, [9.5], []]},
+        "f": [11, 10],
+        "k": ["18"],
+        "l": "hello!",
+        "m": ("n", "o", "p"),
+        "q": 20,
+    }
 
 
 def test_make_files_relative_to():

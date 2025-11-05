@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import logging
 import shutil
-from collections.abc import Iterable, Sequence
+from collections.abc import Collection, Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import TypeGuard
+
+from ada_eval.utils import diff_dicts
 
 from .samples import (
     GeneratedSample,
@@ -229,3 +231,73 @@ def save_datasets_auto_format(datasets: Sequence[Dataset[Sample]], path: Path) -
             return
     # Otherwise, save as a collection of datasets
     save_datasets(datasets, path, unpacked=unpacked)
+
+
+class DatasetsMismatchError(ValueError):
+    """Raised when two collections of datasets do not match."""
+
+
+def verify_datasets_equal(
+    datasets1: Collection[Dataset[Sample]],
+    datasets1_name: str,
+    datasets2: Collection[Dataset[Sample]],
+    datasets2_name: str,
+) -> None:
+    """
+    Verify that two collections of datasets are the same.
+
+    The order of the datasets in each collection and the samples in each dataset
+    does not matter.
+
+    Args:
+        datasets1: The first collection of datasets.
+        datasets1_name: Name of the first collection (for exception messages).
+        datasets2: The second collection of datasets.
+        datasets2_name: Name of the second collection (for exception messages).
+
+    Raises:
+        DatasetsMismatchError: If the datasets do not match.
+
+    """
+    datasets1_dict = {d.dirname: d for d in datasets1}
+    datasets2_dict = {d.dirname: d for d in datasets2}
+    # Check for missing datasets by dirname
+    for dirname in datasets1_dict.keys() ^ datasets2_dict.keys():
+        present_in = datasets1_name if dirname in datasets1_dict else datasets2_name
+        msg = f"dataset '{dirname}' is only present in {present_in}."
+        raise DatasetsMismatchError(msg)
+    # Check for differing datasets
+    for dataset_dirname in datasets1_dict:  # noqa: PLC0206 (for symmetry)
+        # Check for any remaining difference in dataset type (this will only
+        # arise from differences in sample stage, since the kind is part of the
+        # dirname)
+        dataset1_type = datasets1_dict[dataset_dirname].sample_type
+        dataset2_type = datasets2_dict[dataset_dirname].sample_type
+        if dataset1_type is not dataset2_type:
+            msg = (
+                f"dataset '{dataset_dirname}' has type "
+                f"'{dataset1_type.__name__}' in {datasets1_name} but type "
+                f"'{dataset2_type.__name__}' in {datasets2_name}."
+            )
+            raise DatasetsMismatchError(msg)
+        # Check for missing samples
+        samples1 = {s.name: s for s in datasets1_dict[dataset_dirname].samples}
+        samples2 = {s.name: s for s in datasets2_dict[dataset_dirname].samples}
+        for sample_name in samples1.keys() ^ samples2.keys():
+            present_in = datasets1_name if sample_name in samples1 else datasets2_name
+            msg = (
+                f"sample '{sample_name}' in dataset '{dataset_dirname}' is "
+                f"only present in {present_in}."
+            )
+            raise DatasetsMismatchError(msg)
+        # Check for differing samples
+        for sample_name, sample1 in samples1.items():
+            sample2 = samples2[sample_name]
+            if sample1 != sample2:
+                diff1, diff2 = diff_dicts(sample1.model_dump(), sample2.model_dump())
+                msg = (
+                    f"sample '{sample_name}' in dataset '{dataset_dirname}' "
+                    f"differs between {datasets1_name} and {datasets2_name}:\n\n"
+                    f"{diff1!r}\n\n{diff2!r}"
+                )
+                raise DatasetsMismatchError(msg)

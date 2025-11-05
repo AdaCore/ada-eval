@@ -42,3 +42,6 @@ evaluate:
 evaluate-canonical:
 	uv run ada-eval evaluate --canonical
 	uv run ada-eval pack
+
+check-datasets:
+	uv run ada-eval check-datasets
