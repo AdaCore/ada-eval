@@ -3,7 +3,7 @@ import shutil
 import subprocess
 import time
 from collections import Counter
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal
@@ -20,7 +20,7 @@ AnyList = list[object]
 AnyDict = dict[object, object]
 
 
-def sort_dict[K: SupportsRichComparison, V](d: dict[K, V]) -> dict[K, V]:
+def sort_dict[K: SupportsRichComparison, V](d: Mapping[K, V]) -> dict[K, V]:
     """Return a copy of `d` sorted by key."""
     return dict(sorted(d.items(), key=lambda item: item[0]))
 

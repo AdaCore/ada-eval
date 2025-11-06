@@ -16,6 +16,7 @@ from ada_eval.utils import serialise_sequence, type_checked
 
 from .directory_contents import DirectoryContents, get_contents_git_aware
 from .evaluation_stats import EvaluationStats, ProofCheck
+from .metrics import MetricSection, metric_section, metric_value
 
 
 class InvalidSampleNameError(ValueError):
@@ -387,6 +388,26 @@ class EvaluatedSample(GeneratedSample):
     stage: ClassVar = SampleStage.EVALUATED
 
     evaluation_results: Sequence[EvaluationStats]
+
+    def metrics(self) -> MetricSection:
+        results = {es.eval: es for es in self.evaluation_results}
+        canonical_results = {es.eval: es for es in self.canonical_evaluation_results}
+        if not results.keys() <= canonical_results.keys():
+            msg = (
+                f"sample '{self.name}' is missing canonical evaluation stats "
+                f"for evals {results.keys() - canonical_results.keys()}."
+            )
+            raise ValueError(msg)
+        passed_all = all(es.passed for es in self.evaluation_results)
+        return metric_section(
+            sub_metrics=(
+                {"passed all evaluations": metric_value(count=int(passed_all))}
+                | {
+                    ev.value: es.metrics(canonical_results[ev])
+                    for ev, es in results.items()
+                }
+            ),
+        )
 
 
 class EvaluatedAdaSample(GeneratedAdaSample, EvaluatedSample):

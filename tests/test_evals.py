@@ -22,6 +22,7 @@ from ada_eval.datasets.types.evaluation_stats import (
     EvaluationStatsTimedOut,
     ProofCheck,
 )
+from ada_eval.datasets.types.metrics import MetricSection, metric_section
 from ada_eval.datasets.types.samples import (
     EVALUATED_SAMPLE_TYPES,
     GENERATED_SAMPLE_TYPES,
@@ -131,6 +132,9 @@ def test_generic_eval(
     # "test_sample_2".
     class MockEvaluationStats(EvaluationStatsBase):
         passed: ClassVar = True
+
+        def metrics(self, _: EvaluationStatsBase) -> MetricSection:
+            return metric_section()
 
     class MockEval0(GenericEval[GeneratedSample, EvaluatedSample]):
         eval: ClassVar = Eval.BUILD

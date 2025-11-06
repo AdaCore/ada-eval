@@ -13,6 +13,7 @@ from ada_eval.paths import (
     EXPANDED_DATASETS_DIR,
     GENERATED_DATASETS_DIR,
 )
+from ada_eval.report import report_evaluation_results
 from ada_eval.tools import Tool, create_tool
 
 
@@ -27,9 +28,7 @@ def call_pack_datasets(args):
 def generate(args):
     tool = create_tool(args.tool, args.tool_config_file)
     tool.apply_to_directory(
-        path=args.dataset,
-        output_dir=GENERATED_DATASETS_DIR,
-        jobs=args.jobs,
+        path=args.dataset, output_dir=GENERATED_DATASETS_DIR, jobs=args.jobs
     )
 
 
@@ -51,6 +50,14 @@ def evaluate(args):
 
 def call_check_base_datasets(args) -> None:
     check_base_datasets(dataset_dirs=args.datasets, jobs=args.jobs)
+
+
+def call_report_evaluation_results(args) -> None:
+    report_evaluation_results(
+        dataset_dirs=args.dataset_dirs,
+        datasets_filter=args.datasets,
+        samples_filter=args.samples,
+    )
 
 
 def main() -> None:
@@ -159,10 +166,7 @@ def main() -> None:
     )
 
     # Evaluate completions for a dataset
-    evaluation_parser = subparsers.add_parser(
-        "evaluate",
-        help="Evaluate completions",
-    )
+    evaluation_parser = subparsers.add_parser("evaluate", help="Evaluate completions")
     evaluation_parser.set_defaults(func=evaluate)
     evaluation_parser.add_argument(
         "--canonical",
@@ -219,6 +223,28 @@ def main() -> None:
         type=int,
         help="Number of evaluations to run in parallel.",
         default=default_num_jobs,
+    )
+
+    report_parser = subparsers.add_parser("report", help="Generate evaluation report")
+    report_parser.set_defaults(func=call_report_evaluation_results)
+    report_parser.add_argument(
+        "--dataset-dirs",
+        type=Path,
+        nargs="+",
+        help="Paths to dataset directories to include in the report.",
+        default=[EVALUATED_DATASETS_DIR],
+    )
+    report_parser.add_argument(
+        "--datasets",
+        type=str,
+        nargs="+",
+        help="Full names (i.e. '<kind>_<name>') of datasets to include in the report.",
+    )
+    report_parser.add_argument(
+        "--samples",
+        type=str,
+        nargs="+",
+        help="Names of samples to include in the report.",
     )
 
     args = parser.parse_args()
