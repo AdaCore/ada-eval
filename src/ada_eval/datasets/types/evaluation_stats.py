@@ -47,7 +47,7 @@ class EvaluationStatsInvalidBase(EvaluationStatsBase):
     passed: ClassVar = False
 
     def metrics(self, _: EvaluationStatsBase) -> MetricSection:
-        return metric_section(sub_metrics={"evaluation errors": metric_value()})
+        return metric_section({"evaluation errors": metric_value()})
 
 
 class EvaluationStatsFailed(EvaluationStatsInvalidBase):
@@ -75,18 +75,22 @@ class EvaluationStatsBuild(EvaluationStatsBase):
         )
 
     def metrics(self, _: EvaluationStatsBase) -> MetricSection:
-        metrics: dict[str, Metric] = {}
-        if self.compiled:
-            if self.post_format_warnings:
-                sub_metrics = {"other warnings": metric_value()}
-            elif self.pre_format_warnings:
-                sub_metrics = {"formatting warnings": metric_value()}
-            else:
-                sub_metrics = {"no warnings": metric_value()}
-            metrics = {"compiled": metric_section(sub_metrics=sub_metrics)}
-        else:
-            metrics = {"failed to compile": metric_value()}
-        return metric_section(sub_metrics=metrics)
+        metrics: dict[str, Metric] = {
+            "compiled": metric_section(
+                {
+                    "no warnings": metric_value(
+                        when=not (self.pre_format_warnings or self.post_format_warnings)
+                    ),
+                    "formatting warnings": metric_value(
+                        when=self.pre_format_warnings and not self.post_format_warnings
+                    ),
+                    "other warnings": metric_value(when=self.post_format_warnings),
+                },
+                when=self.compiled,
+            ),
+            "failed to compile": metric_value(when=not self.compiled),
+        }
+        return metric_section(metrics)
 
 
 class ProofCheck(BaseModel):
@@ -127,40 +131,37 @@ class EvaluationStatsProve(EvaluationStatsBase):
 
     def metrics(self, canonical_stats: EvaluationStatsBase) -> MetricSection:
         canonical_stats = type_checked(canonical_stats, EvaluationStatsProve)
-        match self.result:
-            case "subprogram_not_found":
-                metrics: dict[str, Metric] = {"subprogram not found": metric_value()}
-            case "error" | "unproved":
-                metrics = {self.result: metric_value()}
-            case "proved_incorrectly":
-                sub_metrics: dict[str, Metric] = {}
-                for key, value in {
-                    "warnings": self.warnings.total(),
-                    "non-spark entities": len(self.non_spark_entities),
-                    "missing required checks": len(self.missing_required_checks),
-                    "pragma assume": self.pragma_assume_count,
-                }.items():
-                    if value > 0:
-                        sub_metrics[key] = metric_value(value=value)
-                metrics = {
-                    "proved incorrectly": metric_section(sub_metrics=sub_metrics)
-                }
-            case "proved":
-                sub_metrics = {
-                    "total proof steps": metric_value(value=self.proof_steps)
-                }
-                absent = (
-                    canonical_stats.unproved_checks - self.unproved_checks
-                ).total()
-                extra = (self.proved_checks - canonical_stats.proved_checks).total()
-                for key, value in {
-                    "absent checks": absent,
-                    "unnecessary checks": extra,
-                }.items():
-                    if value > 0:
-                        sub_metrics[key] = metric_value(value=value)
-                metrics = {"proved correctly": metric_section(sub_metrics=sub_metrics)}
-        return metric_section(sub_metrics=metrics)
+        absent = (canonical_stats.unproved_checks - self.unproved_checks).total()
+        extra = (self.proved_checks - canonical_stats.proved_checks).total()
+        metrics: dict[str, Metric] = {
+            "proved correctly": metric_section(
+                {
+                    "total proof steps": metric_value(value=self.proof_steps),
+                    "absent checks": metric_value(value=absent),
+                    "unnecessary checks": metric_value(value=extra),
+                },
+                when=self.result == "proved",
+            ),
+            "proved incorrectly": metric_section(
+                {
+                    "missing required checks": metric_value(
+                        value=len(self.missing_required_checks)
+                    ),
+                    "non-spark entities": metric_value(
+                        value=len(self.non_spark_entities)
+                    ),
+                    "pragma assume": metric_value(value=self.pragma_assume_count),
+                    "warnings": metric_value(value=self.warnings.total()),
+                },
+                when=self.result == "proved_incorrectly",
+            ),
+            "unproved": metric_value(when=self.result == "unproved"),
+            "error": metric_value(when=self.result == "error"),
+            "subprogram not found": metric_value(
+                when=self.result == "subprogram_not_found"
+            ),
+        }
+        return metric_section(metrics)
 
 
 class EvaluationStatsTest(EvaluationStatsBase):
@@ -173,14 +174,12 @@ class EvaluationStatsTest(EvaluationStatsBase):
         return self.compiled and self.passed_tests
 
     def metrics(self, _: EvaluationStatsBase) -> MetricSection:
-        if self.compiled:
-            if self.passed_tests:
-                metrics = {"passed": metric_value()}
-            else:
-                metrics = {"tests failed": metric_value()}
-        else:
-            metrics = {"compilation failed": metric_value()}
-        return metric_section(sub_metrics=metrics)
+        metrics: dict[str, Metric] = {
+            "passed": metric_value(when=self.compiled and self.passed_tests),
+            "tests failed": metric_value(when=self.compiled and not self.passed_tests),
+            "compilation failed": metric_value(when=not self.compiled),
+        }
+        return metric_section(metrics)
 
 
 EvaluationStats = (

@@ -14,7 +14,7 @@ from ada_eval.utils import type_checked
 def print_table(rows: Iterable[tuple[str, str]]) -> None:
     padding = max(len(row[0]) for row in rows) + 2
     for name, value in rows:
-        print(f"{name:<{padding}}{value}")
+        print(f"{name:<{padding}}{value}".rstrip())
 
 
 def report_evaluation_results(

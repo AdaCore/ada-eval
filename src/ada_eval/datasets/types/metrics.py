@@ -5,8 +5,6 @@ from typing import Literal
 
 from pydantic import BaseModel
 
-from ada_eval.utils import sort_dict
-
 MetricDisplay = Literal["max", "min", "mean", "sum", "count"]
 
 
@@ -67,7 +65,7 @@ class MetricSection(MetricBase):
         if self.display != other.display:
             raise MetricAdditionError("display", self, other)
         combined_sub_metrics: dict[str, Metric] = {}
-        for name in self.sub_metrics.keys() | other.sub_metrics.keys():
+        for name in dict(self.sub_metrics) | dict(other.sub_metrics):
             if name in self.sub_metrics and name in other.sub_metrics:
                 sub1 = self.sub_metrics[name]
                 sub2 = other.sub_metrics[name]
@@ -97,7 +95,7 @@ class MetricSection(MetricBase):
             (f"{indent}{top_level_name}:", indent + self.value_str(count_denominator))
         ]
         indent += " " * 4
-        for name, sub_metric in sort_dict(self.sub_metrics).items():
+        for name, sub_metric in self.sub_metrics.items():
             if sub_metric.count == 0:
                 continue
             if isinstance(sub_metric, MetricValue):
@@ -113,7 +111,12 @@ Metric = MetricValue | MetricSection
 
 
 def metric_value(
-    count: int = 1, value: float | None = None, display: MetricDisplay | None = None
+    count: int = 1,
+    value: float | None = None,
+    display: MetricDisplay | None = None,
+    *,
+    when: bool = True,
+    allow_zero_value: bool = False,
 ) -> MetricValue:
     if display is None:
         display = "count" if value is None else "sum"
@@ -128,16 +131,27 @@ def metric_value(
         sum_ = value
         min_ = value
         max_ = value
+    if not allow_zero_value:
+        when = when and value != 0
+    if not when:
+        return metric_value(count=0, display=display, allow_zero_value=True)
     return MetricValue(count=count, sum=sum_, min=min_, max=max_, display=display)
 
 
-def metric_section(
+def metric_section(  # noqa: PLR0913  # Most calls will not specify all arguments
+    sub_metrics: Mapping[str, Metric] | None = None,
     count: int = 1,
     value: float | None = None,
     display: MetricDisplay | None = None,
-    sub_metrics: Mapping[str, Metric] | None = None,
+    *,
+    when: bool = True,
+    allow_zero_value: bool = False,
 ) -> MetricSection:
+    if not when:
+        return metric_section(count=0, display=display, allow_zero_value=True)
     return MetricSection(
-        **metric_value(count=count, value=value, display=display).model_dump(),
+        **metric_value(
+            count=count, value=value, display=display, allow_zero_value=allow_zero_value
+        ).model_dump(),
         sub_metrics=sub_metrics or {},
     )

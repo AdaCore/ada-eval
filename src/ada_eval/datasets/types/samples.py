@@ -400,13 +400,11 @@ class EvaluatedSample(GeneratedSample):
             raise ValueError(msg)
         passed_all = all(es.passed for es in self.evaluation_results)
         return metric_section(
-            sub_metrics=(
-                {"passed all evaluations": metric_value(count=int(passed_all))}
-                | {
-                    ev.value: es.metrics(canonical_results[ev])
-                    for ev, es in results.items()
-                }
-            ),
+            {"passed all evaluations": metric_value(count=int(passed_all))}
+            | {
+                ev.value: es.metrics(canonical_results[ev])
+                for ev, es in results.items()
+            }
         )
 
 
