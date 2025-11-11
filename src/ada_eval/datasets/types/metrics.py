@@ -36,7 +36,7 @@ class MetricBase(BaseModel):
             return f"{self.count} {samples} ({fraction:.2%})"
         mean = self.sum / self.count if self.count != 0 else float("nan")
         if self.display == "value":
-            return f"{self.sum} (min {self.min}, max {self.max}, mean {mean:.2f})"
+            return f"{self.sum} (min {self.min}; max {self.max}; mean {mean:.2f})"
         if self.display == "both":
             return f"{self.sum} ({self.count} {samples}; {fraction:.2%})"
         return ""

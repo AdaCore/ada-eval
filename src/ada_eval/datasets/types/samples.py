@@ -400,7 +400,17 @@ class EvaluatedSample(GeneratedSample):
             raise ValueError(msg)
         passed_all = all(es.passed for es in self.evaluation_results)
         return metric_section(
-            {"passed all evaluations": metric_value(count=int(passed_all))}
+            {
+                "passed all evaluations": metric_value(when=passed_all),
+                "generation runtime / s": metric_value(
+                    value=self.generation_stats.runtime_ms / 1000,
+                    display="value",
+                    allow_zero_value=True,
+                ),
+                "generation exit code non-zero": metric_value(
+                    when=self.generation_stats.exit_code != 0
+                ),
+            }
             | {
                 ev.value: es.metrics(canonical_results[ev])
                 for ev, es in results.items()

@@ -136,7 +136,9 @@ class EvaluationStatsProve(EvaluationStatsBase):
         metrics: dict[str, Metric] = {
             "proved correctly": metric_section(
                 {
-                    "proof steps": metric_value(value=self.proof_steps, display="value"),
+                    "proof steps": metric_value(
+                        value=self.proof_steps, display="value"
+                    ),
                     "absent checks": metric_value(value=absent),
                     "unnecessary checks": metric_value(value=extra),
                 },
