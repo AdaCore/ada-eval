@@ -22,6 +22,7 @@ def report_evaluation_results(
     datasets_filter: Collection[str] | None,
     samples_filter: Collection[str] | None,
 ) -> None:
+    # Ensure filter lookup is O(1)
     if datasets_filter is not None:
         datasets_filter = set(datasets_filter)
     if samples_filter is not None:
@@ -42,12 +43,16 @@ def report_evaluation_results(
         for sample in dataset.samples:
             if samples_filter is None or sample.name in samples_filter:
                 metrics = metrics.add(sample.metrics())
-    # Print the report
-    eval_sections = {e: metrics.sub_metrics[e.value] for e in Eval}
-    metrics.sub_metrics = {
-        k: v for k, v in metrics.sub_metrics.items() if k not in eval_sections
+    # Print the report (with each eval as a separate table)
+    eval_sections = {
+        e: metrics.sub_metrics[e.value] for e in Eval if e.value in metrics.sub_metrics
     }
-    table = metrics.table("total samples", metrics.count)
+    overall_metrics = metric_section(
+        {k: v for k, v in metrics.sub_metrics.items() if k not in eval_sections},
+        count=metrics.count,
+        display="count_no_perc",
+    )
+    table = overall_metrics.table("total samples", metrics.count)
     for e, section in eval_sections.items():
         table.append(("", ""))
         table.extend(type_checked(section, MetricSection).table(e.value, metrics.count))

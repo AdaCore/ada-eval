@@ -5,7 +5,7 @@ from typing import Literal
 
 from pydantic import BaseModel
 
-MetricDisplay = Literal["none", "count", "value", "both"]
+MetricDisplay = Literal["none", "count", "count_no_perc", "value", "count_and_value"]
 
 
 class MetricAdditionError(ValueError):
@@ -31,13 +31,14 @@ class MetricBase(BaseModel):
 
     def value_str(self, count_denominator: int) -> str:
         samples = "sample" if self.count == 1 else "samples"
-        fraction = self.count / count_denominator
-        if self.display == "count":
-            return f"{self.count} {samples} ({fraction:.2%})"
+        fraction = self.count / count_denominator if count_denominator != 0 else 0
+        if self.display in ("count", "count_no_perc"):
+            perc = f" ({fraction:.2%})" if self.display == "count" else ""
+            return f"{self.count} {samples}{perc}"
         mean = self.sum / self.count if self.count != 0 else float("nan")
         if self.display == "value":
             return f"{self.sum} (min {self.min}; max {self.max}; mean {mean:.2f})"
-        if self.display == "both":
+        if self.display == "count_and_value":
             return f"{self.sum} ({self.count} {samples}; {fraction:.2%})"
         return ""
 
@@ -116,7 +117,7 @@ def metric_value(
     allow_zero_value: bool = False,
 ) -> MetricValue:
     if display is None:
-        display = "count" if value is None else "both"
+        display = "count" if value is None else "count_and_value"
     if value is None and count == 0:
         value = 0
         sum_: float = 0
