@@ -221,7 +221,9 @@ def main() -> None:
         default=default_num_jobs,
     )
 
-    report_parser = subparsers.add_parser("report", help="Generate evaluation report")
+    report_parser = subparsers.add_parser(
+        "report", help="Generate a report of evaluation results"
+    )
     report_parser.set_defaults(func=call_report_evaluation_results)
     report_parser.add_argument(
         "--dataset-dirs",

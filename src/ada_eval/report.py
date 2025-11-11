@@ -9,14 +9,6 @@ from ada_eval.datasets.types.metrics import MetricSection, metric_section
 from ada_eval.utils import type_checked
 
 
-def print_table(rows: Sequence[tuple[str, str]]) -> None:
-    if len(rows) == 0:
-        return
-    padding = max(len(row[0]) for row in rows) + 2
-    for name, value in rows:
-        print(f"{name:<{padding}}{value}".rstrip())
-
-
 class ReportCLIArgs(BaseModel):
     """
     CLI arguments for the `report` command.
@@ -44,7 +36,17 @@ class ReportCLIArgs(BaseModel):
     list_samples: bool = False
 
 
+def _print_metric_table(rows: Sequence[tuple[str, str]]) -> None:
+    """Print a table of metrics to stdout, with padding to separate the columns."""
+    if len(rows) == 0:
+        return
+    padding = max(len(row[0]) for row in rows) + 2
+    for name, value in rows:
+        print(f"{name:<{padding}}{value}".rstrip())
+
+
 def report_evaluation_results(args: ReportCLIArgs) -> None:
+    """Print a report of evaluation results to stdout, according to `args`."""
     # Load all datasets
     datasets = [d for directory in args.dataset_dirs for d in load_datasets(directory)]
     # Accumulate the metrics
@@ -86,4 +88,4 @@ def report_evaluation_results(args: ReportCLIArgs) -> None:
     for name, section in metrics.sub_metrics.items():
         table.extend(type_checked(section, MetricSection).table(name, metrics.count))
         table.append(("", ""))
-    print_table(table[:-1])  # Remove trailing blank line
+    _print_metric_table(table[:-1])  # Remove trailing blank line

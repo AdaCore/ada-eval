@@ -390,6 +390,18 @@ class EvaluatedSample(GeneratedSample):
     evaluation_results: Sequence[EvaluationStats]
 
     def metrics(self) -> MetricSection:
+        """
+        Return the metrics for this sample.
+
+        The returned `MetricSection` includes miscellaneous metrics under the
+        `"total samples"` heading and a section for each eval present in
+        `evaluation_results`.
+
+        Raises:
+            ValueError: If any evaluation result does not have a corresponding
+                canonical evaluation result.
+
+        """
         results = {es.eval: es for es in self.evaluation_results}
         canonical_results = {es.eval: es for es in self.canonical_evaluation_results}
         if not results.keys() <= canonical_results.keys():

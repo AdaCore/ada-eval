@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from abc import abstractmethod
 from collections.abc import Mapping, Sequence
-from typing import Literal
+from typing import Literal, Self
 
 from pydantic import BaseModel
 
@@ -31,6 +31,7 @@ class MetricBase(BaseModel):
     display: MetricDisplay
 
     def value_str(self, count_denominator: int) -> str:
+        """Return this metric's value as a string formatted according to `display`."""
         samples = "sample" if self.count == 1 else "samples"
         fraction = self.count / count_denominator if count_denominator != 0 else 0
         if self.display in ("count", "count_no_perc"):
@@ -44,11 +45,28 @@ class MetricBase(BaseModel):
         return ""
 
     @abstractmethod
+    def add(self, other: Self) -> Self:
+        """Return the sum of this metric and another metric of the same type."""
+
+    @abstractmethod
     def has_metric_at_path(self, path: Sequence[str]) -> bool:
         """Return whether this metric contains a non-empty metric at a relative path."""
 
 
 class MetricValue(MetricBase):
+    """
+    The value of a single metric, aggregated over some number of samples.
+
+    Attributes:
+        count: The number of samples to which this metric applies.
+        sum: The sum of the metric value over all samples to which this metric applies.
+        min: The minimum metric value over all samples to which this metric applies.
+        max: The maximum metric value over all samples to which this metric applies.
+        display: The format in which to display the value of this metric when
+            printing a report.
+
+    """
+
     def add(self, other: MetricValue) -> MetricValue:
         if self.display != other.display:
             raise MetricAdditionError("display", self, other)
@@ -65,6 +83,19 @@ class MetricValue(MetricBase):
 
 
 class MetricSection(MetricBase):
+    """
+    A section containing multiple metrics, aggregated over some number of samples.
+
+    Has all the attributes of `MetricValue`, representing a top level metric
+    value for the section, in addition to ...
+
+    Attributes:
+        sub_metrics: A collection of metrics which are subsidiary in some way to
+            the top-level metric. Takes the form of a mapping from metric names
+            to `Metric`s.
+
+    """
+
     sub_metrics: Mapping[str, Metric]
 
     def add(self, other: MetricSection) -> MetricSection:
@@ -105,6 +136,23 @@ class MetricSection(MetricBase):
     def table(
         self, top_level_name: str, count_denominator: int, indent: str = ""
     ) -> list[tuple[str, str]]:
+        """
+        Return a simple table representation of this metric section.
+
+        Returns a list of `(label, value)` tuples.
+
+        `sub_metrics` with a `count` of zero are omitted.
+
+        `sub_metrics` are indented (in both name and value columns) with respect
+        to their parent section.
+
+        Args:
+            top_level_name: The name to use as the label for this section.
+            count_denominator: The denominator to use when computing this
+                section's count percentage (if applicable).
+            indent: The initial indentation level prepended to all lines.
+
+        """
         lines = [
             (f"{indent}{top_level_name}:", indent + self.value_str(count_denominator))
         ]
@@ -132,6 +180,26 @@ def metric_value(
     when: bool = True,
     allow_zero_value: bool = False,
 ) -> MetricValue:
+    """
+    Construct a `MetricValue` for a single sample.
+
+    Args:
+        count: The number of samples to which this metric applies.
+        value: The value of the metric for this sample, to set to all of `sum`,
+            `min`, and `max`. By default, `value=0` implies `when=False` (see
+            `allow_zero_value`). If `None`, defaults to `count`, unless `count`
+            is 0, in which case those three fields are set as appropriate to
+            represent an absence of data.
+        display: The format in which to display the value of this metric when
+            printing a report. Defaults to `"count_and_value"` if `value` is
+            specified, or `"count"` otherwise.
+        when: If `False`, ignore all other parameters and return an empty
+            `MetricValue` (i.e. `metric_value(count=0)`).
+        allow_zero_value: If `False` (default), treat `value=0` as implying
+            `when=False`, returning an empty `MetricValue`. If `True`, `value=0`
+            receives no special treatment.
+
+    """
     if display is None:
         display = "count" if value is None else "count_and_value"
     if value is None and count == 0:
@@ -161,6 +229,14 @@ def metric_section(  # noqa: PLR0913  # Most calls will not specify all argument
     when: bool = True,
     allow_zero_value: bool = False,
 ) -> MetricSection:
+    """
+    Construct a `MetricSection` for a single sample.
+
+    Takes the same parameters as `metric_value`, in addition to a `sub_metrics`
+    which is passed directly to the `MetricSection`'s `sub_metrics` attribute
+    (defaults to an empty dictionary).
+
+    """
     if not when:
         return metric_section(count=0, display=display, allow_zero_value=True)
     return MetricSection(
