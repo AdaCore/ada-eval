@@ -20,11 +20,14 @@ def print_table(rows: Iterable[tuple[str, str]]) -> None:
 def report_evaluation_results(
     dataset_dirs: Iterable[Path],
     datasets_filter: Collection[str] | None,
+    dataset_kinds_filter: Collection[str] | None,
     samples_filter: Collection[str] | None,
 ) -> None:
     # Ensure filter lookup is O(1)
     if datasets_filter is not None:
         datasets_filter = set(datasets_filter)
+    if dataset_kinds_filter is not None:
+        dataset_kinds_filter = set(dataset_kinds_filter)
     if samples_filter is not None:
         samples_filter = set(samples_filter)
     # Load all datasets
@@ -32,7 +35,10 @@ def report_evaluation_results(
     # Accumulate the metrics
     metrics = metric_section(count=0)
     for dataset in datasets:
-        if not (datasets_filter is None or dataset.dirname in datasets_filter):
+        if not (
+            (datasets_filter is None or dataset.dirname in datasets_filter)
+            and (dataset_kinds_filter is None or dataset.kind in dataset_kinds_filter)
+        ):
             continue
         if not dataset_has_sample_type(dataset, EvaluatedSample):
             msg = (

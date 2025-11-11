@@ -56,6 +56,7 @@ def call_report_evaluation_results(args) -> None:
     report_evaluation_results(
         dataset_dirs=args.dataset_dirs,
         datasets_filter=args.datasets,
+        dataset_kinds_filter=args.dataset_kinds,
         samples_filter=args.samples,
     )
 
@@ -239,6 +240,12 @@ def main() -> None:
         type=str,
         nargs="+",
         help="Full names (i.e. '<kind>_<name>') of datasets to include in the report.",
+    )
+    report_parser.add_argument(
+        "--dataset-kinds",
+        type=str,
+        nargs="+",
+        help="Kinds of datasets to include in the report.",
     )
     report_parser.add_argument(
         "--samples",
