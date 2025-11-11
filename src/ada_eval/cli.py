@@ -13,7 +13,7 @@ from ada_eval.paths import (
     EXPANDED_DATASETS_DIR,
     GENERATED_DATASETS_DIR,
 )
-from ada_eval.report import report_evaluation_results
+from ada_eval.report import ReportCLIArgs, report_evaluation_results
 from ada_eval.tools import Tool, create_tool
 
 
@@ -53,13 +53,7 @@ def call_check_base_datasets(args) -> None:
 
 
 def call_report_evaluation_results(args) -> None:
-    report_evaluation_results(
-        dataset_dirs=args.dataset_dirs,
-        datasets_filter=args.datasets,
-        dataset_kinds_filter=args.dataset_kinds,
-        samples_filter=args.samples,
-        metrics_filter=args.with_metric,
-    )
+    report_evaluation_results(ReportCLIArgs(**vars(args)))
 
 
 def main() -> None:
@@ -271,6 +265,14 @@ def main() -> None:
             'intersection. e.g. \'--with-metric build compiled "no warnings" '
             "--with-metric prove' will select all samples that compiled with no "
             "warnings and for which a 'prove' eval result is present."
+        ),
+    )
+    report_parser.add_argument(
+        "--list-samples",
+        action="store_true",
+        help=(
+            "Instead of displaying metric values, simply list the names of the "
+            "samples that match the filters."
         ),
     )
 

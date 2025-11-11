@@ -1,5 +1,8 @@
-from collections.abc import Collection, Iterable, Sequence
+from collections import defaultdict
+from collections.abc import Iterable, Sequence
 from pathlib import Path
+
+from pydantic import BaseModel
 
 from ada_eval.datasets import EvaluatedSample, dataset_has_sample_type, load_datasets
 from ada_eval.datasets.types.metrics import MetricSection, metric_section
@@ -14,28 +17,43 @@ def print_table(rows: Sequence[tuple[str, str]]) -> None:
         print(f"{name:<{padding}}{value}".rstrip())
 
 
-def report_evaluation_results(
-    dataset_dirs: Iterable[Path],
-    datasets_filter: Collection[str] | None,
-    dataset_kinds_filter: Collection[str] | None,
-    samples_filter: Collection[str] | None,
-    metrics_filter: Collection[Sequence[str]] | None,
-) -> None:
-    # Ensure filter lookup is O(1)
-    if datasets_filter is not None:
-        datasets_filter = set(datasets_filter)
-    if dataset_kinds_filter is not None:
-        dataset_kinds_filter = set(dataset_kinds_filter)
-    if samples_filter is not None:
-        samples_filter = set(samples_filter)
+class ReportCLIArgs(BaseModel):
+    """
+    CLI arguments for the `report` command.
+
+    When multiple filters are provided, only samples matching all filters
+    will be included.
+
+    Args:
+        dataset_dirs: Directories containing the evaluated datasets to report on.
+        datasets: Dataset dirnames to include. If `None`, include all datasets.
+        dataset_kinds: Dataset kinds to include. If `None`, include all kinds.
+        samples: Sample names to include. If `None`, include all samples.
+        with_metric: Metric paths which must be present for a sample to be
+            included. If `None`, include all samples.
+        list_samples: If `True`, list the names of all samples matching the
+            specified filters instead of printing the report.
+
+    """
+
+    dataset_dirs: Iterable[Path]
+    datasets: set[str] | None
+    dataset_kinds: set[str] | None
+    samples: set[str] | None
+    with_metric: Sequence[Sequence[str]] | None
+    list_samples: bool = False
+
+
+def report_evaluation_results(args: ReportCLIArgs) -> None:
     # Load all datasets
-    datasets = [d for directory in dataset_dirs for d in load_datasets(directory)]
+    datasets = [d for directory in args.dataset_dirs for d in load_datasets(directory)]
     # Accumulate the metrics
     metrics = metric_section(count=0)
+    samples_selected: defaultdict[str, list[str]] = defaultdict(list)  # By dataset
     for dataset in datasets:
         if not (
-            (datasets_filter is None or dataset.dirname in datasets_filter)
-            and (dataset_kinds_filter is None or dataset.kind in dataset_kinds_filter)
+            (args.datasets is None or dataset.dirname in args.datasets)
+            and (args.dataset_kinds is None or dataset.kind in args.dataset_kinds)
         ):
             continue
         if not dataset_has_sample_type(dataset, EvaluatedSample):
@@ -45,13 +63,22 @@ def report_evaluation_results(
             )
             raise ValueError(msg)
         for sample in dataset.samples:
-            if samples_filter is None or sample.name in samples_filter:
+            if args.samples is None or sample.name in args.samples:
                 sample_metrics = sample.metrics()
-                if metrics_filter is None or all(
-                    sample_metrics.has_metric_at_path(path) for path in metrics_filter
+                if args.with_metric is None or all(
+                    sample_metrics.has_metric_at_path(path) for path in args.with_metric
                 ):
                     metrics = metrics.add(sample.metrics())
-    # Print the report (with top-level sections unindented and separated by blank lines)
+                    samples_selected[dataset.dirname].append(sample.name)
+    # List selected samples, if requested
+    if args.list_samples:
+        for dirname, samples in samples_selected.items():
+            print(dirname)
+            for sample_name in samples:
+                print("    " + sample_name)
+        return
+    # Otherwise, print the report (with top-level sections unindented and
+    # separated by blank lines)
     if metrics.count == 0:
         print("No samples matched the specified filters.")
         return
