@@ -58,6 +58,7 @@ def call_report_evaluation_results(args) -> None:
         datasets_filter=args.datasets,
         dataset_kinds_filter=args.dataset_kinds,
         samples_filter=args.samples,
+        metrics_filter=args.with_metric,
     )
 
 
@@ -232,6 +233,7 @@ def main() -> None:
         "--dataset-dirs",
         type=Path,
         nargs="+",
+        metavar="DIR",
         help="Paths to dataset directories to include in the report.",
         default=[EVALUATED_DATASETS_DIR],
     )
@@ -239,19 +241,37 @@ def main() -> None:
         "--datasets",
         type=str,
         nargs="+",
+        metavar="DATASET",
         help="Full names (i.e. '<kind>_<name>') of datasets to include in the report.",
     )
     report_parser.add_argument(
         "--dataset-kinds",
         type=str,
         nargs="+",
+        metavar="KIND",
         help="Kinds of datasets to include in the report.",
     )
     report_parser.add_argument(
         "--samples",
         type=str,
         nargs="+",
+        metavar="SAMPLE",
         help="Names of samples to include in the report.",
+    )
+    report_parser.add_argument(
+        "--with-metric",
+        type=str,
+        action="append",
+        nargs="+",
+        metavar="METRIC",
+        help=(
+            "Include only samples for which the specified metric is present. "
+            "To specify a nested metric, provide the path to the metric as the "
+            "argument list. Can be specified multiple times to select the "
+            'intersection. e.g. \'--with-metric build compiled "no warnings" '
+            "--with-metric prove' will select all samples that compiled with no "
+            "warnings and for which a 'prove' eval result is present."
+        ),
     )
 
     args = parser.parse_args()

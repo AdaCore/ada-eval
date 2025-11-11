@@ -401,15 +401,20 @@ class EvaluatedSample(GeneratedSample):
         passed_all = all(es.passed for es in self.evaluation_results)
         return metric_section(
             {
-                "passed all evaluations": metric_value(when=passed_all),
-                "generation runtime / s": metric_value(
-                    value=self.generation_stats.runtime_ms / 1000,
-                    display="value",
-                    allow_zero_value=True,
-                ),
-                "generation exit code non-zero": metric_value(
-                    when=self.generation_stats.exit_code != 0
-                ),
+                "total samples": metric_section(
+                    {
+                        "passed all evaluations": metric_value(when=passed_all),
+                        "generation runtime / s": metric_value(
+                            value=self.generation_stats.runtime_ms / 1000,
+                            display="value",
+                            allow_zero_value=True,
+                        ),
+                        "generation exit code non-zero": metric_value(
+                            when=self.generation_stats.exit_code != 0
+                        ),
+                    },
+                    display="count_no_perc",
+                )
             }
             | {
                 ev.value: es.metrics(canonical_results[ev])

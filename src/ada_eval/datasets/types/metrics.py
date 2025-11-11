@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from collections.abc import Mapping
+from abc import abstractmethod
+from collections.abc import Mapping, Sequence
 from typing import Literal
 
 from pydantic import BaseModel
@@ -42,6 +43,10 @@ class MetricBase(BaseModel):
             return f"{self.sum} ({self.count} {samples}; {fraction:.2%})"
         return ""
 
+    @abstractmethod
+    def has_metric_at_path(self, path: Sequence[str]) -> bool:
+        """Return whether this metric contains a non-empty metric at a relative path."""
+
 
 class MetricValue(MetricBase):
     def add(self, other: MetricValue) -> MetricValue:
@@ -54,6 +59,9 @@ class MetricValue(MetricBase):
             max=max(self.max, other.max),
             display=self.display,
         )
+
+    def has_metric_at_path(self, path: Sequence[str]) -> bool:
+        return len(path) == 0 and self.count != 0
 
 
 class MetricSection(MetricBase):
@@ -85,6 +93,14 @@ class MetricSection(MetricBase):
             display=self.display,
             sub_metrics=combined_sub_metrics,
         )
+
+    def has_metric_at_path(self, path: Sequence[str]) -> bool:
+        if len(path) == 0:
+            return self.count != 0
+        first, *rest = path
+        if first in self.sub_metrics:
+            return self.sub_metrics[first].has_metric_at_path(rest)
+        return False
 
     def table(
         self, top_level_name: str, count_denominator: int, indent: str = ""
