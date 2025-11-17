@@ -33,15 +33,18 @@ class MetricBase(BaseModel):
     def value_str(self, count_denominator: int) -> str:
         """Return this metric's value as a string formatted according to `display`."""
         samples = "sample" if self.count == 1 else "samples"
-        fraction = self.count / count_denominator if count_denominator != 0 else 0
+        fraction = (
+            self.count / count_denominator if count_denominator != 0 else float("nan")
+        )
         if self.display in ("count", "count_no_perc"):
             perc = f" ({fraction:.2%})" if self.display == "count" else ""
             return f"{self.count} {samples}{perc}"
         mean = self.sum / self.count if self.count != 0 else float("nan")
+        display_sum = f"{self.sum:.12g}"  # (round off floating point errors)
         if self.display == "value":
-            return f"{self.sum} (min {self.min}; max {self.max}; mean {mean:.2f})"
+            return f"{display_sum} (min {self.min}; max {self.max}; mean {mean:.3g})"
         if self.display == "count_and_value":
-            return f"{self.sum} ({self.count} {samples}; {fraction:.2%})"
+            return f"{display_sum} ({self.count} {samples}; {fraction:.2%})"
         return ""
 
     @abstractmethod
@@ -111,7 +114,7 @@ class MetricSection(MetricBase):
                 elif isinstance(sub1, MetricValue) and isinstance(sub2, MetricValue):
                     combined_sub_metrics[name] = sub1.add(sub2)
                 else:
-                    raise MetricAdditionError("type", self, other)
+                    raise MetricAdditionError("type", sub1, sub2)
             elif name in self.sub_metrics:
                 combined_sub_metrics[name] = self.sub_metrics[name]
             else:

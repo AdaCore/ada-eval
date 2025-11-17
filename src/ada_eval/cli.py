@@ -5,7 +5,7 @@ from pathlib import Path
 
 from ada_eval.check_datasets import check_base_datasets
 from ada_eval.datasets.pack_unpack import pack_datasets, unpack_datasets
-from ada_eval.datasets.types import Eval
+from ada_eval.datasets.types import Eval, SampleKind
 from ada_eval.evals import evaluate_directory
 from ada_eval.paths import (
     COMPACTED_DATASETS_DIR,
@@ -242,7 +242,7 @@ def main() -> None:
     )
     report_parser.add_argument(
         "--dataset-kinds",
-        type=str,
+        type=SampleKind,
         nargs="+",
         metavar="KIND",
         help="Kinds of datasets to include in the report.",

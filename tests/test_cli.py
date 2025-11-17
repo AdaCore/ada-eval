@@ -13,6 +13,7 @@ from ada_eval.paths import (
     EXPANDED_DATASETS_DIR,
     GENERATED_DATASETS_DIR,
 )
+from ada_eval.report import ReportCLIArgs
 from ada_eval.tools.factory import Tool
 
 
@@ -210,3 +211,98 @@ def test_check_datasets(capsys):
                 jobs=8 if jobs is None else int(jobs),
             )
             mock_check_base_datasets.reset_mock()
+
+
+def test_report(capsys: pytest.CaptureFixture[str]):
+    # Helper function to patch `sys.argv`
+    def patch_args(  # noqa: PLR0913
+        dataset_dirs: list[str] | None = None,
+        datasets: set[str] | None = None,
+        dataset_kinds: set[str] | None = None,
+        samples: set[str] | None = None,
+        with_metric: list[list[str]] | None = None,
+        *,
+        list_samples: bool = False,
+    ):
+        test_args = ["ada-eval", "report"]
+        if dataset_dirs is not None:
+            test_args += ["--dataset-dirs", *dataset_dirs]
+        if datasets is not None:
+            test_args += ["--datasets", *datasets]
+        if dataset_kinds is not None:
+            test_args += ["--dataset-kinds", *dataset_kinds]
+        if samples is not None:
+            test_args += ["--samples", *samples]
+        if with_metric is not None:
+            for metric_path in with_metric:
+                test_args += ["--with-metric", *metric_path]
+        if list_samples:
+            test_args.append("--list-samples")
+        return patch.object(sys, "argv", test_args)
+
+    # Mock the `report_evaluation_results()` function
+    mock_report_evaluation_results = Mock()
+    report_patch = patch(
+        "ada_eval.cli.report_evaluation_results", mock_report_evaluation_results
+    )
+    with report_patch:
+        # Test with an invalid dataset kind
+        with patch_args(dataset_kinds={"invalid"}), pytest.raises(SystemExit):
+            main()
+        output = capsys.readouterr()
+        assert (
+            "argument --dataset-kinds: invalid SampleKind value: 'invalid'"
+            in output.err
+        )
+        assert output.out == ""
+        mock_report_evaluation_results.assert_not_called()
+
+        # Test with various valid argument combinations
+        for (
+            dataset_dirs,
+            datasets,
+            dataset_kinds,
+            samples,
+            with_metric,
+            list_samples,
+        ) in itertools.product(
+            [None, ["path/to/dataset_dir"], ["dir1", "dir2"]],
+            [None, {"dataset1"}, {"dataset1", "dataset2"}],
+            [None, {"ada"}, {"EXPLAIN", "sPaRk"}],
+            [None, {"sample1"}, {"sample1", "sample2"}],
+            [None, [["metric0"]], [["metric1", "submetric0"], ["metric2"]]],
+            [False, True],
+        ):
+            with patch_args(
+                dataset_dirs=dataset_dirs,
+                datasets=datasets,
+                dataset_kinds=dataset_kinds,
+                samples=samples,
+                with_metric=with_metric,
+                list_samples=list_samples,
+            ):
+                main()
+            output = capsys.readouterr()
+            assert output.err == ""
+            assert output.out == ""
+            expected_dataset_dirs = (
+                [EVALUATED_DATASETS_DIR]
+                if dataset_dirs is None
+                else [Path(d) for d in dataset_dirs]
+            )
+            expected_dataset_kinds = (
+                None
+                if dataset_kinds is None
+                else {kind.lower() for kind in dataset_kinds}
+            )
+            mock_report_evaluation_results.assert_called_once_with(
+                ReportCLIArgs(
+                    dataset_dirs=expected_dataset_dirs,
+                    datasets=datasets,
+                    dataset_kinds=expected_dataset_kinds,
+                    samples=samples,
+                    with_metric=with_metric,
+                    list_samples=list_samples,
+                )
+            )
+            mock_report_evaluation_results.reset_mock()

@@ -131,7 +131,7 @@ class EvaluationStatsProve(EvaluationStatsBase):
 
     def metrics(self, canonical_stats: EvaluationStatsBase) -> MetricSection:
         canonical_stats = type_checked(canonical_stats, EvaluationStatsProve)
-        absent = (canonical_stats.unproved_checks - self.unproved_checks).total()
+        absent = (canonical_stats.proved_checks - self.proved_checks).total()
         extra = (self.proved_checks - canonical_stats.proved_checks).total()
         metrics: dict[str, Metric] = {
             "proved correctly": metric_section(
