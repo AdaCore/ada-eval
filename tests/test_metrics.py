@@ -6,6 +6,7 @@ from ada_eval.datasets.types.metrics import (
     MetricAdditionError,
     MetricSection,
     MetricValue,
+    empty_metric_section,
     metric_section,
     metric_value,
 )
@@ -34,14 +35,14 @@ def test_metric_displays():
 
     # Test div by zero
     assert metric_value().value_str(count_denominator=0) == "1 sample (nan%)"
-    assert metric_value(count=0, value=1, display="value").value_str(
+    assert MetricValue(count=0, sum=1, min=1, max=1, display="value").value_str(
         count_denominator=0
     ) == ("1 (min 1; max 1; mean nan)")
 
 
 def test_metric_addition():
     # Test basic addition
-    section = metric_section(count=0)
+    section = empty_metric_section()
     assert section == MetricSection(
         primary_metric=MetricValue(
             count=0, sum=0, min=float("inf"), max=float("-inf"), display="count"

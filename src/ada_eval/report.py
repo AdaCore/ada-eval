@@ -6,7 +6,7 @@ from pathlib import Path
 from pydantic import BaseModel
 
 from ada_eval.datasets import EvaluatedSample, dataset_has_sample_type, load_datasets
-from ada_eval.datasets.types.metrics import MetricSection, metric_section
+from ada_eval.datasets.types.metrics import MetricSection, empty_metric_section
 from ada_eval.utils import type_checked
 
 logger = logging.getLogger(__name__)
@@ -51,7 +51,7 @@ def report_evaluation_results(args: ReportCLIArgs) -> None:
     # Load all datasets
     datasets = [d for directory in args.dataset_dirs for d in load_datasets(directory)]
     # Accumulate the metrics
-    metrics = metric_section(count=0)
+    metrics = empty_metric_section()
     samples_selected: defaultdict[str, list[str]] = defaultdict(list)  # By dataset
     for dataset in datasets:
         if not (

@@ -183,7 +183,6 @@ Metric = MetricValue | MetricSection
 
 
 def metric_value(
-    count: int = 1,
     value: float | None = None,
     display: MetricDisplay | None = None,
     *,
@@ -194,17 +193,14 @@ def metric_value(
     Construct a `MetricValue` for a single sample.
 
     Args:
-        count: The number of samples to which this metric applies.
         value: The value of the metric for this sample, to set to all of `sum`,
-            `min`, and `max`. By default, `value=0` implies `when=False` (see
-            `allow_zero_value`). If `None`, defaults to `count`, unless `count`
-            is 0, in which case those three fields are set as appropriate to
-            represent an absence of data.
+            `min`, and `max`. If `None`, defaults to `1`. If `allow_zero_value`
+            is `False` (the default), A `value` of `0` implies `when=False`.
         display: The format in which to display the value of this metric when
             printing a report. Defaults to `"count_and_value"` if `value` is
             specified, or `"count"` otherwise.
         when: If `False`, ignore all other parameters and return an empty
-            `MetricValue` (i.e. `metric_value(count=0)`).
+            `MetricValue`.
         allow_zero_value: If `False` (default), treat `value=0` as implying
             `when=False`, returning an empty `MetricValue`. If `True`, `value=0`
             receives no special treatment.
@@ -212,27 +208,34 @@ def metric_value(
     """
     if display is None:
         display = "count" if value is None else "count_and_value"
-    if value is None and count == 0:
-        value = 0
-        sum_: float = 0
-        min_ = float("inf")
-        max_ = float("-inf")
-    else:
-        if value is None:
-            value = count
-        sum_ = value
-        min_ = value
-        max_ = value
+    if value is None:
+        value = 1
+    sum_ = value
+    min_ = value
+    max_ = value
     if not allow_zero_value:
-        when = when and value != 0
+        when = when and (value != 0)
     if not when:
-        return metric_value(count=0, display=display, allow_zero_value=True)
-    return MetricValue(count=count, sum=sum_, min=min_, max=max_, display=display)
+        return empty_metric_value(display=display)
+    return MetricValue(count=1, sum=sum_, min=min_, max=max_, display=display)
 
 
-def metric_section(  # noqa: PLR0913  # Most calls will not specify all arguments
+def empty_metric_value(display: MetricDisplay = "count") -> MetricValue:
+    """
+    Construct a `MetricValue` representing the absence of any samples.
+
+    Args:
+        display: The format in which to display the value of this metric when
+            printing a report.
+
+    """
+    return MetricValue(
+        count=0, sum=0, min=float("inf"), max=float("-inf"), display=display
+    )
+
+
+def metric_section(
     sub_metrics: Mapping[str, Metric] | None = None,
-    count: int = 1,
     value: float | None = None,
     display: MetricDisplay | None = None,
     *,
@@ -246,12 +249,25 @@ def metric_section(  # noqa: PLR0913  # Most calls will not specify all argument
     metric, in addition to a `sub_metrics` which is passed directly to the
     `MetricSection`'s `sub_metrics` attribute (defaults to an empty dictionary).
 
+    If the `when` condition is `False`, the `MetricSection` will have an empty
+    `sub_metrics` dict, in addition to an empty `primary_metric`.
+
     """
-    if not when:
-        return metric_section(count=0, display=display, allow_zero_value=True)
-    return MetricSection(
-        primary_metric=metric_value(
-            count=count, value=value, display=display, allow_zero_value=allow_zero_value
-        ),
-        sub_metrics=sub_metrics or {},
+    primary_metric = metric_value(
+        value=value, display=display, when=when, allow_zero_value=allow_zero_value
     )
+    if sub_metrics is None or not when:
+        sub_metrics = {}
+    return MetricSection(primary_metric=primary_metric, sub_metrics=sub_metrics)
+
+
+def empty_metric_section(display: MetricDisplay = "count") -> MetricSection:
+    """
+    Construct a `MetricSection` representing the absence of any samples.
+
+    Args:
+        display: The format in which to display the value of the primary metric
+            when printing a report.
+
+    """
+    return metric_section(when=False, display=display)
