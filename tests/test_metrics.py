@@ -15,11 +15,11 @@ def test_metric_displays():
     value = (
         metric_value(value=-1)
         .add(metric_value(value=3.14))
-        .add(metric_value(value=2.71))
+        .add(metric_value(value=2.72))
         .add(metric_value(value=1.41))
         .add(metric_value(value=1.62))
     )
-    assert value.value_str(7) == "7.88 (5 samples; 71.43%)"  # `count_and_value`
+    assert value.value_str(7) == "7.89 (5 samples; 71.43%)"  # `count_and_value`
     value.display = "none"
     assert value.value_str(7) == ""
     value.display = "count"
@@ -27,7 +27,7 @@ def test_metric_displays():
     value.display = "count_no_perc"
     assert value.value_str(7) == "5 samples"
     value.display = "value"
-    assert value.value_str(7) == "7.88 (min -1; max 3.14; mean 1.58)"
+    assert value.value_str(7) == "7.89 (min -1; max 3.14; mean 1.58)"
 
     # Test singular "sample"
     assert metric_value().value_str(count_denominator=1) == "1 sample (100.00%)"
@@ -43,11 +43,9 @@ def test_metric_addition():
     # Test basic addition
     section = metric_section(count=0)
     assert section == MetricSection(
-        count=0,
-        sum=0,
-        min=float("inf"),
-        max=float("-inf"),
-        display="count",
+        primary_metric=MetricValue(
+            count=0, sum=0, min=float("inf"), max=float("-inf"), display="count"
+        ),
         sub_metrics={},
     )
     section = section.add(
@@ -59,17 +57,16 @@ def test_metric_addition():
         )
     )
     assert section == MetricSection(
-        count=1,
-        sum=1,
-        min=1,
-        max=1,
-        display="count",
+        primary_metric=MetricValue(count=1, sum=1, min=1, max=1, display="count"),
         sub_metrics={
             "val0": MetricValue(
                 count=1, sum=10, min=10, max=10, display="count_and_value"
             ),
             "val1": MetricSection(
-                count=1, sum=3.14, min=3.14, max=3.14, display="value", sub_metrics={}
+                primary_metric=MetricValue(
+                    count=1, sum=3.14, min=3.14, max=3.14, display="value"
+                ),
+                sub_metrics={},
             ),
         },
     )
@@ -84,21 +81,15 @@ def test_metric_addition():
         )
     )
     assert section == MetricSection(
-        count=2,
-        sum=2,
-        min=1,
-        max=1,
-        display="count",
+        primary_metric=MetricValue(count=2, sum=2, min=1, max=1, display="count"),
         sub_metrics={
             "val0": MetricValue(
                 count=1, sum=10, min=10, max=10, display="count_and_value"
             ),
             "val1": MetricSection(
-                count=2,
-                sum=4.55,
-                min=1.41,
-                max=3.14,
-                display="value",
+                primary_metric=MetricValue(
+                    count=2, sum=4.55, min=1.41, max=3.14, display="value"
+                ),
                 sub_metrics={
                     "val1_0": MetricValue(count=1, sum=1, min=1, max=1, display="count")
                 },

@@ -12,41 +12,22 @@ MetricDisplay = Literal["none", "count", "count_no_perc", "value", "count_and_va
 class MetricAdditionError(ValueError):
     """Raised when two metrics are incompatible for addition."""
 
-    def __init__(self, reason: Literal["type", "display"], left: Metric, right: Metric):
-        if reason == "type":
-            super().__init__(
-                f"Cannot add `{type(left).__name__}` and `{type(right).__name__}`"
-            )
-        else:
-            super().__init__(
-                f"Cannot add '{left.display}' metric and '{right.display}' metric"
-            )
+
+class MetricAdditionTypeError(MetricAdditionError):
+    def __init__(self, left: Metric, right: Metric):
+        super().__init__(
+            f"Cannot add `{type(left).__name__}` and `{type(right).__name__}`"
+        )
+
+
+class MetricAdditionDisplayError(MetricAdditionError):
+    def __init__(self, left: MetricValue, right: MetricValue):
+        super().__init__(
+            f"Cannot add '{left.display}' metric and '{right.display}' metric"
+        )
 
 
 class MetricBase(BaseModel):
-    count: int
-    sum: float | int
-    min: float | int
-    max: float | int
-    display: MetricDisplay
-
-    def value_str(self, count_denominator: int) -> str:
-        """Return this metric's value as a string formatted according to `display`."""
-        samples = "sample" if self.count == 1 else "samples"
-        fraction = (
-            self.count / count_denominator if count_denominator != 0 else float("nan")
-        )
-        if self.display in ("count", "count_no_perc"):
-            perc = f" ({fraction:.2%})" if self.display == "count" else ""
-            return f"{self.count} {samples}{perc}"
-        mean = self.sum / self.count if self.count != 0 else float("nan")
-        display_sum = f"{self.sum:.12g}"  # (round off floating point errors)
-        if self.display == "value":
-            return f"{display_sum} (min {self.min}; max {self.max}; mean {mean:.3g})"
-        if self.display == "count_and_value":
-            return f"{display_sum} ({self.count} {samples}; {fraction:.2%})"
-        return ""
-
     @abstractmethod
     def add(self, other: Self) -> Self:
         """Return the sum of this metric and another metric of the same type."""
@@ -70,9 +51,15 @@ class MetricValue(MetricBase):
 
     """
 
+    count: int
+    sum: float | int
+    min: float | int
+    max: float | int
+    display: MetricDisplay
+
     def add(self, other: MetricValue) -> MetricValue:
         if self.display != other.display:
-            raise MetricAdditionError("display", self, other)
+            raise MetricAdditionDisplayError(self, other)
         return MetricValue(
             count=self.count + other.count,
             sum=self.sum + other.sum,
@@ -84,26 +71,48 @@ class MetricValue(MetricBase):
     def has_metric_at_path(self, path: Sequence[str]) -> bool:
         return len(path) == 0 and self.count != 0
 
+    def value_str(self, count_denominator: int) -> str:
+        """Return this metric's value as a string formatted according to `display`."""
+        samples = "sample" if self.count == 1 else "samples"
+        fraction = (
+            self.count / count_denominator if count_denominator != 0 else float("nan")
+        )
+        if self.display in ("count", "count_no_perc"):
+            perc = f" ({fraction:.2%})" if self.display == "count" else ""
+            return f"{self.count} {samples}{perc}"
+        mean = self.sum / self.count if self.count != 0 else float("nan")
+        display_sum = f"{self.sum:.12g}"  # (round off floating point errors)
+        if self.display == "value":
+            return f"{display_sum} (min {self.min}; max {self.max}; mean {mean:.3g})"
+        if self.display == "count_and_value":
+            return f"{display_sum} ({self.count} {samples}; {fraction:.2%})"
+        return ""
+
 
 class MetricSection(MetricBase):
     """
     A section containing multiple metrics, aggregated over some number of samples.
 
-    Has all the attributes of `MetricValue`, representing a top level metric
-    value for the section, in addition to ...
+    When displaying sample counts as a percentage, the denominator used for the
+    sub-metrics is the `count` of the parent section.
 
     Attributes:
+        primary_metric: A primary metric value for the section.
         sub_metrics: A collection of metrics which are subsidiary in some way to
-            the top-level metric. Takes the form of a mapping from metric names
+            the primary metric. Takes the form of a mapping from metric names
             to `Metric`s.
 
     """
 
+    primary_metric: MetricValue
     sub_metrics: Mapping[str, Metric]
 
+    @property
+    def count(self) -> int:
+        return self.primary_metric.count
+
     def add(self, other: MetricSection) -> MetricSection:
-        if self.display != other.display:
-            raise MetricAdditionError("display", self, other)
+        combined_primary_metric = self.primary_metric.add(other.primary_metric)
         combined_sub_metrics: dict[str, Metric] = {}
         for name in dict(self.sub_metrics) | dict(other.sub_metrics):
             if name in self.sub_metrics and name in other.sub_metrics:
@@ -114,18 +123,13 @@ class MetricSection(MetricBase):
                 elif isinstance(sub1, MetricValue) and isinstance(sub2, MetricValue):
                     combined_sub_metrics[name] = sub1.add(sub2)
                 else:
-                    raise MetricAdditionError("type", sub1, sub2)
+                    raise MetricAdditionTypeError(sub1, sub2)
             elif name in self.sub_metrics:
                 combined_sub_metrics[name] = self.sub_metrics[name]
             else:
                 combined_sub_metrics[name] = other.sub_metrics[name]
         return MetricSection(
-            count=self.count + other.count,
-            sum=self.sum + other.sum,
-            min=min(self.min, other.min),
-            max=max(self.max, other.max),
-            display=self.display,
-            sub_metrics=combined_sub_metrics,
+            primary_metric=combined_primary_metric, sub_metrics=combined_sub_metrics
         )
 
     def has_metric_at_path(self, path: Sequence[str]) -> bool:
@@ -150,23 +154,26 @@ class MetricSection(MetricBase):
         to their parent section.
 
         Args:
-            top_level_name: The name to use as the label for this section.
+            top_level_name: The name to use as the label for this section's
+                primary metric.
             count_denominator: The denominator to use when computing this
                 section's count percentage (if applicable).
             indent: The initial indentation level prepended to all lines.
 
         """
-        lines = [
-            (f"{indent}{top_level_name}:", indent + self.value_str(count_denominator))
-        ]
+
+        def _row(
+            name: str, value: MetricValue, indent: str, denom: int
+        ) -> tuple[str, str]:
+            return (f"{indent}{name}:", indent + value.value_str(denom))
+
+        lines = [_row(top_level_name, self.primary_metric, indent, count_denominator)]
         indent += " " * 4
         for name, sub_metric in self.sub_metrics.items():
             if sub_metric.count == 0:
                 continue
             if isinstance(sub_metric, MetricValue):
-                lines.append(
-                    (f"{indent}{name}:", indent + sub_metric.value_str(self.count))
-                )
+                lines.append(_row(name, sub_metric, indent, self.count))
             else:
                 lines.extend(sub_metric.table(name, self.count, indent=indent))
         return lines
@@ -235,16 +242,16 @@ def metric_section(  # noqa: PLR0913  # Most calls will not specify all argument
     """
     Construct a `MetricSection` for a single sample.
 
-    Takes the same parameters as `metric_value`, in addition to a `sub_metrics`
-    which is passed directly to the `MetricSection`'s `sub_metrics` attribute
-    (defaults to an empty dictionary).
+    Takes the same parameters as `metric_value()` to construct the primary
+    metric, in addition to a `sub_metrics` which is passed directly to the
+    `MetricSection`'s `sub_metrics` attribute (defaults to an empty dictionary).
 
     """
     if not when:
         return metric_section(count=0, display=display, allow_zero_value=True)
     return MetricSection(
-        **metric_value(
+        primary_metric=metric_value(
             count=count, value=value, display=display, allow_zero_value=allow_zero_value
-        ).model_dump(),
+        ),
         sub_metrics=sub_metrics or {},
     )
