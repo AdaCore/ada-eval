@@ -157,7 +157,14 @@ class EvaluationStatsProve(EvaluationStatsBase):
                 },
                 when=self.result == "proved_incorrectly",
             ),
-            "unproved": metric_value(when=self.result == "unproved"),
+            "unproved": metric_section(
+                {
+                    "unproved checks": metric_value(
+                        value=self.unproved_checks.total(), display="value"
+                    )
+                },
+                when=self.result == "unproved",
+            ),
             "error": metric_value(when=self.result == "error"),
             "subprogram not found": metric_value(
                 when=self.result == "subprogram_not_found"
