@@ -57,7 +57,7 @@ def test_report_evaluation_results(
 
         prove:                              9 samples (90.00%)
             proved correctly:                   1 sample (11.11%)
-                proof steps:                        1 (min 1; max 1; mean 1)
+                extra proof steps:                  1 (min 1; max 1; mean 1)
                 absent checks:                      2 (1 sample; 100.00%)
                 unnecessary checks:                 3 (1 sample; 100.00%)
             proved incorrectly:                 3 samples (33.33%)
@@ -104,7 +104,7 @@ def test_report_evaluation_results(
 
             prove:                              18 samples (90.00%)
                 proved correctly:                   2 samples (11.11%)
-                    proof steps:                        2 (min 1; max 1; mean 1)
+                    extra proof steps:                  2 (min 1; max 1; mean 1)
                     absent checks:                      4 (2 samples; 100.00%)
                     unnecessary checks:                 6 (2 samples; 100.00%)
                 proved incorrectly:                 6 samples (33.33%)
@@ -148,7 +148,7 @@ def test_report_evaluation_results(
 
             prove:                       2 samples (100.00%)
                 proved correctly:            1 sample (50.00%)
-                    proof steps:                 1 (min 1; max 1; mean 1)
+                    extra proof steps:           1 (min 1; max 1; mean 1)
                     absent checks:               2 (1 sample; 100.00%)
                     unnecessary checks:          3 (1 sample; 100.00%)
                 error:                       1 sample (50.00%)
