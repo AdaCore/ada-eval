@@ -141,7 +141,7 @@ class MetricSection(MetricBase):
         return False
 
     def table(
-        self, top_level_name: str, count_denominator: int, indent: str = ""
+        self, primary_name: str | None, count_denominator: int, indent: str = ""
     ) -> list[tuple[str, str]]:
         """
         Return a simple table representation of this metric section.
@@ -154,8 +154,10 @@ class MetricSection(MetricBase):
         to their parent section.
 
         Args:
-            top_level_name: The name to use as the label for this section's
-                primary metric.
+            primary_name: The name to use as the label for this section's
+                primary metric. If `None`, the primary metric is not included
+                in the table, with `sub_metrics` unindented and separated by
+                blank lines.
             count_denominator: The denominator to use when computing this
                 section's count percentage (if applicable).
             indent: The initial indentation level prepended to all lines.
@@ -167,16 +169,26 @@ class MetricSection(MetricBase):
         ) -> tuple[str, str]:
             return (f"{indent}{name}:", indent + value.value_str(denom))
 
-        lines = [_row(top_level_name, self.primary_metric, indent, count_denominator)]
-        indent += " " * 4
+        # Add primary metric row, if applicable
+        if primary_name is None:
+            rows = []
+        else:
+            rows = [_row(primary_name, self.primary_metric, indent, count_denominator)]
+            indent += " " * 4
+        # Add sub-metrics
         for name, sub_metric in self.sub_metrics.items():
             if sub_metric.count == 0:
                 continue
             if isinstance(sub_metric, MetricValue):
-                lines.append(_row(name, sub_metric, indent, self.count))
+                rows.append(_row(name, sub_metric, indent, self.count))
             else:
-                lines.extend(sub_metric.table(name, self.count, indent=indent))
-        return lines
+                rows.extend(sub_metric.table(name, self.count, indent=indent))
+            if primary_name is None:
+                rows.append(("", ""))
+        # Remove trailing blank line if applicable
+        if primary_name is None:
+            rows = rows[:-1]
+        return rows
 
 
 Metric = MetricValue | MetricSection

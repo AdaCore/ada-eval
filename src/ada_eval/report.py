@@ -5,17 +5,9 @@ from collections.abc import Set as AbstractSet
 from pathlib import Path
 
 from ada_eval.datasets import EvaluatedSample, dataset_has_sample_type, load_datasets
-from ada_eval.datasets.types.metrics import MetricSection, empty_metric_section
-from ada_eval.utils import type_checked
+from ada_eval.datasets.types.metrics import empty_metric_section
 
 logger = logging.getLogger(__name__)
-
-
-def _print_metric_table(rows: Sequence[tuple[str, str]]) -> None:
-    """Print a table of metrics to stdout, with padding to separate the columns."""
-    padding = (0 if len(rows) == 0 else max(len(row[0]) for row in rows)) + 2
-    for name, value in rows:
-        print(f"{name:<{padding}}{value}".rstrip())
 
 
 def report_evaluation_results(  # noqa: PLR0913  # Corresponds to CLI args (mostly optional)
@@ -79,14 +71,10 @@ def report_evaluation_results(  # noqa: PLR0913  # Corresponds to CLI args (most
         for dirname in sorted(samples_selected.keys()):
             print(dirname)
             for sample_name in samples_selected[dirname]:
-                print("    " + sample_name)
-    # Otherwise, print the report (with top-level sections unindented and
-    # separated by blank lines)
+                print(" " * 4 + sample_name)
+    # Otherwise, print the report
     else:
-        table = []
-        for name, section in metrics.sub_metrics.items():
-            table.extend(
-                type_checked(section, MetricSection).table(name, metrics.count)
-            )
-            table.append(("", ""))
-        _print_metric_table(table[:-1])  # Remove trailing blank line
+        table = metrics.table(None, 0)
+        padding = (0 if len(table) == 0 else max(len(row[0]) for row in table)) + 2
+        for name, value in table:
+            print(f"{name:<{padding}}{value}".rstrip())
