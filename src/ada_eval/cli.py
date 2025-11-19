@@ -13,7 +13,7 @@ from ada_eval.paths import (
     EXPANDED_DATASETS_DIR,
     GENERATED_DATASETS_DIR,
 )
-from ada_eval.report import ReportCLIArgs, report_evaluation_results
+from ada_eval.report import report_evaluation_results
 from ada_eval.tools import Tool, create_tool
 
 
@@ -53,7 +53,16 @@ def call_check_base_datasets(args) -> None:
 
 
 def call_report_evaluation_results(args) -> None:
-    report_evaluation_results(ReportCLIArgs(**vars(args)))
+    report_evaluation_results(
+        dataset_dirs=args.dataset_dirs,
+        datasets_filter=None if args.datasets is None else set(args.datasets),
+        dataset_kinds_filter=(
+            None if args.dataset_kinds is None else set(args.dataset_kinds)
+        ),
+        samples_filter=None if args.samples is None else set(args.samples),
+        metrics_filter=args.with_metric,
+        list_samples=args.list_samples,
+    )
 
 
 def main() -> None:
@@ -221,6 +230,7 @@ def main() -> None:
         default=default_num_jobs,
     )
 
+    # Report evaluation results
     report_parser = subparsers.add_parser(
         "report", help="Generate a report of evaluation results"
     )

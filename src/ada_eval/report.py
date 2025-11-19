@@ -1,42 +1,14 @@
 import logging
 from collections import defaultdict
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
+from collections.abc import Set as AbstractSet
 from pathlib import Path
-
-from pydantic import BaseModel
 
 from ada_eval.datasets import EvaluatedSample, dataset_has_sample_type, load_datasets
 from ada_eval.datasets.types.metrics import MetricSection, empty_metric_section
 from ada_eval.utils import type_checked
 
 logger = logging.getLogger(__name__)
-
-
-class ReportCLIArgs(BaseModel):
-    """
-    CLI arguments for the `report` command.
-
-    When multiple filters are provided, only samples matching all filters
-    will be included.
-
-    Args:
-        dataset_dirs: Directories containing the evaluated datasets to report on.
-        datasets: Dataset dirnames to include. If `None`, include all datasets.
-        dataset_kinds: Dataset kinds to include. If `None`, include all kinds.
-        samples: Sample names to include. If `None`, include all samples.
-        with_metric: Metric paths which must be present for a sample to be
-            included. If `None`, include all samples.
-        list_samples: If `True`, list the names of all samples matching the
-            specified filters instead of printing the report.
-
-    """
-
-    dataset_dirs: Sequence[Path]
-    datasets: set[str] | None
-    dataset_kinds: set[str] | None
-    samples: set[str] | None
-    with_metric: Sequence[Sequence[str]] | None
-    list_samples: bool = False
 
 
 def _print_metric_table(rows: Sequence[tuple[str, str]]) -> None:
@@ -46,17 +18,43 @@ def _print_metric_table(rows: Sequence[tuple[str, str]]) -> None:
         print(f"{name:<{padding}}{value}".rstrip())
 
 
-def report_evaluation_results(args: ReportCLIArgs) -> None:
-    """Print a report of evaluation results to stdout, according to `args`."""
+def report_evaluation_results(  # noqa: PLR0913  # Corresponds to CLI args (mostly optional)
+    dataset_dirs: Iterable[Path],
+    datasets_filter: AbstractSet[str] | None,
+    dataset_kinds_filter: AbstractSet[str] | None,
+    samples_filter: AbstractSet[str] | None,
+    metrics_filter: Sequence[Sequence[str]] | None,
+    *,
+    list_samples: bool,
+) -> None:
+    """
+    Print a report of evaluation results to stdout.
+
+    Optionally, filter which samples are included in the report. When multiple
+    filters are provided, only samples matching all filters will be included.
+
+    Args:
+        dataset_dirs: Directories containing the evaluated datasets to report on.
+        datasets_filter: Dataset dirnames to include. If `None`, include all
+            datasets.
+        dataset_kinds_filter: Dataset kinds to include. If `None`, include all
+            kinds.
+        samples_filter: Sample names to include. If `None`, include all samples.
+        metrics_filter: Metric paths which must be present for a sample to be
+            included. If `None`, include all samples.
+        list_samples: If `True`, list the names of all samples matching the
+            specified filters instead of printing the report.
+
+    """
     # Load all datasets
-    datasets = [d for directory in args.dataset_dirs for d in load_datasets(directory)]
+    datasets = [d for directory in dataset_dirs for d in load_datasets(directory)]
     # Accumulate the metrics
     metrics = empty_metric_section()
     samples_selected: defaultdict[str, list[str]] = defaultdict(list)  # By dataset
     for dataset in datasets:
         if not (
-            (args.datasets is None or dataset.dirname in args.datasets)
-            and (args.dataset_kinds is None or dataset.kind in args.dataset_kinds)
+            (datasets_filter is None or dataset.dirname in datasets_filter)
+            and (dataset_kinds_filter is None or dataset.kind in dataset_kinds_filter)
         ):
             continue
         if not dataset_has_sample_type(dataset, EvaluatedSample):
@@ -66,10 +64,10 @@ def report_evaluation_results(args: ReportCLIArgs) -> None:
             )
             continue
         for sample in dataset.samples:
-            if args.samples is None or sample.name in args.samples:
+            if samples_filter is None or sample.name in samples_filter:
                 sample_metrics = sample.metrics()
-                if args.with_metric is None or all(
-                    sample_metrics.has_metric_at_path(path) for path in args.with_metric
+                if metrics_filter is None or all(
+                    sample_metrics.has_metric_at_path(path) for path in metrics_filter
                 ):
                     metrics = metrics.add(sample.metrics())
                     samples_selected[dataset.dirname].append(sample.name)
@@ -77,7 +75,7 @@ def report_evaluation_results(args: ReportCLIArgs) -> None:
     if metrics.count == 0:
         print("No samples matched the specified filters.")
     # List selected samples, if requested
-    elif args.list_samples:
+    elif list_samples:
         for dirname in sorted(samples_selected.keys()):
             print(dirname)
             for sample_name in samples_selected[dirname]:

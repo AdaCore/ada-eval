@@ -13,7 +13,6 @@ from ada_eval.paths import (
     EXPANDED_DATASETS_DIR,
     GENERATED_DATASETS_DIR,
 )
-from ada_eval.report import ReportCLIArgs
 from ada_eval.tools.factory import Tool
 
 
@@ -296,13 +295,11 @@ def test_report(capsys: pytest.CaptureFixture[str]):
                 else {kind.lower() for kind in dataset_kinds}
             )
             mock_report_evaluation_results.assert_called_once_with(
-                ReportCLIArgs(
-                    dataset_dirs=expected_dataset_dirs,
-                    datasets=datasets,
-                    dataset_kinds=expected_dataset_kinds,
-                    samples=samples,
-                    with_metric=with_metric,
-                    list_samples=list_samples,
-                )
+                dataset_dirs=expected_dataset_dirs,
+                datasets_filter=datasets,
+                dataset_kinds_filter=expected_dataset_kinds,
+                samples_filter=samples,
+                metrics_filter=with_metric,
+                list_samples=list_samples,
             )
             mock_report_evaluation_results.reset_mock()
