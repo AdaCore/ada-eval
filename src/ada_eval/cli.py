@@ -253,8 +253,8 @@ def main() -> None:
     report_parser.add_argument(
         "--dataset-kinds",
         type=SampleKind,
+        choices=list(SampleKind),
         nargs="+",
-        metavar="KIND",
         help="Kinds of datasets to include in the report.",
     )
     report_parser.add_argument(

@@ -421,20 +421,21 @@ class EvaluatedSample(GeneratedSample):
         `evaluation_results`.
 
         Raises:
-            ValueError: If any evaluation result does not have a corresponding
-                canonical evaluation result.
+            MissingCanonicalEvalResultsError: If any evaluation result does not
+                have a corresponding canonical evaluation result.
 
         """
         results = {es.eval: es for es in self.evaluation_results}
         canonical_results = {es.eval: es for es in self.canonical_evaluation_results}
         if not results.keys() <= canonical_results.keys():
             raise MissingCanonicalEvalResultsError(self)
-        passed_all = all(es.passed for es in self.evaluation_results)
         return metric_section(
             {
                 "total samples": metric_section(
                     {
-                        "passed all evaluations": metric_value(when=passed_all),
+                        "passed all evaluations": metric_value(
+                            when=all(es.passed for es in self.evaluation_results)
+                        ),
                         "generation runtime / s": metric_value(
                             value=self.generation_stats.runtime_ms / 1000,
                             display="value",

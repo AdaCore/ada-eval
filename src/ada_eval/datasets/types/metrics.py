@@ -34,7 +34,7 @@ class MetricBase(BaseModel):
 
     @abstractmethod
     def has_metric_at_path(self, path: Sequence[str]) -> bool:
-        """Return whether this metric contains a non-empty metric at a relative path."""
+        """Return whether this metric has a non-empty metric at relative path `path`."""
 
 
 class MetricValue(MetricBase):
@@ -72,7 +72,14 @@ class MetricValue(MetricBase):
         return len(path) == 0 and self.count != 0
 
     def value_str(self, count_denominator: int) -> str:
-        """Return this metric's value as a string formatted according to `display`."""
+        """
+        Return this metric's value as a string formatted according to `display`.
+
+        Args:
+            count_denominator: The denominator to use when computing this
+                metric's count percentage (if applicable).
+
+        """
         samples = "sample" if self.count == 1 else "samples"
         fraction = (
             self.count / count_denominator if count_denominator != 0 else float("nan")

@@ -7,8 +7,7 @@ from pathlib import Path
 import pytest
 from helpers import assert_log
 
-from ada_eval.datasets.loader import load_datasets
-from ada_eval.datasets.types.datasets import save_datasets
+from ada_eval.datasets import load_datasets, save_datasets
 from ada_eval.datasets.types.samples import MissingCanonicalEvalResultsError
 from ada_eval.report import report_evaluation_results
 
@@ -268,7 +267,7 @@ def test_report_evaluation_results(
 
 def test_report_evaluation_results_missing_canonical(report_test_datasets: Path):
     """Check that an evaluation result missing a canonical result is detected."""
-    dataset = load_datasets(report_test_datasets / "spark_report.jsonl")[0]
+    dataset = load_datasets(report_test_datasets)[0]
     passed_sample = next(s for s in dataset.samples if s.name == "passed")
     passed_sample.canonical_evaluation_results = (
         passed_sample.canonical_evaluation_results[:1]
