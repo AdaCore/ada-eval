@@ -38,6 +38,7 @@ generate-spark-claude:
 
 evaluate:
 	uv run ada-eval evaluate
+	uv run ada-eval report
 
 evaluate-canonical:
 	uv run ada-eval evaluate --canonical

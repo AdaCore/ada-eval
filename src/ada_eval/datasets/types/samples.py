@@ -12,10 +12,15 @@ from typing import ClassVar, Self
 from pydantic import BaseModel, TypeAdapter, field_serializer, field_validator
 
 from ada_eval.datasets.utils import get_file_or_empty
-from ada_eval.utils import serialise_sequence, type_checked
+from ada_eval.utils import (
+    construct_enum_case_insensitive,
+    serialise_sequence,
+    type_checked,
+)
 
 from .directory_contents import DirectoryContents, get_contents_git_aware
 from .evaluation_stats import EvaluationStats, ProofCheck
+from .metrics import MetricSection, metric_section, metric_value
 
 
 class InvalidSampleNameError(ValueError):
@@ -128,6 +133,11 @@ class SampleKind(StrEnum):
     ADA = "ada"
     EXPLAIN = "explain"
     SPARK = "spark"
+
+    # Constructor should be case-insensitive
+    @classmethod
+    def _missing_(cls, value):
+        return construct_enum_case_insensitive(cls, value)
 
 
 class SampleStage(Enum):
@@ -383,10 +393,66 @@ class GeneratedSparkSample(SparkSample, GeneratedAdaSample):
     pass
 
 
+class MissingCanonicalEvalResultsError(ValueError):
+    """Raised when a sample has eval results without corresponding canonical results."""
+
+    def __init__(self, sample: EvaluatedSample):
+        self.sample = sample
+        missing = {es.eval.value for es in sample.evaluation_results} - {
+            es.eval.value for es in sample.canonical_evaluation_results
+        }
+        super().__init__(
+            f"sample '{sample.name}' is missing canonical evaluation results "
+            f"for evals {sorted(missing)}."
+        )
+
+
 class EvaluatedSample(GeneratedSample):
     stage: ClassVar = SampleStage.EVALUATED
 
     evaluation_results: Sequence[EvaluationStats]
+
+    def metrics(self) -> MetricSection:
+        """
+        Return the metrics for this sample.
+
+        The returned `MetricSection` includes miscellaneous metrics under the
+        `"total samples"` heading and a section for each eval present in
+        `evaluation_results`.
+
+        Raises:
+            MissingCanonicalEvalResultsError: If any evaluation result does not
+                have a corresponding canonical evaluation result.
+
+        """
+        results = {es.eval: es for es in self.evaluation_results}
+        canonical_results = {es.eval: es for es in self.canonical_evaluation_results}
+        if not results.keys() <= canonical_results.keys():
+            raise MissingCanonicalEvalResultsError(self)
+        return metric_section(
+            {
+                "total samples": metric_section(
+                    {
+                        "passed all evaluations": metric_value(
+                            when=all(es.passed for es in self.evaluation_results)
+                        ),
+                        "generation runtime / s": metric_value(
+                            value=self.generation_stats.runtime_ms / 1000,
+                            display="value",
+                            allow_zero_value=True,
+                        ),
+                        "generation exit code non-zero": metric_value(
+                            when=self.generation_stats.exit_code != 0
+                        ),
+                    },
+                    display="count_no_perc",
+                )
+            }
+            | {
+                ev.value: es.metrics(canonical_results[ev])
+                for ev, es in results.items()
+            }
+        )
 
 
 class EvaluatedAdaSample(GeneratedAdaSample, EvaluatedSample):

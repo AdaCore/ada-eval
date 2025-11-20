@@ -294,11 +294,19 @@ To evaluate completions that were generated as described in the previous section
 ```sh
 uv run ada-eval evaluate
 ```
-which will run all available evaluations on the generations in `data/generated/`, and save the results to `data/evaluated/`. This also available via the shortcut `make evaluate`.
+which will run all available evaluations on the generations in `data/generated/`, and save the results to `data/evaluated/`.
 
 For more options, such as specifying which evaluations are run, see the output of
 ```sh
 uv run ada-eval evaluate --help
 ```
+
+To print a summary of the results, run
+```sh
+uv run ada-eval report
+```
+Filtering options etc. can likewise be found via the `--help` switch.
+
+The combination of both of these commands is available via the shortcut `make evaluate`.
 
 This interface is not final.

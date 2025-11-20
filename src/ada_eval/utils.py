@@ -2,7 +2,6 @@ import logging
 import shutil
 import subprocess
 import time
-from collections import Counter
 from collections.abc import Sequence
 from enum import Enum
 from pathlib import Path
@@ -81,20 +80,6 @@ def diff_sequences[T](
     elif len(seq2) > len(seq1):
         diff2.extend(seq2[len(seq1) :])
     return diff1, diff2
-
-
-def subtract_counters[T](minuend: Counter[T], subtrahend: Counter[T]) -> Counter[T]:
-    """
-    Equivalent to `minuend - subtrahend`, except negative counts are not dropped.
-
-    Zero counts are still dropped.
-    """
-    difference = Counter[T]()
-    for key in minuend.keys() | subtrahend.keys():
-        count = minuend[key] - subtrahend[key]
-        if count != 0:
-            difference[key] = count
-    return difference
 
 
 def make_files_relative_to(path: Path, files: list[Path]) -> list[Path]:

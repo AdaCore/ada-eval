@@ -5,7 +5,7 @@ from pathlib import Path
 
 from ada_eval.check_datasets import check_base_datasets
 from ada_eval.datasets.pack_unpack import pack_datasets, unpack_datasets
-from ada_eval.datasets.types import Eval
+from ada_eval.datasets.types import Eval, SampleKind
 from ada_eval.evals import evaluate_directory
 from ada_eval.paths import (
     COMPACTED_DATASETS_DIR,
@@ -13,6 +13,7 @@ from ada_eval.paths import (
     EXPANDED_DATASETS_DIR,
     GENERATED_DATASETS_DIR,
 )
+from ada_eval.report import report_evaluation_results
 from ada_eval.tools import Tool, create_tool
 
 
@@ -27,9 +28,7 @@ def call_pack_datasets(args):
 def generate(args):
     tool = create_tool(args.tool, args.tool_config_file)
     tool.apply_to_directory(
-        path=args.dataset,
-        output_dir=GENERATED_DATASETS_DIR,
-        jobs=args.jobs,
+        path=args.dataset, output_dir=GENERATED_DATASETS_DIR, jobs=args.jobs
     )
 
 
@@ -51,6 +50,19 @@ def evaluate(args):
 
 def call_check_base_datasets(args) -> None:
     check_base_datasets(dataset_dirs=args.datasets, jobs=args.jobs)
+
+
+def call_report_evaluation_results(args) -> None:
+    report_evaluation_results(
+        dataset_dirs=args.dataset_dirs,
+        datasets_filter=None if args.datasets is None else set(args.datasets),
+        dataset_kinds_filter=(
+            None if args.dataset_kinds is None else set(args.dataset_kinds)
+        ),
+        samples_filter=None if args.samples is None else set(args.samples),
+        metrics_filter=args.with_metric,
+        list_samples=args.list_samples,
+    )
 
 
 def main() -> None:
@@ -159,10 +171,7 @@ def main() -> None:
     )
 
     # Evaluate completions for a dataset
-    evaluation_parser = subparsers.add_parser(
-        "evaluate",
-        help="Evaluate completions",
-    )
+    evaluation_parser = subparsers.add_parser("evaluate", help="Evaluate completions")
     evaluation_parser.set_defaults(func=evaluate)
     evaluation_parser.add_argument(
         "--canonical",
@@ -219,6 +228,64 @@ def main() -> None:
         type=int,
         help="Number of evaluations to run in parallel.",
         default=default_num_jobs,
+    )
+
+    # Report evaluation results
+    report_parser = subparsers.add_parser(
+        "report", help="Generate a report of evaluation results"
+    )
+    report_parser.set_defaults(func=call_report_evaluation_results)
+    report_parser.add_argument(
+        "--dataset-dirs",
+        type=Path,
+        nargs="+",
+        metavar="DIR",
+        help="Paths to dataset directories to include in the report.",
+        default=[EVALUATED_DATASETS_DIR],
+    )
+    report_parser.add_argument(
+        "--datasets",
+        type=str,
+        nargs="+",
+        metavar="DATASET",
+        help="Full names (i.e. '<kind>_<name>') of datasets to include in the report.",
+    )
+    report_parser.add_argument(
+        "--dataset-kinds",
+        type=SampleKind,
+        choices=list(SampleKind),
+        nargs="+",
+        help="Kinds of datasets to include in the report.",
+    )
+    report_parser.add_argument(
+        "--samples",
+        type=str,
+        nargs="+",
+        metavar="SAMPLE",
+        help="Names of samples to include in the report.",
+    )
+    report_parser.add_argument(
+        "--with-metric",
+        type=str,
+        action="append",
+        nargs="+",
+        metavar="METRIC",
+        help=(
+            "Include only samples for which the specified metric is present. "
+            "To specify a nested metric, provide the path to the metric as the "
+            "argument list. Can be specified multiple times to select the "
+            'intersection. e.g. \'--with-metric build compiled "no warnings" '
+            "--with-metric prove' will select all samples that compiled with no "
+            "warnings and for which a 'prove' eval result is present."
+        ),
+    )
+    report_parser.add_argument(
+        "--list-samples",
+        action="store_true",
+        help=(
+            "Instead of displaying metric values, simply list the names of the "
+            "samples that match the filters."
+        ),
     )
 
     args = parser.parse_args()

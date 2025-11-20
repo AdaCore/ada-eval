@@ -35,3 +35,4 @@ generated_test_datasets = _test_data_fixture(Path("valid_generated_datasets/comp
 evaluated_test_datasets = _test_data_fixture(Path("valid_evaluated_datasets/compacted"))
 eval_test_datasets = _test_data_fixture(Path("eval_test_datasets"))
 check_test_datasets = _test_data_fixture(Path("check_test_datasets"))
+report_test_datasets = _test_data_fixture(Path("report_test_datasets"))
