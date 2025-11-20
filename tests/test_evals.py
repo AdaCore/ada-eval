@@ -44,7 +44,7 @@ from ada_eval.evals import (
 from ada_eval.evals.generic_eval import GenericEval, WrongEvalOutputTypeError
 from ada_eval.utils import ExecutableNotFoundError
 
-GENERATED_TYPE_TO_EVALUATED = {
+GENERATED_TYPE_TO_EVALUATED: dict[type[GeneratedSample], type[EvaluatedSample]] = {
     GENERATED_SAMPLE_TYPES[k]: EVALUATED_SAMPLE_TYPES[k] for k in SampleKind
 }
 
