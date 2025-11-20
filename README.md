@@ -8,24 +8,21 @@ Framework for evaluating LLM based tools for Ada/SPARK use cases.
     - [Alire Setup](#alire-setup)
     - [Manual Setup](#manual-setup)
     - [Per-clone setup](#per-clone-setup)
-  - [Running the Project](#running-the-project)
   - [Project Development Info](#project-development-info)
     - [Project structure](#project-structure)
     - [Common Commands](#common-commands)
+    - [Adding or Updating Python Dependencies](#adding-or-updating-python-dependencies)
+  - [Usage](#usage)
     - [Adding a new Sample (Challenge/Problem)](#adding-a-new-sample-challengeproblem)
       - [Adding a new SPARK sample](#adding-a-new-spark-sample)
     - [Generating new completions](#generating-new-completions)
     - [Evaluating completions](#evaluating-completions)
-    - [Adding or Updating Python Dependencies](#adding-or-updating-python-dependencies)
-    - [The package version is already in `eng/ai/ada-eval` or `it/package-registry`](#the-package-version-is-already-in-engaiada-eval-or-itpackage-registry)
-    - [The package version is not in `eng/ai/rag` or `it/package-registry`](#the-package-version-is-not-in-engairag-or-itpackage-registry)
 
 
 ## Setup
 
 To get started with this project, you will need the following tools installed on your system:
 - [uv](https://docs.astral.sh/uv/)
-- [e3-cli](https://gitlab.adacore-it.com/it/e3-cli/)
 - [git](https://git-scm.com/)
 - [make](https://www.gnu.org/software/make/)
 
@@ -122,22 +119,6 @@ If you don't use VS Code, you use the standard `source .venv/bin/activate` or eq
 
 Alternatively, you can run commands in the project's virtual environment without activating it by running `uv run ...` (e.g., `uv run pytest`).
 
-
-## Running the Project
-
-The project has a simple CLI, as well as a makefile that contains some useful commands for your convenience.
-
-You can see the CLI options by running:
-
-```sh
-uv run ada-eval --help
-```
-
-If you look at the make target `generate-spark-claude`, you will see an example of how to generate completions for our existing challenges, using Claude Code.
-```sh
-make generate-spark-claude
-```
-
 ## Project Development Info
 
 ### Project structure
@@ -177,6 +158,44 @@ make check
 To run the testsuite run:
 ```sh
 make test
+```
+
+### Adding or Updating Python Dependencies
+
+To add a new Python dependency using `uv`, run
+```sh
+uv add <package-name>
+uv sync
+```
+For more info see [docs](https://docs.astral.sh/uv/reference/cli/#uv-add).
+
+Our GitLab CI uses an internal package registry for Python dependencies, so the following additional steps are required if the new package(s) is not already in our registry.
+
+1. For each file which needs to be added to our package registry, find its URL (which will start with `https://files.pythonhosted.org/packages`) in `uv.lock`, and download it to a temporary directory with 
+     ```sh
+     curl -L -O --output-dir <temp_directory> <url>
+    ```
+2. Upload the files with
+     ```sh
+     TWINE_USERNAME=oauth2
+     TWINE_PASSWORD=<personal_access_token>
+     uvx twine upload --repository-url https://<gitlab_host>/api/v4/projects/<project_id_or_percent_encoded_path>/packages/pypi --skip-existing <temp_directory>/*
+     ```
+
+
+## Usage
+
+The project has a simple CLI, as well as a makefile that contains some useful commands for your convenience.
+
+You can see the CLI options by running:
+
+```sh
+uv run ada-eval --help
+```
+
+If you look at the make target `generate-spark-claude`, you will see an example of how to generate completions for our existing challenges, using Claude Code.
+```sh
+make generate-spark-claude
 ```
 
 ### Adding a new Sample (Challenge/Problem)
@@ -283,46 +302,3 @@ uv run ada-eval evaluate --help
 ```
 
 This interface is not final.
-
-
-### Adding or Updating Python Dependencies
-
-Since we are using our GitLab instance as our Python package registry (specifically `eng/ai/ada-eval` and `it/package-registry`), the following steps will depend on whether the desired package is already in the registry or not.
-
-### The package version is already in `eng/ai/ada-eval` or `it/package-registry`
-
-Run:
-
-```sh
-uv add <package-name>
-uv sync
-```
-
-For more info see [docs](https://docs.astral.sh/uv/reference/cli/#uv-add)
-
-### The package version is not in `eng/ai/rag` or `it/package-registry`
-
-1. Find the new files that need to be added to our GitLab package registry
-   1. Find the `tool.uv.index` section in `pyproject.toml` and either remove or comment out the line which says `default = true`
-   2. Add the new package: `uv add <package-name>`, `uv lock`
-   3. Find all of the URLS in `uv.lock` which start with `https://files.pythonhosted.org/packages`
-2. Download copies of all files not in our package registry
-   1. Make a temporary directory
-   2. In that temporary directory, download all of the files from the URLs that start with `https://files.pythonhosted.org/packages`
-      - This can be done by running `curl -L -O <url>` for each URL
-3. Re-upload the files to our package registry
-
-   1. Create or update ~/.pypirc to add the rag project to the index-servers:
-
-      ```INI
-      [distutils]
-      index-servers =
-          ada-eval
-
-      [ada-eval]
-      repository = https://gitlab.adacore-it.com/api/v4/projects/eng%2Fai%2Fada-eval/packages/pypi
-      username: oauth2
-      password: <token generated by e3-cli go, which can be found in ~/.adacore-jwts/gitlab_pat>
-      ```
-
-   2. Use twine to upload the files to the package registry: `uvx twine upload -r ada-eval --skip-existing *`
