@@ -3,7 +3,6 @@ Framework for evaluating LLM based tools for Ada/SPARK use cases.
 
 - [Ada Eval](#ada-eval)
   - [Setup](#setup)
-    - [Install uv](#install-uv)
     - [Install Ada/SPARK Toolchain](#install-adaspark-toolchain)
     - [Per-clone setup](#per-clone-setup)
   - [Project Development Info](#project-development-info)
