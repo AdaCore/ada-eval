@@ -169,19 +169,6 @@ uv sync
 ```
 For more info see [docs](https://docs.astral.sh/uv/reference/cli/#uv-add).
 
-Our GitLab CI uses an internal package registry for Python dependencies, so the following additional steps are required if the new package(s) is not already in our registry.
-
-1. For each file which needs to be added to our package registry, find its URL (which will start with `https://files.pythonhosted.org/packages`) in `uv.lock`, and download it to a temporary directory with 
-     ```sh
-     curl -L -O --output-dir <temp_directory> <url>
-    ```
-2. Upload the files with
-     ```sh
-     TWINE_USERNAME=oauth2
-     TWINE_PASSWORD=<personal_access_token>
-     uvx twine upload --repository-url https://<gitlab_host>/api/v4/projects/<project_id_or_percent_encoded_path>/packages/pypi --skip-existing <temp_directory>/*
-     ```
-
 
 ## Usage
 
