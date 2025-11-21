@@ -3,10 +3,7 @@ Framework for evaluating LLM based tools for Ada/SPARK use cases.
 
 - [Ada Eval](#ada-eval)
   - [Setup](#setup)
-    - [Install uv](#install-uv)
-    - [ANCR Setup](#ancr-setup)
-    - [Alire Setup](#alire-setup)
-    - [Manual Setup](#manual-setup)
+    - [Install Ada/SPARK Toolchain](#install-adaspark-toolchain)
     - [Per-clone setup](#per-clone-setup)
   - [Project Development Info](#project-development-info)
     - [Project structure](#project-structure)
@@ -26,83 +23,18 @@ To get started with this project, you will need the following tools installed on
 - [git](https://git-scm.com/)
 - [make](https://www.gnu.org/software/make/)
 
-You will also need an Ada toolchain and GNATprove installed on your system. Some options for doing this:
-1. [ANCR](#ancr-setup)
-2. [Alire](#alire-setup)
-3. [Manual](#manual-setup)
+You will also need an Ada toolchain and GNATprove installed on your system, which [can be obtained through Alire](#install-adaspark-toolchain).
 
-### Install uv
+### Install Ada/SPARK Toolchain
 
-uv should not be installed in the project's virtual environment. We can use pipx to install it globally, but still in a virtual environment. For alternative methods, see the [official docs](https://docs.astral.sh/uv/getting-started/installation/).
+The recommended way to set up an Ada/SPARK toolchain is via [Alire](https://alire.ada.dev/). More information on installing Alire can be found [here](https://alire.ada.dev/docs/getting-started).
 
+Once you have Alire installed, you can install the toolchain and GNATprove with
 ```sh
-# Using official script:
-curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# Using pipx
-pipx install uv
-
-# Using brew
-brew install uv
-
-# Using cargo
-cargo install --git https://github.com/astral-sh/uv uv
+alr install gnat_native gprbuild gnatprove gnatformat
 ```
 
-uv can update itself by running:
-```sh
-uv self update
-```
-
-Optionally, you can also install completions for uv and uvx:
-
-```sh
-# Determine your shell (e.g., with `echo $SHELL`), then run one of:
-
-# For bash
-echo 'eval "$(uv generate-shell-completion bash)"' >> ~/.bashrc
-echo 'eval "$(uvx --generate-shell-completion bash)"' >> ~/.bashrc
-
-# For zsh
-echo 'eval "$(uv generate-shell-completion zsh)"' >> ~/.zshrc
-echo 'eval "$(uvx --generate-shell-completion zsh)"' >> ~/.zshrc
-
-# For fish
-echo 'uv generate-shell-completion fish | source' >> ~/.config/fish/config.fish
-echo 'uvx --generate-shell-completion fish | source' >> ~/.config/fish/config.fish
-
-# For elvish
-echo 'eval (uv generate-shell-completion elvish | slurp)' >> ~/.elvish/rc.elv
-echo 'eval (uvx --generate-shell-completion elvish | slurp)' >> ~/.elvish/rc.elv
-
-```
-
-See [docs](https://docs.astral.sh/uv/) for more info about uv.
-
-### ANCR Setup
-Note that this won't work on macOS systems.
-
-If you haven't already, you will need to clone [ANCR](https://github.com/AdaCore/ANCR). You should then run:
-```
-./bin/ancr all mcp
-./bin/ancr shell mcp
-code ../ada-eval
-uv sync
-```
-You should now have a working Ada toolchain and GNATprove installed and in your environment.
-
-### Alire Setup
-
-If you're using macOS, you can use Alire to set up your environment by running:
-
-```sh
-alr install gnat_native gnatprove gprbuild
-```
-
-You must ensure that ~/.alire/bin/ is in your PATH.
-
-### Manual Setup
-Figure out how to install everything yourself 👍
+By default, this will install the tools in `~/.alire/bin/`, which you must ensure is in your `PATH`. Alternative installation locations can be specified with `alr install`'s `--prefix` option.
 
 ### Per-clone setup
 
@@ -168,19 +100,6 @@ uv add <package-name>
 uv sync
 ```
 For more info see [docs](https://docs.astral.sh/uv/reference/cli/#uv-add).
-
-Our GitLab CI uses an internal package registry for Python dependencies, so the following additional steps are required if the new package(s) is not already in our registry.
-
-1. For each file which needs to be added to our package registry, find its URL (which will start with `https://files.pythonhosted.org/packages`) in `uv.lock`, and download it to a temporary directory with 
-     ```sh
-     curl -L -O --output-dir <temp_directory> <url>
-    ```
-2. Upload the files with
-     ```sh
-     TWINE_USERNAME=oauth2
-     TWINE_PASSWORD=<personal_access_token>
-     uvx twine upload --repository-url https://<gitlab_host>/api/v4/projects/<project_id_or_percent_encoded_path>/packages/pypi --skip-existing <temp_directory>/*
-     ```
 
 
 ## Usage
