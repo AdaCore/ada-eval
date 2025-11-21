@@ -3,6 +3,7 @@ name = "ada-eval"
 version = "0.1.0"
 description = "Simple project for evaluating LLM based tools for Ada"
 readme = "README.md"
+license = "Apache-2.0 WITH LLVM-exception"
 authors = [
     { name = "Seb M'Caw", email = "mcaw@adacore.com" },
     { name = "Rowan Walshe", email = "walshe@adacore.com" },
