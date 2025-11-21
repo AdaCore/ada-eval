@@ -26,54 +26,6 @@ To get started with this project, you will need the following tools installed on
 
 You will also need an Ada toolchain and GNATprove installed on your system, which [can be obtained through Alire](#install-adaspark-toolchain).
 
-### Install uv
-
-uv should not be installed in the project's virtual environment. We can use pipx to install it globally, but still in a virtual environment. For alternative methods, see the [official docs](https://docs.astral.sh/uv/getting-started/installation/).
-
-```sh
-# Using official script:
-curl -LsSf https://astral.sh/uv/install.sh | sh
-
-# Using pipx
-pipx install uv
-
-# Using brew
-brew install uv
-
-# Using cargo
-cargo install --git https://github.com/astral-sh/uv uv
-```
-
-uv can update itself by running:
-```sh
-uv self update
-```
-
-Optionally, you can also install completions for uv and uvx:
-
-```sh
-# Determine your shell (e.g., with `echo $SHELL`), then run one of:
-
-# For bash
-echo 'eval "$(uv generate-shell-completion bash)"' >> ~/.bashrc
-echo 'eval "$(uvx --generate-shell-completion bash)"' >> ~/.bashrc
-
-# For zsh
-echo 'eval "$(uv generate-shell-completion zsh)"' >> ~/.zshrc
-echo 'eval "$(uvx --generate-shell-completion zsh)"' >> ~/.zshrc
-
-# For fish
-echo 'uv generate-shell-completion fish | source' >> ~/.config/fish/config.fish
-echo 'uvx --generate-shell-completion fish | source' >> ~/.config/fish/config.fish
-
-# For elvish
-echo 'eval (uv generate-shell-completion elvish | slurp)' >> ~/.elvish/rc.elv
-echo 'eval (uvx --generate-shell-completion elvish | slurp)' >> ~/.elvish/rc.elv
-
-```
-
-See [docs](https://docs.astral.sh/uv/) for more info about uv.
-
 ### Install Ada/SPARK Toolchain
 
 The recommended way to set up an Ada/SPARK toolchain is via [Alire](https://alire.ada.dev/). More information on installing Alire can be found [here](https://alire.ada.dev/docs/getting-started).
