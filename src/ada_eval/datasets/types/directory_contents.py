@@ -1,11 +1,43 @@
 from __future__ import annotations
 
+import base64
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from typing import Annotated, Any
 
-from pydantic import RootModel
+from pydantic import PlainSerializer, RootModel
+from pydantic.functional_validators import BeforeValidator
 
 from ada_eval.datasets.utils import git_ls_files, is_in_git_worktree
+
+
+def decode_bytes(v: Any) -> Any:
+    """
+    Decode base64 strings to bytes, pass through bytes as-is.
+
+    Raises:
+        binascii.Error: If a string is not valid base64
+
+    """
+
+    if isinstance(v, str):
+        return base64.b64decode(v, validate=True)
+    if isinstance(v, bytes):
+        return v
+    return v
+
+
+def encode_bytes(v: bytes) -> str:
+    """Encode bytes to base64 string for JSON serialization."""
+    return base64.b64encode(v).decode("utf-8")
+
+
+# Bytes type that serializes to/from base64 strings for storing in JSON objects
+Base64Bytes = Annotated[
+    bytes,
+    BeforeValidator(decode_bytes),
+    PlainSerializer(encode_bytes, return_type=str, when_used="json"),
+]
 
 
 class _UnpackedDirectoryContextManager:
@@ -35,21 +67,21 @@ class _UnpackedDirectoryContextManager:
             self.temp_dir = None
 
 
-class DirectoryContents(RootModel[dict[Path, str]]):
+class DirectoryContents(RootModel[dict[Path, Base64Bytes]]):
     """
     The contents of a directory.
 
     Attributes:
-        root (dict[Path, str]): A mapping of the files' relative paths to their
+        root (dict[Path, Base64Bytes]): A mapping of the files' relative paths to their
             contents.
-        files (dict[Path, str]): More descriptive alias for `root`.
+        files (dict[Path, Base64Bytes]): More descriptive alias for `root`.
 
     """
 
-    root: dict[Path, str]
+    root: dict[Path, Base64Bytes]
 
     @property
-    def files(self) -> dict[Path, str]:
+    def files(self) -> dict[Path, Base64Bytes]:
         return self.root
 
     def unpack_to(self, dest_dir: Path):
@@ -58,7 +90,7 @@ class DirectoryContents(RootModel[dict[Path, str]]):
         for rel_path, contents in self.files.items():
             full_path = dest_dir / rel_path
             full_path.parent.mkdir(parents=True, exist_ok=True)
-            with full_path.open("w") as f:
+            with full_path.open("wb") as f:
                 f.write(contents)
 
     def unpacked(self) -> _UnpackedDirectoryContextManager:
@@ -71,7 +103,7 @@ def get_contents(root: Path) -> DirectoryContents:
     if not root.is_dir():
         return DirectoryContents({})
     full_paths = [p for p in sorted(root.rglob("*")) if p.is_file()]
-    files = {p.relative_to(root): p.read_text("utf-8") for p in full_paths}
+    files = {p.relative_to(root): p.read_bytes() for p in full_paths}
     return DirectoryContents(files)
 
 
@@ -87,5 +119,5 @@ def get_contents_git_aware(root: Path) -> DirectoryContents:
     if not is_in_git_worktree(root):
         return get_contents(root)
     full_paths = sorted(git_ls_files(root))
-    files = {p.relative_to(root): p.read_text("utf-8") for p in full_paths}
+    files = {p.relative_to(root): p.read_bytes() for p in full_paths}
     return DirectoryContents(files)

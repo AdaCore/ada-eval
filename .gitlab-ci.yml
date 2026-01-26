@@ -67,7 +67,7 @@ pytest:
   needs: []
   script:
     - !reference [.script-snippets, install-eval-tools]
-    - uv run pytest --junitxml=report.xml --cov-report xml:coverage.xml
+    - uv run pytest --junitxml=report.xml --cov-report xml:coverage.xml -m '' -n 1
   artifacts:
     when: always
     reports:

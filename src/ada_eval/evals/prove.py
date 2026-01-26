@@ -202,7 +202,7 @@ def proof_check_is_satisfied(
             )
             raise ProofResultSourceNotFoundError(msg)
     src_file = next(iter(src_files))
-    src_str = sample.generated_solution.files[src_file]
+    src_str = sample.generated_solution.files[src_file].decode("utf-8")
     # We only want to match starting from the check location reported by
     # GNATprove
     src_str = src_str[

@@ -23,6 +23,7 @@ dev = [
     "ruff>=0.8.1",
     "ipykernel>=6.29.5",
     "types-tqdm>=4.67.0.20250516",
+    "pytest-xdist>=3.8.0",
 ]
 
 [project.scripts]
@@ -112,8 +113,11 @@ ignore = [
 ]
 
 [tool.pytest.ini_options]
-addopts = "-ra -q --cov=ada_eval --cov-report=term-missing --cov-branch"
+addopts = "-ra -q --cov=ada_eval --cov-report=term-missing --cov-branch -m 'not slow' -n auto"
 testpaths = ["tests"]
+markers = [
+    "slow: marks tests as slow (deselected by default)",
+]
 
 [tool.coverage.report]
 precision = 2

@@ -1,4 +1,4 @@
-.PHONY: check-flake8 check-black check-isort check-mypy check-pylint run-black run-isort check format test pack-dataset unpack-dataset
+.PHONY: check-flake8 check-black check-isort check-mypy check-pylint run-black run-isort check format test test-all pack-dataset unpack-dataset
 .DEFAULT_GOAL := test
 
 # Checks and Formatting
@@ -17,6 +17,10 @@ format:
 
 test:
 	uv run pytest
+
+# Run all tests, including ones marked as slow
+test-all:
+	uv run pytest -m ''
 
 # Run the tools
 

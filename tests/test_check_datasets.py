@@ -37,6 +37,7 @@ from ada_eval.evals.evaluate import create_eval
 from ada_eval.evals.generic_eval import GenericEval
 
 
+@pytest.mark.slow
 @pytest.mark.skipif(not shutil.which("gprbuild"), reason="gprbuild not available")
 @pytest.mark.skipif(not shutil.which("gprclean"), reason="gprclean not available")
 @pytest.mark.skipif(not shutil.which("gnatformat"), reason="gnatformat not available")
@@ -119,14 +120,16 @@ def test_check_base_datasets(
 
     # Check that differing samples are detected
     modified_sample_0 = good_sample.model_copy(deep=True)
-    modified_sample_0.canonical_solution.files[Path("src/foo.adb")] = "expanded nested"
-    modified_sample_0.sources.files[Path("new_file")] = "new"
+    modified_sample_0.canonical_solution.files[Path("src/foo.adb")] = b"expanded nested"
+    modified_sample_0.sources.files[Path("new_file")] = b"new"
     modified_sample_0.prompt = "Modified prompt"
     modified_dataset_0 = Dataset(
         name="check", sample_type=SparkSample, samples=[bad_sample, modified_sample_0]
     )
     modified_sample_1 = good_sample.model_copy(deep=True)
-    modified_sample_1.canonical_solution.files[Path("src/foo.adb")] = "compacted nested"
+    modified_sample_1.canonical_solution.files[Path("src/foo.adb")] = (
+        b"compacted nested"
+    )
     modified_dataset_1 = Dataset(
         name="check", sample_type=SparkSample, samples=[modified_sample_1, bad_sample]
     )
@@ -134,10 +137,10 @@ def test_check_base_datasets(
     error_msg = (
         "sample 'good' in dataset 'spark_check' differs between "
         f"'{expanded_dir}' and '{compacted_dir}':\n\n"
-        "{'prompt': 'Modified prompt', 'sources': {PosixPath('new_file'): 'new'},"
-        " 'canonical_solution': {PosixPath('src/foo.adb'): 'expanded nested'}}"
+        "{'prompt': 'Modified prompt', 'sources': {PosixPath('new_file'): b'new'},"
+        " 'canonical_solution': {PosixPath('src/foo.adb'): b'expanded nested'}}"
         "\n\n{'prompt': '', 'sources': {},"
-        " 'canonical_solution': {PosixPath('src/foo.adb'): 'compacted nested'}}"
+        " 'canonical_solution': {PosixPath('src/foo.adb'): b'compacted nested'}}"
     )
     with pytest.raises(DatasetsMismatchError, match=re.escape(error_msg)):
         run_check()
@@ -260,7 +263,7 @@ def test_check_base_datasets(
         supported_types: ClassVar = {GeneratedSparkSample: EvaluatedSparkSample}
 
         def evaluate(self, sample: GeneratedSparkSample) -> EvaluationStatsBuild:
-            if "return 1" in sample.generated_solution.files[Path("src/foo.adb")]:
+            if b"return 1" in sample.generated_solution.files[Path("src/foo.adb")]:
                 raise RuntimeError("Mock evaluation error")
             return EvaluationStatsBuild(
                 compiled=True, pre_format_warnings=False, post_format_warnings=False

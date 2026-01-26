@@ -33,7 +33,7 @@ def diff_dicts[K, V](
     Returns the remainders of the two dicts after removing the keys which are
     present in both and have the same value.
 
-    Nested `dict`s and `Sequence`s (except strings) are diffed recursively.
+    Nested `dict`s and `Sequence`s (except strings and bytes) are diffed recursively.
     """
     diff1: dict[K, V | AnyDict | AnyList] = {
         k: v for k, v in dict1.items() if k not in dict2 or dict2[k] != v
@@ -43,7 +43,7 @@ def diff_dicts[K, V](
     }
     for k in diff1.keys() & diff2.keys():
         v1, v2 = diff1[k], diff2[k]
-        if type(v1) is type(v2) and not isinstance(v1, str):
+        if type(v1) is type(v2) and not isinstance(v1, (str, bytes)):
             if isinstance(v1, dict) and isinstance(v2, dict):
                 diff1[k], diff2[k] = diff_dicts(v1, v2)
             elif isinstance(v1, Sequence) and isinstance(v2, Sequence):
@@ -60,7 +60,7 @@ def diff_sequences[T](
     Returns the remainders of the two sequences after removing the elements
     which are the same in both.
 
-    Nested `dict`s and `Sequence`s (except strings) are diffed recursively.
+    Nested `dict`s and `Sequence`s (except strings and bytes) are diffed recursively.
     """
     diff1: list[T | AnyDict | AnyList] = []
     diff2: list[T | AnyDict | AnyList] = []
@@ -68,7 +68,7 @@ def diff_sequences[T](
         if elem1 != elem2:
             new_elem1: T | AnyDict | AnyList = elem1
             new_elem2: T | AnyDict | AnyList = elem2
-            if type(elem1) is type(elem2) and not isinstance(elem1, str):
+            if type(elem1) is type(elem2) and not isinstance(elem1, (str, bytes)):
                 if isinstance(elem1, dict) and isinstance(elem2, dict):
                     new_elem1, new_elem2 = diff_dicts(elem1, elem2)
                 elif isinstance(elem1, Sequence) and isinstance(elem2, Sequence):

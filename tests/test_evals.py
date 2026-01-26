@@ -538,6 +538,7 @@ def test_evaluate_directory_save_unpacked(tmp_path: Path, expanded_test_datasets
     assert not (output_dir / "spark_test.jsonl").exists()
 
 
+@pytest.mark.slow
 @pytest.mark.skipif(not shutil.which("gprbuild"), reason="gprbuild not available")
 @pytest.mark.skipif(not shutil.which("gprclean"), reason="gprclean not available")
 @pytest.mark.skipif(not shutil.which("gnatformat"), reason="gnatformat not available")
@@ -600,6 +601,7 @@ def test_build(
         ]
 
 
+@pytest.mark.slow
 @pytest.mark.skipif(not shutil.which("gnatprove"), reason="gnatprove not available")
 @pytest.mark.skipif(not shutil.which("gprbuild"), reason="gprbuild not available")
 @pytest.mark.skipif(not shutil.which("gprls"), reason="gprls not available")
@@ -728,6 +730,7 @@ def test_prove(
     ]
 
 
+@pytest.mark.slow
 @pytest.mark.skipif(not shutil.which("gprbuild"), reason="gprbuild not available")
 @pytest.mark.skipif(not shutil.which("gprclean"), reason="gprclean not available")
 def test_test(
