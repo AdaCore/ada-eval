@@ -12,10 +12,10 @@ from ada_eval.datasets.types.directory_contents import (
 def test_directorycontents():
     contents = DirectoryContents(
         {
-            Path("file0"): "File 0 content",
-            Path("file1"): "File 1 content",
-            Path("subdir2/file2"): "File 2 content",
-            Path("subdir3/subsubdir3/file3"): "File 3 content",
+            Path("file0"): b"File 0 content",
+            Path("file1"): b"File 1 content",
+            Path("subdir2/file2"): b"File 2 content",
+            Path("subdir3/subsubdir3/file3"): b"File 3 content",
         }
     )
     with contents.unpacked() as tmp_dir:
@@ -48,12 +48,12 @@ def test_get_contents(tmp_path: Path):
     # Check that `get_contents()` returns the correct `DirectoryContents`
     expected_contents = DirectoryContents(
         {
-            Path("file0"): "File 0 content",
-            Path("dir1/file1"): "File 1 content",
-            Path(".gitignore"): "gitignored_dir/\n",
-            Path("gitignored_dir/file2"): "File 2 content",
-            Path("dir2/file3"): "File 3 content",
-            Path("dir2/gitignored_dir/file4"): "File 4 content",
+            Path("file0"): b"File 0 content",
+            Path("dir1/file1"): b"File 1 content",
+            Path(".gitignore"): b"gitignored_dir/\n",
+            Path("gitignored_dir/file2"): b"File 2 content",
+            Path("dir2/file3"): b"File 3 content",
+            Path("dir2/gitignored_dir/file4"): b"File 4 content",
         }
     )
     assert get_contents(tmp_path) == expected_contents
@@ -68,21 +68,21 @@ def test_get_contents(tmp_path: Path):
     assert get_contents_git_aware(tmp_path) == expected_contents
     # Check getting the contents of a subdirectory of the Git repo
     assert get_contents_git_aware(tmp_path / "dir1") == DirectoryContents(
-        {Path("file1"): "File 1 content"}
+        {Path("file1"): b"File 1 content"}
     )
     assert get_contents_git_aware(tmp_path / "dir2") == DirectoryContents(
-        {Path("file3"): "File 3 content"}
+        {Path("file3"): b"File 3 content"}
     )
     # Change the `.gitignore` to only ignore the root `gitignored_dir` and check
     # that this is respected
     (tmp_path / ".gitignore").write_text("/gitignored_dir/\n")
-    expected_contents.files[Path(".gitignore")] = "/gitignored_dir/\n"
-    expected_contents.files[Path("dir2/gitignored_dir/file4")] = "File 4 content"
+    expected_contents.files[Path(".gitignore")] = b"/gitignored_dir/\n"
+    expected_contents.files[Path("dir2/gitignored_dir/file4")] = b"File 4 content"
     assert get_contents_git_aware(tmp_path) == expected_contents
     assert get_contents_git_aware(tmp_path / "dir2") == DirectoryContents(
         {
-            Path("file3"): "File 3 content",
-            Path("gitignored_dir/file4"): "File 4 content",
+            Path("file3"): b"File 3 content",
+            Path("gitignored_dir/file4"): b"File 4 content",
         }
     )
     # Check that an empty directory returns an empty `DirectoryContents`

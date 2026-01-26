@@ -55,7 +55,7 @@ def test_generic_tool(
         runtime_ms=123,
     )
     mock_ada_solution = DirectoryContents(
-        {Path("generated_file"): "This is a generated file."}
+        {Path("generated_file"): b"This is a generated file."}
     )
     mock_explain_solution = "This is a generated explanation."
 

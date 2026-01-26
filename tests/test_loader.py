@@ -64,7 +64,7 @@ def expected_base_sample_fields(
                 Path("source_file_0"): (
                     f"This is 'source_file_0' in sample '{sample_name}' from "
                     f"dataset '{dataset_dirname}'.\n"
-                )
+                ).encode()
             }
         ),
         "comments": (
@@ -104,7 +104,7 @@ def expected_ada_sample(sample_name: str, dataset_dirname: str) -> AdaSample:
                     f"This is 'source_file_0' in sample '{sample_name}' from "
                     f"dataset '{dataset_dirname}'.\nThis is a new line added as "
                     "part of the canonical solution.\n"
-                )
+                ).encode()
             }
         ),
         unit_tests=DirectoryContents(
@@ -112,7 +112,7 @@ def expected_ada_sample(sample_name: str, dataset_dirname: str) -> AdaSample:
                 Path("unit_test_file_0"): (
                     f"This is a unit test for sample '{sample_name}' from dataset "
                     f"'{dataset_dirname}'.\n"
-                )
+                ).encode()
             }
         ),
     )
@@ -137,7 +137,7 @@ def expected_generated_sample(base_sample: Sample) -> GeneratedSample:
     if isinstance(base_sample, AdaSample):
         generated_solution: object = DirectoryContents(
             base_sample.sources.files
-            | {Path("generated_file"): "This file was added during generation\n"}
+            | {Path("generated_file"): b"This file was added during generation\n"}
         )
     else:
         generated_solution = "This is the generated explanation."
@@ -236,13 +236,14 @@ def check_loaded_datasets(
     ]
     expected_spark_sample_1 = expected_spark_sample("test_sample_1", "spark_test")
     expected_spark_sample_1.sources.files[Path("source_dir_0/source_file_1")] = (
-        "This is 'source_file_1' in sample 'test_sample_1' from dataset 'spark_test'.\n"
+        b"This is 'source_file_1' in sample 'test_sample_1' from dataset "
+        b"'spark_test'.\n"
     )
     expected_spark_sample_1.canonical_solution.files[
         Path("source_dir_1/source_file_2")
     ] = (
-        "This is 'source_file_2' in sample 'test_sample_1' from dataset 'spark_test'.\n"
-        "The addition of this file is part of the canonical solution.\n"
+        b"This is 'source_file_2' in sample 'test_sample_1' from dataset "
+        b"'spark_test'.\nThe addition of this file is part of the canonical solution.\n"
     )
     expected_spark_sample_1.canonical_evaluation_results = [
         EvaluationStatsProve(
@@ -329,14 +330,14 @@ def test_load_valid_unpacked_datasets_with_gitignore(expanded_test_datasets: Pat
     ada_ignored_rel_path = Path("obj/some_file")
     assert ada_ignored_rel_path in ada_dataset.samples[0].sources.files
     assert ada_dataset.samples[0].sources.files[ada_ignored_rel_path] == (
-        "This is a test file.\n"
+        b"This is a test file.\n"
     )
     spark_dataset = next(d for d in datasets if dataset_has_sample_type(d, SparkSample))
     spark_sample_1 = next(s for s in spark_dataset.samples if s.name == "test_sample_1")
     spark_ignored_rel_path = Path("source_dir_1/obj/some_file")
     assert spark_ignored_rel_path in spark_sample_1.canonical_solution.files
     assert spark_sample_1.canonical_solution.files[spark_ignored_rel_path] == (
-        "This is a test file.\n"
+        b"This is a test file.\n"
     )
     # The loaded datasets should otherwise be as expected
     ada_dataset.samples[0].sources.files.pop(ada_ignored_rel_path)
