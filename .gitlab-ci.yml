@@ -25,10 +25,10 @@ stages:
   services:
     - image:pe-base
   before_script:
+    - rm .python-version  # Use whatever is available in the image
     - pip install uv
     - export UV_DEFAULT_INDEX="$PIP_INDEX_URL"
     - export UV_INDEX="$PROJECT_PIP_INDEX_URL"
-    - uv venv --python 3.12
     - uv sync
     - git config --global user.email "ci@adacore.com"
     - git config --global user.name "CI"
@@ -61,7 +61,7 @@ mypy:
     - uv run mypy-gitlab-code-quality < mypy-out.txt > code-quality-report.json
     - if [ ! -z ${FAILED+x} ]; then echo "mypy was unhappy 😞" && exit 1; fi
 
-pytest:
+.pytest:
   extends: .default
   stage: test
   needs: []
@@ -76,3 +76,13 @@ pytest:
         coverage_format: cobertura
         path: coverage.xml
   coverage: /TOTAL.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/
+
+pytest-3.12:
+  extends: .pytest
+  services:
+    - image:pe-base-py312
+
+pytest-3.14:
+  extends: .pytest
+  services:
+    - image:pe-base-py314

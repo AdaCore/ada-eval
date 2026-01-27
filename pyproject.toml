@@ -20,10 +20,11 @@ dev = [
     "mypy>=1.13.0",
     "pytest>=8.3.4",
     "pytest-cov>=6.0.0",
-    "ruff>=0.8.1",
-    "ipykernel>=6.29.5",
+    "ruff>=0.14.4",
     "types-tqdm>=4.67.0.20250516",
     "pytest-xdist>=3.8.0",
+    "tox>=4.34.1",
+    "tox-uv>=1.29.0",
 ]
 
 [project.scripts]
