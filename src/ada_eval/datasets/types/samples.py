@@ -49,6 +49,7 @@ INCORRECT_STATEMENTS_KEY = "incorrect_statements"
 LOCATION_KEY = "location"
 CANONICAL_EVAL_KEY = "canonical_evaluation_results"
 REQUIRED_CHECKS_KEY = "required_checks"
+GENERATED_SOLUTION_KEY = "generated_solution"
 GENERATION_STATS_KEY = "generation_stats"
 EVALUATION_RESULTS_KEY = "evaluation_results"
 
@@ -407,7 +408,7 @@ class GeneratedExplainSample(ExplainSample, GeneratedSample):
     generated_solution: str
 
     def unpack(self, dataset_root: Path, other_data: dict[str, object] | None = None):
-        other_data = {"generated_solution": self.generated_solution} | (
+        other_data = {GENERATED_SOLUTION_KEY: self.generated_solution} | (
             other_data or {}
         )
         super().unpack(dataset_root=dataset_root, other_data=other_data)

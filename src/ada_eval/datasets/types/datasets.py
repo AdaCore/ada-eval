@@ -10,7 +10,6 @@ from typing import TypeGuard
 from ada_eval.utils import diff_dicts
 
 from .samples import (
-    GeneratedSample,
     Sample,
     SampleKind,
     SampleStage,
@@ -169,10 +168,6 @@ def save_datasets(
             them in packed form.
 
     """
-    if unpacked and any(dataset_has_sample_type(d, GeneratedSample) for d in datasets):
-        raise NotImplementedError(
-            "Saving generated datasets in unpacked form is not supported."
-        )
     if output_dir.is_file():
         output_dir.unlink()
     elif output_dir.exists():
