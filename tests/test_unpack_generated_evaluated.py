@@ -18,20 +18,26 @@ def test_unpack_generated_dataset(generated_test_datasets: Path, tmp_path: Path)
 
     unpacked_dataset_dir = expanded_dir / "spark_test"
     sample_dirs = sorted([d for d in unpacked_dataset_dir.iterdir() if d.is_dir()])
-    assert len(sample_dirs) > 0
+    assert len(sample_dirs) == 3
 
     sample_dir = sample_dirs[0]
 
     # Check that the unpacked dataset includes a non-empty generated_solution dir
     generated_solution_dir = sample_dir / GENERATED_SOLUTION_DIR_NAME
     assert generated_solution_dir.is_dir()
-    assert list(generated_solution_dir.iterdir())
+    generated_file = generated_solution_dir / "generated_file"
+    assert generated_file.read_text() == "This file was added during generation\n"
 
     # Check that non-empty generation_stats are included in other.json
     with (sample_dir / OTHER_JSON_NAME).open() as f:
         other_data = json.load(f)
         assert GENERATION_STATS_KEY in other_data
-        assert other_data[GENERATION_STATS_KEY]
+        assert other_data[GENERATION_STATS_KEY] == {
+            "exit_code": 0,
+            "stdout": "This is the generation's stdout\n",
+            "stderr": "",
+            "runtime_ms": 0,
+        }
 
 
 def test_unpack_evaluated_dataset(evaluated_test_datasets: Path, tmp_path: Path):
@@ -42,15 +48,18 @@ def test_unpack_evaluated_dataset(evaluated_test_datasets: Path, tmp_path: Path)
 
     unpacked_dataset_dir = expanded_dir / "spark_test"
     sample_dirs = sorted([d for d in unpacked_dataset_dir.iterdir() if d.is_dir()])
+    assert len(sample_dirs) == 3
     sample_dir = sample_dirs[0]
 
     # Check that the unpacked dataset includes a non-empty generated_solution dir
     generated_solution_dir = sample_dir / GENERATED_SOLUTION_DIR_NAME
     assert (generated_solution_dir).is_dir()
-    assert list(generated_solution_dir.iterdir())
+    generated_file = generated_solution_dir / "generated_file"
+    assert generated_file.read_text() == "This file was added during generation\n"
 
     # Check that non-empty evaluation_results are included in other.json
     with (sample_dir / OTHER_JSON_NAME).open() as f:
         other_data = json.load(f)
         assert EVALUATION_RESULTS_KEY in other_data
-        assert other_data[EVALUATION_RESULTS_KEY]
+        eval_results = other_data[EVALUATION_RESULTS_KEY]
+        assert {e["eval"] for e in eval_results} == {"build", "prove"}

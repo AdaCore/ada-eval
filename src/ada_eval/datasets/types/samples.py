@@ -232,6 +232,10 @@ class Sample(BaseModel):
 
     @classmethod
     def load_unpacked_sample(cls, sample_dir: Path) -> Self:
+        if (sample_dir / GENERATED_SOLUTION_DIR_NAME).exists():
+            raise NotImplementedError(
+                "Loading generated datasets from unpacked form is not supported."
+            )
         other_data = get_other_json_data(sample_dir)
         base_files = get_contents_git_aware(sample_dir / BASE_DIR_NAME)
         prompt = get_file_or_empty(sample_dir / PROMPT_FILE_NAME)
@@ -379,6 +383,12 @@ class GeneratedSample(Sample):
     generation_stats: GenerationStats
     generated_solution: object
 
+    def unpack(self, dataset_root: Path, other_data: dict[str, object] | None = None):
+        other_data = {GENERATION_STATS_KEY: self.generation_stats.model_dump()} | (
+            other_data or {}
+        )
+        super().unpack(dataset_root=dataset_root, other_data=other_data)
+
 
 class GeneratedAdaSample(AdaSample, GeneratedSample):
     # Note that `AdaSample` must be inherited before `GeneratedSample`, so that
@@ -386,9 +396,6 @@ class GeneratedAdaSample(AdaSample, GeneratedSample):
     generated_solution: DirectoryContents
 
     def unpack(self, dataset_root: Path, other_data: dict[str, object] | None = None):
-        other_data = {GENERATION_STATS_KEY: self.generation_stats.model_dump()} | (
-            other_data or {}
-        )
         super().unpack(dataset_root=dataset_root, other_data=other_data)
         dest_dir = self.working_dir_in(dataset_root)
         self.generated_solution.unpack_to(dest_dir / GENERATED_SOLUTION_DIR_NAME)
@@ -400,10 +407,9 @@ class GeneratedExplainSample(ExplainSample, GeneratedSample):
     generated_solution: str
 
     def unpack(self, dataset_root: Path, other_data: dict[str, object] | None = None):
-        other_data = {
-            GENERATION_STATS_KEY: self.generation_stats.model_dump(),
-            "generated_solution": self.generated_solution,
-        } | (other_data or {})
+        other_data = {"generated_solution": self.generated_solution} | (
+            other_data or {}
+        )
         super().unpack(dataset_root=dataset_root, other_data=other_data)
 
 
@@ -472,21 +478,19 @@ class EvaluatedSample(GeneratedSample):
             }
         )
 
-
-class EvaluatedAdaSample(GeneratedAdaSample, EvaluatedSample):
     def unpack(self, dataset_root: Path, other_data: dict[str, object] | None = None):
         other_data = {
             EVALUATION_RESULTS_KEY: serialise_sequence(self.evaluation_results)
         } | (other_data or {})
         super().unpack(dataset_root=dataset_root, other_data=other_data)
+
+
+class EvaluatedAdaSample(GeneratedAdaSample, EvaluatedSample):
+    pass
 
 
 class EvaluatedExplainSample(GeneratedExplainSample, EvaluatedSample):
-    def unpack(self, dataset_root: Path, other_data: dict[str, object] | None = None):
-        other_data = {
-            EVALUATION_RESULTS_KEY: serialise_sequence(self.evaluation_results)
-        } | (other_data or {})
-        super().unpack(dataset_root=dataset_root, other_data=other_data)
+    pass
 
 
 class EvaluatedSparkSample(GeneratedSparkSample, EvaluatedAdaSample):
