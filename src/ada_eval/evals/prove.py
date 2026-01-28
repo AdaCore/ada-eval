@@ -43,7 +43,6 @@ def empty_prove_stats(
         non_spark_entities=[],
         missing_required_checks=[],
         pragma_assume_count=0,
-        proof_steps=0,
     )
 
 
@@ -71,7 +70,6 @@ class ProofResult(BaseModel):
     file: str
     line: int
     col: int
-    proof_steps: int
 
 
 def extract_proof_results(spark_data: dict[str, object]) -> list[ProofResult]:
@@ -88,15 +86,6 @@ def extract_proof_results(spark_data: dict[str, object]) -> list[ProofResult]:
     for check_kind in ("flow", "proof"):
         for proof_result_unchecked in type_checked(spark_data[check_kind], list):
             proof_result = type_checked(proof_result_unchecked, dict)
-            proof_steps = (
-                sum(
-                    type_checked(type_checked(info, dict)["steps"], int)
-                    for node in type_checked(proof_result["check_tree"], list)
-                    for info in type_checked(node["proof_attempts"], dict).values()
-                )
-                if check_kind == "proof"
-                else 0
-            )
             results.append(
                 ProofResult(
                     entity_name=entity_names[type_checked(proof_result["entity"], int)],
@@ -105,7 +94,6 @@ def extract_proof_results(spark_data: dict[str, object]) -> list[ProofResult]:
                     file=type_checked(proof_result["file"], str),
                     line=type_checked(proof_result["line"], int),
                     col=type_checked(proof_result["col"], int),
-                    proof_steps=proof_steps,
                 )
             )
     return results
@@ -295,10 +283,6 @@ class Prove(GenericEval[GeneratedSparkSample, EvaluatedSparkSample]):
             len(type_checked(spark_file["pragma_assume"], list))
             for spark_file in spark_files
         )
-        # Sum the number of proof steps
-        total_proof_steps = sum(
-            proof_result.proof_steps for proof_result in proof_results
-        )
         # Categorise the overall result
         if unproved_checks.total() > 0:
             result = "unproved"
@@ -320,5 +304,4 @@ class Prove(GenericEval[GeneratedSparkSample, EvaluatedSparkSample]):
             non_spark_entities=sorted(non_spark_entities),
             missing_required_checks=missing_proof_checks,
             pragma_assume_count=pragma_assume_count,
-            proof_steps=total_proof_steps,
         )

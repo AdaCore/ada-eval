@@ -68,7 +68,6 @@ MOCK_PROVE_EVAL_STATS = EvaluationStatsProve(
         )
     ],
     pragma_assume_count=4,
-    proof_steps=42,
 )
 
 
@@ -642,7 +641,6 @@ def test_prove(
         non_spark_entities=[],
         missing_required_checks=[],
         pragma_assume_count=0,
-        proof_steps=5,
     )
     expected_proof_check = ProofCheck(
         rule="VC_POSTCONDITION",
@@ -676,7 +674,6 @@ def test_prove(
                 "result": "proved_incorrectly",
                 "proved_checks": {"SUBPROGRAM_TERMINATION": 1},
                 "non_spark_entities": ["Increment.Increment"],
-                "proof_steps": 0,
             }
         )
     ]
@@ -696,7 +693,6 @@ def test_prove(
                 "missing_required_checks": [
                     expected_proof_check.model_copy(update={"src_pattern": None})
                 ],
-                "proof_steps": 2,
             }
         )
     ]
@@ -710,21 +706,17 @@ def test_prove(
                     "VC_POSTCONDITION": 1,
                 },
                 "unproved_checks": {"VC_OVERFLOW_CHECK": 1, "VC_POSTCONDITION": 1},
-                "proof_steps": 8,
             }
         )
     ]
     assert samples["errors"].canonical_evaluation_results == [
-        expected_eval_stats.model_copy(
-            update={"result": "error", "proved_checks": {}, "proof_steps": 0}
-        )
+        expected_eval_stats.model_copy(update={"result": "error", "proved_checks": {}})
     ]
     assert samples["not_found"].canonical_evaluation_results == [
         expected_eval_stats.model_copy(
             update={
                 "result": "subprogram_not_found",
                 "proved_checks": {},
-                "proof_steps": 0,
             }
         )
     ]
