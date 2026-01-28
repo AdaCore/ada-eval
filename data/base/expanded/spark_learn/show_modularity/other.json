@@ -22,8 +22,7 @@
             "warnings": {},
             "non_spark_entities": [],
             "missing_required_checks": [],
-            "pragma_assume_count": 0,
-            "proof_steps": 10
+            "pragma_assume_count": 0
         },
         {
             "eval": "test",

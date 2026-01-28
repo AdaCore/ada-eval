@@ -173,7 +173,6 @@ def expected_evaluated_sample(base_sample: Sample) -> EvaluatedSample:
                     )
                 ],
                 pragma_assume_count=4,
-                proof_steps=42,
             ),
             EvaluationStatsBuild(
                 compiled=False, pre_format_warnings=True, post_format_warnings=True
@@ -254,7 +253,6 @@ def check_loaded_datasets(
             non_spark_entities=[],
             missing_required_checks=[],
             pragma_assume_count=0,
-            proof_steps=42,
         ),
         EvaluationStatsBuild(
             compiled=True, pre_format_warnings=False, post_format_warnings=False
