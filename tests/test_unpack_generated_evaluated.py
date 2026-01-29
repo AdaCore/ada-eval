@@ -117,7 +117,7 @@ def test_unpack_evaluated_explain_dataset(
         assert (
             other_data[GENERATED_SOLUTION_KEY] == "This is the generated explanation."
         )
-        # Check that the generation_stats are included in other.json
+        # Check that the evaluation_results are included in other.json
         assert EVALUATION_RESULTS_KEY in other_data
         eval_results = other_data[EVALUATION_RESULTS_KEY]
         # I know these stats don't make sense for explain, but we don't specific
