@@ -23,7 +23,11 @@ from .evaluation_stats import (
 )
 from .samples import (
     EVALUATED_SAMPLE_TYPES,
+    EVALUATION_RESULTS_KEY,
     GENERATED_SAMPLE_TYPES,
+    GENERATED_SOLUTION_DIR_NAME,
+    GENERATED_SOLUTION_KEY,
+    GENERATION_STATS_KEY,
     INITIAL_SAMPLE_TYPES,
     AdaSample,
     EvaluatedAdaSample,
@@ -46,7 +50,11 @@ from .samples import (
 
 __all__ = [
     "EVALUATED_SAMPLE_TYPES",
+    "EVALUATION_RESULTS_KEY",
     "GENERATED_SAMPLE_TYPES",
+    "GENERATED_SOLUTION_DIR_NAME",
+    "GENERATED_SOLUTION_KEY",
+    "GENERATION_STATS_KEY",
     "INITIAL_SAMPLE_TYPES",
     "AdaDataset",
     "AdaSample",

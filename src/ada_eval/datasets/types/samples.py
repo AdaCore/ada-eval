@@ -39,6 +39,7 @@ class InvalidSampleNameError(ValueError):
 BASE_DIR_NAME = "base"
 SOLUTION_DIR_NAME = "solution"
 UNIT_TEST_DIR_NAME = "tests"
+GENERATED_SOLUTION_DIR_NAME = "generated_solution"
 OTHER_JSON_NAME = "other.json"
 COMMENTS_FILE_NAME = "comments.md"
 PROMPT_FILE_NAME = "prompt.md"
@@ -48,6 +49,9 @@ INCORRECT_STATEMENTS_KEY = "incorrect_statements"
 LOCATION_KEY = "location"
 CANONICAL_EVAL_KEY = "canonical_evaluation_results"
 REQUIRED_CHECKS_KEY = "required_checks"
+GENERATED_SOLUTION_KEY = "generated_solution"
+GENERATION_STATS_KEY = "generation_stats"
+EVALUATION_RESULTS_KEY = "evaluation_results"
 
 
 class PathMustBeRelativeError(Exception):
@@ -229,6 +233,10 @@ class Sample(BaseModel):
 
     @classmethod
     def load_unpacked_sample(cls, sample_dir: Path) -> Self:
+        if (sample_dir / GENERATED_SOLUTION_DIR_NAME).exists():
+            raise NotImplementedError(
+                "Loading generated datasets from unpacked form is not supported."
+            )
         other_data = get_other_json_data(sample_dir)
         base_files = get_contents_git_aware(sample_dir / BASE_DIR_NAME)
         prompt = get_file_or_empty(sample_dir / PROMPT_FILE_NAME)
@@ -376,17 +384,34 @@ class GeneratedSample(Sample):
     generation_stats: GenerationStats
     generated_solution: object
 
+    def unpack(self, dataset_root: Path, other_data: dict[str, object] | None = None):
+        other_data = {GENERATION_STATS_KEY: self.generation_stats.model_dump()} | (
+            other_data or {}
+        )
+        super().unpack(dataset_root=dataset_root, other_data=other_data)
+
 
 class GeneratedAdaSample(AdaSample, GeneratedSample):
     # Note that `AdaSample` must be inherited before `GeneratedSample`, so that
     # the `canonical_solution` field has type `DirectoryContents`, not `object`.
     generated_solution: DirectoryContents
 
+    def unpack(self, dataset_root: Path, other_data: dict[str, object] | None = None):
+        super().unpack(dataset_root=dataset_root, other_data=other_data)
+        dest_dir = self.working_dir_in(dataset_root)
+        self.generated_solution.unpack_to(dest_dir / GENERATED_SOLUTION_DIR_NAME)
+
 
 class GeneratedExplainSample(ExplainSample, GeneratedSample):
     # Note that `ExplainSample` must be inherited before `GeneratedSample`, so
     # the `canonical_solution` field has type `ExplainSolution`, not `object`.
     generated_solution: str
+
+    def unpack(self, dataset_root: Path, other_data: dict[str, object] | None = None):
+        other_data = {GENERATED_SOLUTION_KEY: self.generated_solution} | (
+            other_data or {}
+        )
+        super().unpack(dataset_root=dataset_root, other_data=other_data)
 
 
 class GeneratedSparkSample(SparkSample, GeneratedAdaSample):
@@ -453,6 +478,12 @@ class EvaluatedSample(GeneratedSample):
                 for ev, es in results.items()
             }
         )
+
+    def unpack(self, dataset_root: Path, other_data: dict[str, object] | None = None):
+        other_data = {
+            EVALUATION_RESULTS_KEY: serialise_sequence(self.evaluation_results)
+        } | (other_data or {})
+        super().unpack(dataset_root=dataset_root, other_data=other_data)
 
 
 class EvaluatedAdaSample(GeneratedAdaSample, EvaluatedSample):
