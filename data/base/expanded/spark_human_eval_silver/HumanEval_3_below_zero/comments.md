@@ -1,0 +1,1 @@
+It should be pretty trivial to implement with Big_Integers, though the current solution shows how to do it with need Big_Integers.

@@ -1,0 +1,36 @@
+{
+    "location": {
+        "path": "src/placeholder.ads",
+        "subprogram_name": "Below_Zero"
+    },
+    "canonical_evaluation_results": [
+        {
+            "eval": "build",
+            "compiled": true,
+            "pre_format_warnings": false,
+            "post_format_warnings": false
+        },
+        {
+            "eval": "prove",
+            "result": "proved",
+            "proved_checks": {
+                "SUBPROGRAM_TERMINATION": 1,
+                "UNINITIALIZED": 1,
+                "VC_LOOP_INVARIANT_INIT": 2,
+                "VC_LOOP_INVARIANT_PRESERV": 2,
+                "VC_OVERFLOW_CHECK": 13,
+                "VC_RANGE_CHECK": 1
+            },
+            "unproved_checks": {},
+            "warnings": {},
+            "non_spark_entities": [],
+            "missing_required_checks": [],
+            "pragma_assume_count": 0
+        },
+        {
+            "eval": "test",
+            "compiled": true,
+            "passed_tests": true
+        }
+    ]
+}

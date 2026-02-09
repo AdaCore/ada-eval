@@ -229,3 +229,6 @@ Filtering options etc. can likewise be found via the `--help` switch.
 The combination of both of these commands is available via the shortcut `make evaluate`.
 
 This interface is not final.
+## Acknowledgments
+
+Some evaluation problems are adapted from the [MultiPL-E dataset](https://huggingface.co/datasets/nuprl/MultiPL-E). See [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) for license details.

@@ -1,0 +1,33 @@
+{
+    "location": {
+        "path": "src/placeholder.ads",
+        "subprogram_name": "Truncate_Number"
+    },
+    "canonical_evaluation_results": [
+        {
+            "eval": "build",
+            "compiled": true,
+            "pre_format_warnings": false,
+            "post_format_warnings": false
+        },
+        {
+            "eval": "prove",
+            "result": "proved",
+            "proved_checks": {
+                "SUBPROGRAM_TERMINATION": 1,
+                "VC_FP_OVERFLOW_CHECK": 2,
+                "VC_POSTCONDITION": 1
+            },
+            "unproved_checks": {},
+            "warnings": {},
+            "non_spark_entities": [],
+            "missing_required_checks": [],
+            "pragma_assume_count": 0
+        },
+        {
+            "eval": "test",
+            "compiled": true,
+            "passed_tests": true
+        }
+    ]
+}
