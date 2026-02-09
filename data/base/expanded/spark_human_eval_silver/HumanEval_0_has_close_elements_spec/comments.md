@@ -1,0 +1,1 @@
+The line in the prompt that states "`Has_Close_Elements` should accept any valid floating point numbers" is because in some quick testing, I found that often models may try to solve the problem by restricting the range of the accepted inputs, which shouldn't be needed. We could remove this line if we want to make the problem harder.

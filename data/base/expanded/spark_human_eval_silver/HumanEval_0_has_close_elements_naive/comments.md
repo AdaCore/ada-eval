@@ -1,0 +1,3 @@
+This example has a naive implementation that will pass all of the tests, but fails to prove at SPARK Silver level. This is because overflows in floating point arithmetic give values of ±Inf, which still give correct results for the comparisons. In trying to prove this implementation though, the model may then cause run-time exceptions in these tests.
+
+The line in the prompt that states "`Has_Close_Elements` should accept any valid floating point numbers" is because in some quick testing, I found that often models may try to solve the problem by restricting the range of the accepted inputs, which shouldn't be needed. We could remove this line if we want to make the problem harder.
