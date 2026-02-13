@@ -9,7 +9,13 @@ from enum import Enum, StrEnum
 from pathlib import Path
 from typing import ClassVar, Self
 
-from pydantic import BaseModel, TypeAdapter, field_serializer, field_validator
+from pydantic import (
+    BaseModel,
+    TypeAdapter,
+    field_serializer,
+    field_validator,
+    model_validator,
+)
 
 from ada_eval.datasets.utils import get_file_or_empty
 from ada_eval.utils import (
@@ -20,7 +26,9 @@ from ada_eval.utils import (
 
 from .directory_contents import DirectoryContents, get_contents_git_aware
 from .evaluation_stats import EvaluationStats, ProofCheck
-from .metrics import MetricSection, metric_section, metric_value
+from .execution_log import AnyLogEntry
+from .exit_status import ExitStatus
+from .metrics import Metric, MetricSection, metric_section, metric_value
 
 
 class InvalidSampleNameError(ValueError):
@@ -371,11 +379,48 @@ class SparkSample(AdaSample):
 
 
 class GenerationStats(BaseModel):
-    exit_code: int
+    """
+    Statistics from a generation run.
+
+    Core fields are required for all tools. Extended fields are optional and
+    populated by tools that support them (e.g., Claude Agent SDK).
+    """
+
+    # Core fields (required for all tools)
+    exit_status: ExitStatus
     stdout: str
     stderr: str
     runtime_ms: int
-    # cpu_time  # TODO implement this
+
+    # Extended fields for Claude Agent SDK (optional)
+    total_cost_usd: float | None = None
+    input_tokens: int | None = None
+    output_tokens: int | None = None
+    cache_read_tokens: int | None = None
+    cache_creation_tokens: int | None = None
+    num_turns: int | None = None
+    session_id: str | None = None
+    model: str | None = None
+
+    # In-order execution log (reasoning and tool calls interleaved)
+    execution_log: list[AnyLogEntry] = []
+
+    @model_validator(mode="before")
+    @classmethod
+    def convert_exit_code_field(cls, data):
+        """Backward compatibility: rename exit_code to exit_status."""
+        if isinstance(data, dict) and "exit_code" in data and "exit_status" not in data:
+            data = data.copy()  # Don't mutate the input
+            data["exit_status"] = data.pop("exit_code")
+        return data
+
+    @field_validator("exit_status", mode="before")
+    @classmethod
+    def convert_exit_code_value(cls, v):
+        """Backward compatibility: convert exit_code int to ExitStatus."""
+        if isinstance(v, int):
+            return ExitStatus.from_exit_code(v)
+        return v
 
 
 class GeneratedSample(Sample):
@@ -454,22 +499,72 @@ class EvaluatedSample(GeneratedSample):
         canonical_results = {es.eval: es for es in self.canonical_evaluation_results}
         if not results.keys() <= canonical_results.keys():
             raise MissingCanonicalEvalResultsError(self)
+
+        gen_succeeded = self.generation_stats.exit_status == ExitStatus.SUCCESS
+        stats = self.generation_stats
+
+        # Build the generation sub-metrics
+        generation_metrics: dict[str, Metric] = {
+            "passed all evaluations": metric_value(
+                when=all(es.passed for es in self.evaluation_results)
+            ),
+            "generation runtime / s": metric_value(
+                value=stats.runtime_ms / 1000,
+                display="value",
+                allow_zero_value=True,
+            ),
+            "generation runtime (no timeouts) / s": metric_value(
+                value=stats.runtime_ms / 1000,
+                display="value",
+                allow_zero_value=True,
+                when=gen_succeeded,
+            ),
+            "generation failed": metric_value(
+                when=not gen_succeeded,
+            ),
+            "total cost / USD": metric_value(
+                value=stats.total_cost_usd,
+                display="value",
+                allow_zero_value=True,
+                round_digits=2,
+                when=stats.total_cost_usd is not None,
+            ),
+            "input tokens": metric_value(
+                value=stats.input_tokens,
+                display="value",
+                allow_zero_value=True,
+                when=stats.input_tokens is not None,
+            ),
+            "output tokens": metric_value(
+                value=stats.output_tokens,
+                display="value",
+                allow_zero_value=True,
+                when=stats.output_tokens is not None,
+            ),
+            "cache read tokens": metric_value(
+                value=stats.cache_read_tokens,
+                display="value",
+                allow_zero_value=True,
+                when=stats.cache_read_tokens is not None,
+            ),
+            "cache creation tokens": metric_value(
+                value=stats.cache_creation_tokens,
+                display="value",
+                allow_zero_value=True,
+                when=stats.cache_creation_tokens is not None,
+            ),
+            "num turns": metric_value(
+                value=stats.num_turns,
+                display="value",
+                allow_zero_value=True,
+                when=stats.num_turns is not None,
+            ),
+        }
+
         return metric_section(
             {
                 "total samples": metric_section(
-                    {
-                        "passed all evaluations": metric_value(
-                            when=all(es.passed for es in self.evaluation_results)
-                        ),
-                        "generation runtime / s": metric_value(
-                            value=self.generation_stats.runtime_ms / 1000,
-                            display="value",
-                            allow_zero_value=True,
-                        ),
-                        "generation exit code non-zero": metric_value(
-                            when=self.generation_stats.exit_code != 0
-                        ),
-                    },
+                    generation_metrics,
                     display="count_no_perc",
                 )
             }

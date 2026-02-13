@@ -56,6 +56,7 @@ class MetricValue(MetricBase):
     min: float | int
     max: float | int
     display: MetricDisplay
+    round_digits: int | None = None
 
     def add(self, other: MetricValue) -> MetricValue:
         if self.display != other.display:
@@ -66,6 +67,7 @@ class MetricValue(MetricBase):
             min=min(self.min, other.min),
             max=max(self.max, other.max),
             display=self.display,
+            round_digits=self.round_digits,
         )
 
     def has_metric_at_path(self, path: Sequence[str]) -> bool:
@@ -88,9 +90,22 @@ class MetricValue(MetricBase):
             perc = f" ({fraction:.2%})" if self.display == "count" else ""
             return f"{self.count} {samples}{perc}"
         mean = self.sum / self.count if self.count != 0 else float("nan")
-        display_sum = f"{self.sum:.12g}"  # (round off floating point errors)
+        r = self.round_digits
+        if r is not None:
+            display_sum = f"{round(self.sum, r):.12g}"
+            display_min = f"{round(self.min, r):.12g}"
+            display_max = f"{round(self.max, r):.12g}"
+            display_mean = f"{round(mean, r):.12g}"
+        else:
+            display_sum = f"{self.sum:.12g}"  # (round off floating point errors)
+            display_min = str(self.min)
+            display_max = str(self.max)
+            display_mean = f"{mean:.3g}"
         if self.display == "value":
-            return f"{display_sum} (min {self.min}; max {self.max}; mean {mean:.3g})"
+            return (
+                f"{display_sum} (min {display_min};"
+                f" max {display_max}; mean {display_mean})"
+            )
         if self.display == "count_and_value":
             return f"{display_sum} ({self.count} {samples}; {fraction:.2%})"
         return ""
@@ -207,6 +222,7 @@ def metric_value(
     *,
     when: bool = True,
     allow_zero_value: bool = False,
+    round_digits: int | None = None,
 ) -> MetricValue:
     """
     Construct a `MetricValue` for a single sample.
@@ -223,6 +239,9 @@ def metric_value(
         allow_zero_value: If `False` (default), treat `value=0` as implying
             `when=False`, returning an empty `MetricValue`. If `True`, `value=0`
             receives no special treatment.
+        round_digits: If set, round displayed values (sum, min, max, mean) to
+            this many decimal places. Rounding is applied at display time only;
+            the underlying aggregation retains full precision.
 
     """
     if display is None:
@@ -235,21 +254,38 @@ def metric_value(
     if not allow_zero_value:
         when = when and (value != 0)
     if not when:
-        return empty_metric_value(display=display)
-    return MetricValue(count=1, sum=sum_, min=min_, max=max_, display=display)
+        return empty_metric_value(display=display, round_digits=round_digits)
+    return MetricValue(
+        count=1,
+        sum=sum_,
+        min=min_,
+        max=max_,
+        display=display,
+        round_digits=round_digits,
+    )
 
 
-def empty_metric_value(display: MetricDisplay = "count") -> MetricValue:
+def empty_metric_value(
+    display: MetricDisplay = "count",
+    round_digits: int | None = None,
+) -> MetricValue:
     """
     Construct a `MetricValue` representing the absence of any samples.
 
     Args:
         display: The format in which to display the value of this metric when
             printing a report.
+        round_digits: If set, round displayed values to this many decimal
+            places (applied at display time only).
 
     """
     return MetricValue(
-        count=0, sum=0, min=float("inf"), max=float("-inf"), display=display
+        count=0,
+        sum=0,
+        min=float("inf"),
+        max=float("-inf"),
+        display=display,
+        round_digits=round_digits,
     )
 
 

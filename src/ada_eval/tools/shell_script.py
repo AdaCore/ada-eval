@@ -3,17 +3,29 @@ import subprocess
 from pathlib import Path
 from typing import ClassVar, Literal, Self
 
+from pydantic import field_validator
+
 from ada_eval.datasets import GeneratedSparkSample, SparkSample, get_contents
-from ada_eval.datasets.types import GenerationStats
+from ada_eval.datasets.types import ExitStatus, GenerationStats
 from ada_eval.utils import run_cmd_with_timeout
 
 from .generic_tool import BaseConfig, GenericTool
+from .tool_type import ToolType
 
 logger = logging.getLogger(__name__)
 
 
 class ShellScriptConfig(BaseConfig):
+    tool: ToolType = ToolType.SHELL_SCRIPT
     shell_script: Path  # Should be relative to the config file
+
+    @field_validator("tool")
+    @classmethod
+    def validate_tool(cls, v: ToolType) -> ToolType:
+        if v != ToolType.SHELL_SCRIPT:
+            msg = f"Expected tool type 'shell_script', got '{v}'"
+            raise ValueError(msg)
+        return v
 
     @classmethod
     def from_file(cls, config_file: Path) -> Self:
@@ -42,14 +54,14 @@ class ShellScript(GenericTool[ShellScriptConfig, SparkSample, GeneratedSparkSamp
                 )
             except subprocess.TimeoutExpired:
                 generation_stats = GenerationStats(
-                    exit_code=124,  # Standard timeout exit code
+                    exit_status=ExitStatus.TIMEOUT,
                     stdout="",
                     stderr=f"Process timed out after {self.config.timeout_s} seconds",
                     runtime_ms=self.config.timeout_s * 1000,
                 )
             else:
                 generation_stats = GenerationStats(
-                    exit_code=result.returncode,
+                    exit_status=ExitStatus.from_exit_code(result.returncode),
                     stdout=result.stdout,
                     stderr=result.stderr,
                     runtime_ms=time_ms,

@@ -1,0 +1,7 @@
+{
+    "tool": "claude_agent",
+    "timeout_s": 600,
+    "max_budget_usd": 10.0,
+    "model": "sonnet",
+    "mcp_config": "../mcp_config/mcp.json"
+}

@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "gnatprove": {
+      "type": "stdio",
+      "command": "uv",
+      "args": [
+        "run",
+        "--project",
+        "/path/to/gnatprove-server",
+        "/path/to/gnatprove-server/gnatprove.py",
+      ],
+      "env": {},
+    },
+  }
+}

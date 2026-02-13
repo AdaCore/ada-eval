@@ -19,6 +19,7 @@ from ada_eval.datasets import (
     Dataset,
     Eval,
     EvaluationStatsBuild,
+    ExitStatus,
     Sample,
     dataset_has_sample_type,
     load_datasets,
@@ -90,7 +91,7 @@ def test_check_base_datasets(
     generated_sample = GeneratedSparkSample(
         **good_sample.model_dump(),
         generation_stats=GenerationStats(
-            exit_code=0, stdout="", stderr="", runtime_ms=0
+            exit_status=ExitStatus.SUCCESS, stdout="", stderr="", runtime_ms=0
         ),
         generated_solution=DirectoryContents({}),
     )

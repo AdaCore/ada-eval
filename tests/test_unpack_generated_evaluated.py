@@ -33,12 +33,15 @@ def test_unpack_generated_spark_dataset(generated_test_datasets: Path, tmp_path:
     with (sample_dir / OTHER_JSON_NAME).open() as f:
         other_data = json.load(f)
         assert GENERATION_STATS_KEY in other_data
-        assert other_data[GENERATION_STATS_KEY] == {
-            "exit_code": 0,
-            "stdout": "This is the generation's stdout\n",
-            "stderr": "",
-            "runtime_ms": 0,
-        }
+        gen_stats = other_data[GENERATION_STATS_KEY]
+        # Check core fields
+        assert gen_stats["exit_status"] == "success"
+        assert gen_stats["stdout"] == "This is the generation's stdout\n"
+        assert gen_stats["stderr"] == ""
+        assert gen_stats["runtime_ms"] == 0
+        # Extended fields should be present (but None/empty for shell script)
+        assert "total_cost_usd" in gen_stats
+        assert "execution_log" in gen_stats
 
 
 def test_unpack_evaluated_spark_dataset(evaluated_test_datasets: Path, tmp_path: Path):
@@ -89,12 +92,15 @@ def test_unpack_generated_explain_dataset(
         )
         # Check that the generation_stats are included in other.json
         assert GENERATION_STATS_KEY in other_data
-        assert other_data[GENERATION_STATS_KEY] == {
-            "exit_code": 0,
-            "stdout": "This is the generation's stdout\n",
-            "stderr": "",
-            "runtime_ms": 0,
-        }
+        gen_stats = other_data[GENERATION_STATS_KEY]
+        # Check core fields
+        assert gen_stats["exit_status"] == "success"
+        assert gen_stats["stdout"] == "This is the generation's stdout\n"
+        assert gen_stats["stderr"] == ""
+        assert gen_stats["runtime_ms"] == 0
+        # Extended fields should be present (but None/empty for shell script)
+        assert "total_cost_usd" in gen_stats
+        assert "execution_log" in gen_stats
 
 
 def test_unpack_evaluated_explain_dataset(

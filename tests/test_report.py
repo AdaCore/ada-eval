@@ -17,7 +17,7 @@ def test_report_evaluation_results(
     capsys: pytest.CaptureFixture[str],
     caplog: pytest.LogCaptureFixture,
 ):
-    def test_output(  # noqa: PLR0913
+    def test_output(
         expected_output: str,
         datasets_filter: set[str] | None = None,
         dataset_kinds_filter: set[str] | None = None,
@@ -41,40 +41,41 @@ def test_report_evaluation_results(
     # Check the report for all samples.
     expected_full_output = textwrap.dedent(
         """\
-        total samples:                      10 samples
-            passed all evaluations:             2 samples (20.00%)
-            generation runtime / s:             5.947 (min 0.0; max 1.0; mean 0.595)
-            generation exit code non-zero:      1 sample (10.00%)
+        total samples:                             10 samples
+            passed all evaluations:                    2 samples (20.00%)
+            generation runtime / s:                    5.947 (min 0.0; max 1.0; mean 0.595)
+            generation runtime (no timeouts) / s:      5.947 (min 0.123; max 1.0; mean 0.661)
+            generation failed:                         1 sample (10.00%)
 
-        build:                              9 samples (90.00%)
-            compiled:                           6 samples (66.67%)
-                no warnings:                        2 samples (33.33%)
-                formatting warnings:                1 sample (16.67%)
-                other warnings:                     3 samples (50.00%)
-            failed to compile:                  2 samples (22.22%)
-            evaluation errors:                  1 sample (11.11%)
+        build:                                     9 samples (90.00%)
+            compiled:                                  6 samples (66.67%)
+                no warnings:                               2 samples (33.33%)
+                formatting warnings:                       1 sample (16.67%)
+                other warnings:                            3 samples (50.00%)
+            failed to compile:                         2 samples (22.22%)
+            evaluation errors:                         1 sample (11.11%)
 
-        prove:                              9 samples (90.00%)
-            proved correctly:                   1 sample (11.11%)
-                absent checks:                      2 (1 sample; 100.00%)
-                unnecessary checks:                 3 (1 sample; 100.00%)
-            proved incorrectly:                 3 samples (33.33%)
-                missing required checks:            2 (2 samples; 66.67%)
-                non-spark entities:                 3 (2 samples; 66.67%)
-                pragma assume:                      9 (2 samples; 66.67%)
-                warnings:                           4 (2 samples; 66.67%)
-            unproved:                           2 samples (22.22%)
-                unproved checks:                    3 (min 1; max 2; mean 1.5)
-            error:                              1 sample (11.11%)
-            subprogram not found:               1 sample (11.11%)
-            evaluation errors:                  1 sample (11.11%)
+        prove:                                     9 samples (90.00%)
+            proved correctly:                          1 sample (11.11%)
+                absent checks:                             2 (1 sample; 100.00%)
+                unnecessary checks:                        3 (1 sample; 100.00%)
+            proved incorrectly:                        3 samples (33.33%)
+                missing required checks:                   2 (2 samples; 66.67%)
+                non-spark entities:                        3 (2 samples; 66.67%)
+                pragma assume:                             9 (2 samples; 66.67%)
+                warnings:                                  4 (2 samples; 66.67%)
+            unproved:                                  2 samples (22.22%)
+                unproved checks:                           3 (min 1; max 2; mean 1.5)
+            error:                                     1 sample (11.11%)
+            subprogram not found:                      1 sample (11.11%)
+            evaluation errors:                         1 sample (11.11%)
 
-        test:                               9 samples (90.00%)
-            passed:                             2 samples (22.22%)
-            tests failed:                       3 samples (33.33%)
-            compilation failed:                 3 samples (33.33%)
-            evaluation errors:                  1 sample (11.11%)
-        """
+        test:                                      9 samples (90.00%)
+            passed:                                    2 samples (22.22%)
+            tests failed:                              3 samples (33.33%)
+            compilation failed:                        3 samples (33.33%)
+            evaluation errors:                         1 sample (11.11%)
+        """  # noqa: E501
     )
     test_output(expected_output=expected_full_output)
 
@@ -87,39 +88,40 @@ def test_report_evaluation_results(
     test_output(
         expected_output=textwrap.dedent(
             """\
-            total samples:                      20 samples
-                passed all evaluations:             4 samples (20.00%)
-                generation runtime / s:             11.894 (min 0.0; max 1.0; mean 0.595)
-                generation exit code non-zero:      2 samples (10.00%)
+            total samples:                             20 samples
+                passed all evaluations:                    4 samples (20.00%)
+                generation runtime / s:                    11.894 (min 0.0; max 1.0; mean 0.595)
+                generation runtime (no timeouts) / s:      11.894 (min 0.123; max 1.0; mean 0.661)
+                generation failed:                         2 samples (10.00%)
 
-            build:                              18 samples (90.00%)
-                compiled:                           12 samples (66.67%)
-                    no warnings:                        4 samples (33.33%)
-                    formatting warnings:                2 samples (16.67%)
-                    other warnings:                     6 samples (50.00%)
-                failed to compile:                  4 samples (22.22%)
-                evaluation errors:                  2 samples (11.11%)
+            build:                                     18 samples (90.00%)
+                compiled:                                  12 samples (66.67%)
+                    no warnings:                               4 samples (33.33%)
+                    formatting warnings:                       2 samples (16.67%)
+                    other warnings:                            6 samples (50.00%)
+                failed to compile:                         4 samples (22.22%)
+                evaluation errors:                         2 samples (11.11%)
 
-            prove:                              18 samples (90.00%)
-                proved correctly:                   2 samples (11.11%)
-                    absent checks:                      4 (2 samples; 100.00%)
-                    unnecessary checks:                 6 (2 samples; 100.00%)
-                proved incorrectly:                 6 samples (33.33%)
-                    missing required checks:            4 (4 samples; 66.67%)
-                    non-spark entities:                 6 (4 samples; 66.67%)
-                    pragma assume:                      18 (4 samples; 66.67%)
-                    warnings:                           8 (4 samples; 66.67%)
-                unproved:                           4 samples (22.22%)
-                    unproved checks:                    6 (min 1; max 2; mean 1.5)
-                error:                              2 samples (11.11%)
-                subprogram not found:               2 samples (11.11%)
-                evaluation errors:                  2 samples (11.11%)
+            prove:                                     18 samples (90.00%)
+                proved correctly:                          2 samples (11.11%)
+                    absent checks:                             4 (2 samples; 100.00%)
+                    unnecessary checks:                        6 (2 samples; 100.00%)
+                proved incorrectly:                        6 samples (33.33%)
+                    missing required checks:                   4 (4 samples; 66.67%)
+                    non-spark entities:                        6 (4 samples; 66.67%)
+                    pragma assume:                             18 (4 samples; 66.67%)
+                    warnings:                                  8 (4 samples; 66.67%)
+                unproved:                                  4 samples (22.22%)
+                    unproved checks:                           6 (min 1; max 2; mean 1.5)
+                error:                                     2 samples (11.11%)
+                subprogram not found:                      2 samples (11.11%)
+                evaluation errors:                         2 samples (11.11%)
 
-            test:                               18 samples (90.00%)
-                passed:                             4 samples (22.22%)
-                tests failed:                       6 samples (33.33%)
-                compilation failed:                 6 samples (33.33%)
-                evaluation errors:                  2 samples (11.11%)
+            test:                                      18 samples (90.00%)
+                passed:                                    4 samples (22.22%)
+                tests failed:                              6 samples (33.33%)
+                compilation failed:                        6 samples (33.33%)
+                evaluation errors:                         2 samples (11.11%)
             """  # noqa: E501
         )
     )
@@ -134,25 +136,26 @@ def test_report_evaluation_results(
     test_output(
         expected_output=textwrap.dedent(
             """\
-            total samples:               2 samples
-                passed all evaluations:      1 sample (50.00%)
-                generation runtime / s:      1.123 (min 0.123; max 1.0; mean 0.561)
+            total samples:                             2 samples
+                passed all evaluations:                    1 sample (50.00%)
+                generation runtime / s:                    1.123 (min 0.123; max 1.0; mean 0.561)
+                generation runtime (no timeouts) / s:      1.123 (min 0.123; max 1.0; mean 0.561)
 
-            build:                       2 samples (100.00%)
-                compiled:                    1 sample (50.00%)
-                    no warnings:                 1 sample (100.00%)
-                failed to compile:           1 sample (50.00%)
+            build:                                     2 samples (100.00%)
+                compiled:                                  1 sample (50.00%)
+                    no warnings:                               1 sample (100.00%)
+                failed to compile:                         1 sample (50.00%)
 
-            prove:                       2 samples (100.00%)
-                proved correctly:            1 sample (50.00%)
-                    absent checks:               2 (1 sample; 100.00%)
-                    unnecessary checks:          3 (1 sample; 100.00%)
-                error:                       1 sample (50.00%)
+            prove:                                     2 samples (100.00%)
+                proved correctly:                          1 sample (50.00%)
+                    absent checks:                             2 (1 sample; 100.00%)
+                    unnecessary checks:                        3 (1 sample; 100.00%)
+                error:                                     1 sample (50.00%)
 
-            test:                        2 samples (100.00%)
-                passed:                      1 sample (50.00%)
-                compilation failed:          1 sample (50.00%)
-            """
+            test:                                      2 samples (100.00%)
+                passed:                                    1 sample (50.00%)
+                compilation failed:                        1 sample (50.00%)
+            """  # noqa: E501
         ),
         dataset_kinds_filter={"spark"},
         samples_filter={"passed", "uncompilable"},
@@ -162,24 +165,25 @@ def test_report_evaluation_results(
     test_output(
         expected_output=textwrap.dedent(
             """\
-            total samples:                    2 samples
-                generation runtime / s:           0.579 (min 0.123; max 0.456; mean 0.289)
+            total samples:                             2 samples
+                generation runtime / s:                    0.579 (min 0.123; max 0.456; mean 0.289)
+                generation runtime (no timeouts) / s:      0.579 (min 0.123; max 0.456; mean 0.289)
 
-            build:                            2 samples (100.00%)
-                compiled:                         2 samples (100.00%)
-                    formatting warnings:              1 sample (50.00%)
-                    other warnings:                   1 sample (50.00%)
+            build:                                     2 samples (100.00%)
+                compiled:                                  2 samples (100.00%)
+                    formatting warnings:                       1 sample (50.00%)
+                    other warnings:                            1 sample (50.00%)
 
-            prove:                            2 samples (100.00%)
-                proved incorrectly:               2 samples (100.00%)
-                    missing required checks:          2 (2 samples; 100.00%)
-                    non-spark entities:               1 (1 sample; 50.00%)
-                    pragma assume:                    4 (1 sample; 50.00%)
-                    warnings:                         4 (2 samples; 100.00%)
+            prove:                                     2 samples (100.00%)
+                proved incorrectly:                        2 samples (100.00%)
+                    missing required checks:                   2 (2 samples; 100.00%)
+                    non-spark entities:                        1 (1 sample; 50.00%)
+                    pragma assume:                             4 (1 sample; 50.00%)
+                    warnings:                                  4 (2 samples; 100.00%)
 
-            test:                             2 samples (100.00%)
-                tests failed:                     1 sample (50.00%)
-                compilation failed:               1 sample (50.00%)
+            test:                                      2 samples (100.00%)
+                tests failed:                              1 sample (50.00%)
+                compilation failed:                        1 sample (50.00%)
             """  # noqa: E501
         ),
         dataset_kinds_filter={"spark"},
@@ -190,20 +194,21 @@ def test_report_evaluation_results(
     test_output(
         expected_output=textwrap.dedent(
             """\
-            total samples:                    1 sample
-                generation runtime / s:           0.456 (min 0.456; max 0.456; mean 0.456)
+            total samples:                             1 sample
+                generation runtime / s:                    0.456 (min 0.456; max 0.456; mean 0.456)
+                generation runtime (no timeouts) / s:      0.456 (min 0.456; max 0.456; mean 0.456)
 
-            build:                            1 sample (100.00%)
-                compiled:                         1 sample (100.00%)
-                    formatting warnings:              1 sample (100.00%)
+            build:                                     1 sample (100.00%)
+                compiled:                                  1 sample (100.00%)
+                    formatting warnings:                       1 sample (100.00%)
 
-            prove:                            1 sample (100.00%)
-                proved incorrectly:               1 sample (100.00%)
-                    missing required checks:          1 (1 sample; 100.00%)
-                    warnings:                         3 (1 sample; 100.00%)
+            prove:                                     1 sample (100.00%)
+                proved incorrectly:                        1 sample (100.00%)
+                    missing required checks:                   1 (1 sample; 100.00%)
+                    warnings:                                  3 (1 sample; 100.00%)
 
-            test:                             1 sample (100.00%)
-                compilation failed:               1 sample (100.00%)
+            test:                                      1 sample (100.00%)
+                compilation failed:                        1 sample (100.00%)
             """  # noqa: E501
         ),
         dataset_kinds_filter={"spark"},
@@ -217,10 +222,11 @@ def test_report_evaluation_results(
     test_output(
         expected_output=textwrap.dedent(
             """\
-            total samples:               1 sample
-                passed all evaluations:      1 sample (100.00%)
-                generation runtime / s:      1 (min 1.0; max 1.0; mean 1)
-            """
+    total samples:                             1 sample
+        passed all evaluations:                    1 sample (100.00%)
+        generation runtime / s:                    1 (min 1.0; max 1.0; mean 1)
+        generation runtime (no timeouts) / s:      1 (min 1.0; max 1.0; mean 1)
+    """
         ),
         dataset_kinds_filter={"spark"},
         samples_filter={"no_eval_results"},
