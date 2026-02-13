@@ -1,4 +1,5 @@
 {
+    "tool": "shell_script",
     "shell_script": "../dummy.sh",
     "timeout_s": 300
 }

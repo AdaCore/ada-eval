@@ -20,6 +20,7 @@ from ada_eval.datasets.loader import (
     load_packed_dataset,
     load_unpacked_dataset,
 )
+from ada_eval.datasets.types import ExitStatus
 from ada_eval.datasets.types.directory_contents import DirectoryContents
 from ada_eval.datasets.types.evaluation_stats import (
     EvaluationStatsBuild,
@@ -144,7 +145,7 @@ def expected_generated_sample(base_sample: Sample) -> GeneratedSample:
     return GENERATED_SAMPLE_TYPES[base_sample.kind](
         **base_sample.model_dump(),
         generation_stats=GenerationStats(
-            exit_code=0,
+            exit_status=ExitStatus.SUCCESS,
             stdout="This is the generation's stdout\n",
             stderr="",
             runtime_ms=0,

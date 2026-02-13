@@ -9,6 +9,7 @@ import pytest
 from helpers import assert_log
 
 from ada_eval.datasets.loader import load_datasets
+from ada_eval.datasets.types import ExitStatus
 from ada_eval.datasets.types.datasets import (
     Dataset,
     dataset_has_sample_type,
@@ -28,7 +29,7 @@ from ada_eval.datasets.types.samples import (
     SampleKind,
     SparkSample,
 )
-from ada_eval.tools import Tool, create_tool
+from ada_eval.tools.factory import create_tool_from_config
 from ada_eval.tools.generic_tool import BaseConfig, GenericTool
 from ada_eval.tools.shell_script import ShellScriptConfig
 
@@ -49,7 +50,7 @@ def test_generic_tool(
 ):
     # Create a mock tool
     mock_generation_stats = GenerationStats(
-        exit_code=0,
+        exit_status=ExitStatus.SUCCESS,
         stdout="This is the stdout",
         stderr="This is the stderr",
         runtime_ms=123,
@@ -293,7 +294,7 @@ def test_shell_script(
 
     # Run the tool on the test datasets
     base_datasets = load_datasets(compacted_test_datasets)
-    tool = create_tool(Tool.SHELL_SCRIPT, config_file)
+    tool = create_tool_from_config(config_file)
     assert isinstance(tool.config, ShellScriptConfig)
     generated_datasets, failed_datasets, incompatible_datasets = tool.apply_to_datasets(
         base_datasets, jobs=8
@@ -339,7 +340,7 @@ def test_shell_script(
     assert generated_spark_dataset.sample_type is GeneratedSparkSample
     assert generated_spark_dataset.name == "test"
     for sample in generated_spark_dataset.samples:
-        assert sample.generation_stats.exit_code == 124
+        assert sample.generation_stats.exit_status == ExitStatus.TIMEOUT
         assert sample.generation_stats.stdout == ""
         assert sample.generation_stats.stderr == "Process timed out after 1 seconds"
         assert sample.generation_stats.runtime_ms in range(950, 1050)

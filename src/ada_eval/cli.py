@@ -14,7 +14,7 @@ from ada_eval.paths import (
     GENERATED_DATASETS_DIR,
 )
 from ada_eval.report import report_evaluation_results
-from ada_eval.tools import Tool, create_tool
+from ada_eval.tools import create_tool_from_config
 
 
 def call_unpack_datasets(args):
@@ -26,7 +26,7 @@ def call_pack_datasets(args):
 
 
 def generate(args):
-    tool = create_tool(args.tool, args.tool_config_file)
+    tool = create_tool_from_config(args.tool_config)
     tool.apply_to_directory(
         path=args.dataset, output_dir=GENERATED_DATASETS_DIR, jobs=args.jobs
     )
@@ -157,16 +157,9 @@ def main() -> None:
         default=default_num_jobs,
     )
     generate_parser.add_argument(
-        "--tool",
-        type=Tool,
-        choices=list(Tool),
-        help="Name of tool to use for generation",
-        required=True,
-    )
-    generate_parser.add_argument(
-        "--tool-config-file",
+        "--tool-config",
         type=Path,
-        help="Path to tool configuration file",
+        help="Path to tool configuration file (tool type is inferred from the config)",
         required=True,
     )
 
@@ -289,7 +282,7 @@ def main() -> None:
     )
 
     args = parser.parse_args()
-    logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO)
+    logging.basicConfig(level=logging.DEBUG if args.verbose else logging.WARNING)
     args.func(args)
 
 

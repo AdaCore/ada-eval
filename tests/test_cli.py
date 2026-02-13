@@ -13,7 +13,6 @@ from ada_eval.paths import (
     EXPANDED_DATASETS_DIR,
     GENERATED_DATASETS_DIR,
 )
-from ada_eval.tools.factory import Tool
 
 
 def test_no_args(capsys):
@@ -24,19 +23,16 @@ def test_no_args(capsys):
     assert output.out == ""
 
 
-def test_generate(capsys):
+def test_generate(capsys, tmp_path):
     # Helper function to patch `sys.argv`
     def patch_args(
-        tool: str | None = None,
-        tool_config_file: str | None = None,
+        tool_config: str | None = None,
         dataset: str | None = None,
         jobs: str | None = None,
     ):
         test_args = ["ada-eval", "generate"]
-        if tool is not None:
-            test_args += ["--tool", tool]
-        if tool_config_file is not None:
-            test_args += ["--tool-config-file", tool_config_file]
+        if tool_config is not None:
+            test_args += ["--tool-config", tool_config]
         if dataset is not None:
             test_args += ["--dataset", dataset]
         if jobs is not None:
@@ -45,53 +41,47 @@ def test_generate(capsys):
 
     # Mock the tool factory
     mock_tool = Mock()
-    mock_create_tool = Mock(return_value=mock_tool)
-    with patch("ada_eval.cli.create_tool", mock_create_tool):
-        # Test with no arguments (should complain about missing `--tool` and
-        # `--tool-config-file`)
+    mock_create_tool_from_config = Mock(return_value=mock_tool)
+    with patch("ada_eval.cli.create_tool_from_config", mock_create_tool_from_config):
+        # Test with no arguments (should complain about missing --tool-config)
         with patch_args(), pytest.raises(SystemExit):
             main()
         output = capsys.readouterr()
-        assert (
-            "error: the following arguments are required: --tool, --tool-config-file"
-            in output.err
+        assert "error: the following arguments are required: --tool-config" in (
+            output.err
         )
         assert output.out == ""
-        mock_create_tool.assert_not_called()
-        mock_tool.apply_to_directory.assert_not_called()
-
-        # Test with an invalid tool name
-        with patch_args("invalid_tool", "path/to/config"), pytest.raises(SystemExit):
-            main()
-        output = capsys.readouterr()
-        assert "argument --tool: invalid Tool value: 'invalid_tool'" in output.err
-        assert output.out == ""
-        mock_create_tool.assert_not_called()
+        mock_create_tool_from_config.assert_not_called()
         mock_tool.apply_to_directory.assert_not_called()
 
         # Test with various valid argument combinations
+        # Create a test config file
+        config_file = tmp_path / "test_config.json"
+        config_file.write_text('{"tool": "shell_script", "script_path": "dummy.sh"}')
+
         mock_cpu_count = Mock(return_value=8)
         cpu_count_patch = patch("ada_eval.cli.cpu_count", mock_cpu_count)
-        for tool, dataset, jobs in itertools.product(
-            ["shell_script", "SHELL_SCRIPT", "ShElL_ScRiPt"],
+        for dataset, jobs in itertools.product(
             [None, "path/to/dataset"],
             [None, "2", "4"],
         ):
-            with patch_args(tool, "path/to/config", dataset, jobs), cpu_count_patch:
+            with (
+                patch_args(str(config_file), dataset, jobs),
+                cpu_count_patch,
+            ):
                 main()
             output = capsys.readouterr()
             assert output.err == ""
             assert output.out == ""
-            mock_create_tool.assert_called_once_with(
-                Tool.SHELL_SCRIPT, Path("path/to/config")
-            )
+            mock_create_tool_from_config.assert_called_once_with(config_file)
             dataset_path = COMPACTED_DATASETS_DIR if dataset is None else Path(dataset)
             mock_tool.apply_to_directory.assert_called_once_with(
                 path=dataset_path,
                 output_dir=GENERATED_DATASETS_DIR,
                 jobs=8 if jobs is None else int(jobs),
             )
-            mock_create_tool.reset_mock()
+            mock_create_tool_from_config.reset_mock()
+            mock_tool.apply_to_directory.reset_mock()
 
 
 def test_evaluate(capsys):
@@ -214,7 +204,7 @@ def test_check_datasets(capsys):
 
 def test_report(capsys: pytest.CaptureFixture[str]):
     # Helper function to patch `sys.argv`
-    def patch_args(  # noqa: PLR0913
+    def patch_args(
         dataset_dirs: list[str] | None = None,
         datasets: set[str] | None = None,
         dataset_kinds: set[str] | None = None,

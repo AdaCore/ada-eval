@@ -1,7 +1,7 @@
 from collections.abc import Iterable
 
 from ada_eval.datasets import Dataset, ExplainSample, GeneratedSample, Sample
-from ada_eval.datasets.types import GENERATED_SAMPLE_TYPES, GenerationStats
+from ada_eval.datasets.types import GENERATED_SAMPLE_TYPES, ExitStatus, GenerationStats
 
 
 def _generate_null_or_canonical(
@@ -20,7 +20,7 @@ def _generate_null_or_canonical(
                     }
                 ),
                 generation_stats=GenerationStats(
-                    exit_code=0, stdout="", stderr="", runtime_ms=0
+                    exit_status=ExitStatus.SUCCESS, stdout="", stderr="", runtime_ms=0
                 ),
                 generated_solution=(
                     sample.canonical_solution
@@ -47,7 +47,7 @@ def generate_null(
     empty string.
 
     The `generation_stats` will be set to
-    `GenerationStats(exit_code=0, stdout="", stderr="", runtime_ms=0)`.
+    ``GenerationStats(exit_status=ExitStatus.SUCCESS, ...)``.
     """
     return _generate_null_or_canonical(datasets, canonical=False)
 
@@ -60,6 +60,6 @@ def generate_canonical(
 
     The `generated_solution` field of each sample will be set to its
     `canonical_solution`. The `generation_stats` will be set to
-    `GenerationStats(exit_code=0, stdout="", stderr="", runtime_ms=0)`.
+    ``GenerationStats(exit_status=ExitStatus.SUCCESS, ...)``.
     """
     return _generate_null_or_canonical(datasets, canonical=True)

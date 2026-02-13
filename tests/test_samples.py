@@ -3,10 +3,12 @@ from pathlib import Path
 
 import pytest
 
+from ada_eval.datasets.types.exit_status import ExitStatus
 from ada_eval.datasets.types.samples import (
     EVALUATED_SAMPLE_TYPES,
     GENERATED_SAMPLE_TYPES,
     INITIAL_SAMPLE_TYPES,
+    GenerationStats,
     Location,
     PathMustBeRelativeError,
     SampleKind,
@@ -85,3 +87,48 @@ def test_sample_type_dicts_are_complete():
         assert kind in EVALUATED_SAMPLE_TYPES
         assert EVALUATED_SAMPLE_TYPES[kind].kind == kind
         assert EVALUATED_SAMPLE_TYPES[kind].stage == SampleStage.EVALUATED
+
+
+class TestGenerationStatsBackwardCompat:
+    """Test backward compatibility for GenerationStats."""
+
+    def test_exit_code_converts_to_exit_status(self):
+        """Test that exit_code int is converted to ExitStatus."""
+        # Simulate loading old data with exit_code
+        stats = GenerationStats(
+            exit_status=0,  # Will be converted by validator
+            stdout="output",
+            stderr="",
+            runtime_ms=1000,
+        )
+        assert stats.exit_status == ExitStatus.SUCCESS
+
+    def test_exit_code_124_converts_to_timeout(self):
+        """Test that exit_code 124 becomes TIMEOUT."""
+        stats = GenerationStats(
+            exit_status=124,
+            stdout="",
+            stderr="timeout",
+            runtime_ms=5000,
+        )
+        assert stats.exit_status == ExitStatus.TIMEOUT
+
+    def test_exit_code_nonzero_converts_to_process_error(self):
+        """Test that non-zero exit_code becomes PROCESS_ERROR."""
+        stats = GenerationStats(
+            exit_status=1,
+            stdout="",
+            stderr="error",
+            runtime_ms=100,
+        )
+        assert stats.exit_status == ExitStatus.PROCESS_ERROR
+
+    def test_exit_status_string_accepted(self):
+        """Test that ExitStatus string values work."""
+        stats = GenerationStats(
+            exit_status="success",
+            stdout="",
+            stderr="",
+            runtime_ms=100,
+        )
+        assert stats.exit_status == ExitStatus.SUCCESS

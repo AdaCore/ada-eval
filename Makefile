@@ -32,13 +32,39 @@ unpack-dataset:
 
 generate-dummy:
 	uv run ada-eval generate \
-		--tool shell_script \
-		--tool-config-file tools/configs/shell_dummy.json
+		--tool-config tools/configs/shell_dummy.json -j8
+
+generate-spark-claude-shell:
+	uv run ada-eval generate \
+		--tool-config tools/configs/claude_code_no_mcp.json -j8
 
 generate-spark-claude:
 	uv run ada-eval generate \
-		--tool shell_script \
-		--tool-config-file tools/configs/claude_code_no_mcp.json
+		--tool-config tools/configs/claude_agent.json -j8
+
+generate-spark-claude-haiku-mcp:
+	uv run ada-eval generate \
+		--tool-config tools/configs/claude_agent_haiku_mcp.json -j8
+
+generate-spark-claude-sonnet-mcp:
+	uv run ada-eval generate \
+		--tool-config tools/configs/claude_agent_sonnet_mcp.json -j8
+
+generate-spark-claude-opus-mcp:
+	uv run ada-eval generate \
+		--tool-config tools/configs/claude_agent_opus_mcp.json -j8
+
+generate-spark-claude-haiku:
+	uv run ada-eval generate \
+		--tool-config tools/configs/claude_agent_haiku.json -j8
+
+generate-spark-claude-sonnet:
+	uv run ada-eval generate \
+		--tool-config tools/configs/claude_agent_sonnet.json -j8
+
+generate-spark-claude-opus:
+	uv run ada-eval generate \
+		--tool-config tools/configs/claude_agent_opus.json -j8
 
 evaluate:
 	uv run ada-eval evaluate

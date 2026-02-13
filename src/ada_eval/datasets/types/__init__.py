@@ -21,6 +21,8 @@ from .evaluation_stats import (
     EvaluationStatsTimedOut,
     ProofCheck,
 )
+from .execution_log import ExecutionLogEntry, LogEntryType
+from .exit_status import ExitStatus
 from .samples import (
     EVALUATED_SAMPLE_TYPES,
     EVALUATION_RESULTS_KEY,
@@ -71,6 +73,8 @@ __all__ = [
     "EvaluationStatsProve",
     "EvaluationStatsTest",
     "EvaluationStatsTimedOut",
+    "ExecutionLogEntry",
+    "ExitStatus",
     "ExplainSample",
     "GeneratedAdaSample",
     "GeneratedExplainSample",
@@ -78,6 +82,7 @@ __all__ = [
     "GeneratedSparkSample",
     "GenerationStats",
     "Location",
+    "LogEntryType",
     "ProofCheck",
     "Sample",
     "SampleKind",

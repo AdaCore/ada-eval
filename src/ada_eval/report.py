@@ -10,7 +10,7 @@ from ada_eval.datasets.types.metrics import empty_metric_section
 logger = logging.getLogger(__name__)
 
 
-def report_evaluation_results(  # noqa: PLR0913  # Corresponds to CLI args (mostly optional)
+def report_evaluation_results(  # Corresponds to CLI args (mostly optional)
     dataset_dirs: Iterable[Path],
     datasets_filter: AbstractSet[str] | None,
     dataset_kinds_filter: AbstractSet[str] | None,

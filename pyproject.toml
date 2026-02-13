@@ -10,6 +10,7 @@ authors = [
 ]
 requires-python = ">=3.12"
 dependencies = [
+    "claude-agent-sdk>=0.1.29",
     "pydantic>=2.10.3",
     "tqdm>=4.67.1",
 ]
@@ -112,6 +113,9 @@ ignore = [
     "PLR0915", # Allow more than 50 statements (for long tests with lots of asserts)
     "TRY003",  # Allow long messages outside of exception class (for mock exceptions)
 ]
+
+[tool.ruff.lint.pylint]
+max-args = 7
 
 [tool.pytest.ini_options]
 addopts = "-ra -q --cov=ada_eval --cov-report=term-missing --cov-branch -m 'not slow' -n auto"
