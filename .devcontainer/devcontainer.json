@@ -1,0 +1,45 @@
+{
+  "name": "Ada Eval",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": ".."
+  },
+  "remoteUser": "vscode",
+  "updateRemoteUserUID": true,
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=delegated",
+  "workspaceFolder": "/workspace",
+  "mounts": [
+    "source=ada-eval-bashhistory,target=/commandhistory,type=volume",
+    "source=ada-eval-claude,target=/home/vscode/.claude,type=volume",
+    "source=ada-eval-claude-config,target=/home/vscode/.claude-config,type=volume",
+    "source=ada-eval-opencode-config,target=/home/vscode/.local/share/opencode,type=volume",
+    "source=ada-eval-uv-cache,target=/home/vscode/.cache/uv,type=volume",
+    "source=ada-eval-venv,target=/workspace/.venv,type=volume"
+  ],
+  "containerEnv": {
+    "DEVCONTAINER": "true",
+    "CLAUDE_CONFIG_DIR": "/home/vscode/.claude-config"
+  },
+  "onCreateCommand": "sudo chown -R vscode: /commandhistory /home/vscode/.claude /home/vscode/.claude-config /home/vscode/.cache /home/vscode/.local/share/opencode /workspace/.venv",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "charliermarsh.ruff",
+        "ms-python.mypy-type-checker",
+        "tamasfe.even-better-toml",
+        "anthropic.claude-code",
+        "AdaCore.ada"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
+        "[python]": {
+          "editor.defaultFormatter": "charliermarsh.ruff",
+          "editor.formatOnSave": true
+        },
+        "terminal.integrated.defaultProfile.linux": "bash"
+      }
+    }
+  }
+}
