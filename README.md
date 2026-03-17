@@ -1,6 +1,17 @@
 # Ada Eval
 Framework for evaluating LLM based tools for Ada/SPARK use cases.
 
+> [!WARNING]
+> **Safety Notice**
+>
+> During **generation**, LLM-based tools execute with broad system permissions and
+> currently with no sandboxing. Likewise, during **evaluation**, generated code
+> is compiled and run. Either phase may execute arbitrary code on your machine.
+>
+> - **Run only in disposable environments** (containers, VMs, or clean cloud instances)
+>   with no important data, credentials, or network access to sensitive resources.
+> - **Only use tools you trust** for the generation phase.
+
 - [Ada Eval](#ada-eval)
   - [Setup](#setup)
     - [Install Ada/SPARK Toolchain](#install-adaspark-toolchain)
@@ -15,10 +26,9 @@ Framework for evaluating LLM based tools for Ada/SPARK use cases.
     - [Generating new completions](#generating-new-completions)
     - [Evaluating completions](#evaluating-completions)
 
-
 ## Setup
 
-To get started with this project, you will need the following tools installed on your system:
+To get started with this project, you will either need a setup that [supports Dev Containers](https://containers.dev/supporting), such as [VS Code](https://code.visualstudio.com/) with the [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers), or you can set up your environment manually. To do this you will need the following tools installed on your system:
 - [uv](https://docs.astral.sh/uv/)
 - [git](https://git-scm.com/)
 - [make](https://www.gnu.org/software/make/)
@@ -206,6 +216,11 @@ This also available via the shortcut `make generate-spark-claude`.
 Currently you have to specify the type of tool you want to use, and the configuration file for that tool. The configuration files provide a place for modifying settings. Currently there are only shell tools, and the only values are used to specify where the script is located, and how long it should be allowed to run for.
 
 This interface is not final.
+
+> [!NOTE]  
+> Currently no sandboxing is implemented. This means that LLM based tools may
+> attempt to and succeed in circumventing the benchmark by discovering
+ solutions elsewhere on the filesystem.
 
 ### Evaluating completions
 
