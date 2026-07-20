@@ -86,3 +86,13 @@ pytest-3.14:
   extends: .pytest
   services:
     - image:pe-base-py314
+
+include:
+  - component: $CI_SERVER_FQDN/it/gitlab-templates/gitleaks@~latest
+    inputs:
+      stage: lint
+# Other jobs lack explicit rules. Use $CI_COMMIT_BRANCH, which is the 
+# default pipeline trigger, so all jobs show up in the MR.
+export_control_checks:
+  rules:
+    - if: $CI_COMMIT_BRANCH
