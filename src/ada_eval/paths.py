@@ -7,6 +7,7 @@ BASE_DATASETS_DIR = DATA_DIR / "base"
 GENERATED_DATASETS_DIR = DATA_DIR / "generated"
 EVALUATED_DATASETS_DIR = DATA_DIR / "evaluated"
 
+# The expanded datasets are the source of truth
 EXPANDED_DATASETS_DIR = BASE_DATASETS_DIR / "expanded"
 COMPACTED_DATASETS_DIR = BASE_DATASETS_DIR / "compacted"
 

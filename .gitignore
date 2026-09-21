@@ -4,6 +4,9 @@ lib/
 .ruff_cache
 /data/in_progress_generation
 
+# Derived from data/base/expanded by `ada-eval pack`
+/data/base/compacted
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

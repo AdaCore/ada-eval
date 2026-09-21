@@ -71,8 +71,8 @@ At a high level, the project is structured as follows:
 .
 ├── data  # Data directory containing various datasets
 │   ├── base  # Base data directory
-│   │   ├── compacted  # Contains datasets in single jsonl files
-│   │   └── expanded  # Contains expanded datasets. Much easier to read and modify vs the jsonl files
+│   │   ├── compacted  # Single jsonl files derived from `expanded` (not version controlled)
+│   │   └── expanded  # The base datasets
 │   ├── evaluated  # Datasets that contain generated completions and corresponding evaluation results
 │   └── generated  # Datasets that contain generated completions
 ├── src  # Source code for ada-eval
