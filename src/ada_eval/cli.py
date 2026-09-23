@@ -91,14 +91,17 @@ def main() -> None:
     unpack_parser.add_argument(
         "--src",
         type=Path,
-        help="Path to packed dataset or dir of packed datasets",
-        default=COMPACTED_DATASETS_DIR,
+        required=True,
+        help=(
+            "Path to a packed dataset or dir of packed datasets, such as a run "
+            "output under data/generated"
+        ),
     )
     unpack_parser.add_argument(
         "--dest",
         type=Path,
-        help="Destination dir for unpacked datasets",
-        default=EXPANDED_DATASETS_DIR,
+        required=True,
+        help="Destination dir for the unpacked datasets",
     )
     unpack_parser.add_argument(
         "-f",
@@ -144,10 +147,10 @@ def main() -> None:
         "--dataset",
         type=Path,
         help=(
-            "Path to packed dataset or dir of packed datasets "
+            "Path to a dataset or dir of datasets (packed or unpacked) "
             "to generate completions for"
         ),
-        default=COMPACTED_DATASETS_DIR,
+        default=EXPANDED_DATASETS_DIR,
     )
     generate_parser.add_argument(
         "-j",
@@ -213,7 +216,7 @@ def main() -> None:
         type=Path,
         nargs="+",
         help="Paths of dataset directories to check.",
-        default=[EXPANDED_DATASETS_DIR, COMPACTED_DATASETS_DIR],
+        default=[EXPANDED_DATASETS_DIR],
     )
     check_datasets_parser.add_argument(
         "-j",

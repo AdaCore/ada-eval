@@ -8,7 +8,6 @@ import pytest
 from ada_eval.cli import main
 from ada_eval.datasets import Eval
 from ada_eval.paths import (
-    COMPACTED_DATASETS_DIR,
     EVALUATED_DATASETS_DIR,
     EXPANDED_DATASETS_DIR,
     GENERATED_DATASETS_DIR,
@@ -74,7 +73,7 @@ def test_generate(capsys, tmp_path):
             assert output.err == ""
             assert output.out == ""
             mock_create_tool_from_config.assert_called_once_with(config_file)
-            dataset_path = COMPACTED_DATASETS_DIR if dataset is None else Path(dataset)
+            dataset_path = EXPANDED_DATASETS_DIR if dataset is None else Path(dataset)
             mock_tool.apply_to_directory.assert_called_once_with(
                 path=dataset_path,
                 output_dir=GENERATED_DATASETS_DIR,
@@ -193,7 +192,7 @@ def test_check_datasets(capsys):
             assert output.out == ""
             mock_check_base_datasets.assert_called_once_with(
                 dataset_dirs=(
-                    [EXPANDED_DATASETS_DIR, COMPACTED_DATASETS_DIR]
+                    [EXPANDED_DATASETS_DIR]
                     if datasets is None
                     else [Path(d) for d in datasets]
                 ),

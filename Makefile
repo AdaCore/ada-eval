@@ -1,4 +1,4 @@
-.PHONY: check-flake8 check-black check-isort check-mypy check-pylint run-black run-isort check format test test-all pack-dataset unpack-dataset
+.PHONY: check-flake8 check-black check-isort check-mypy check-pylint run-black run-isort check format test test-all pack-dataset
 .DEFAULT_GOAL := test
 
 # Checks and Formatting
@@ -26,9 +26,6 @@ test-all:
 
 pack-dataset:
 	uv run ada-eval pack
-
-unpack-dataset:
-	uv run ada-eval unpack
 
 generate-dummy:
 	uv run ada-eval generate \
@@ -72,7 +69,6 @@ evaluate:
 
 evaluate-canonical:
 	uv run ada-eval evaluate --canonical
-	uv run ada-eval pack
 
 check-datasets:
 	uv run ada-eval check-datasets
