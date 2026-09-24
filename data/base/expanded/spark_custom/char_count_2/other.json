@@ -3,13 +3,6 @@
         "path": "src/string_utils.ads",
         "subprogram_name": "Count"
     },
-    "required_checks": [
-        {
-            "rule": "VC_POSTCONDITION",
-            "entity_name": "String_Utils.Count",
-            "src_pattern": "Count'Result = Count_Ghost \\(Str, Char, Str'Last\\);"
-        }
-    ],
     "canonical_evaluation_results": [
         {
             "eval": "build",
@@ -33,7 +26,8 @@
             "warnings": {},
             "non_spark_entities": [],
             "missing_required_checks": [],
-            "pragma_assume_count": 0
+            "pragma_assume_count": 0,
+            "harness": "proved"
         },
         {
             "eval": "test",

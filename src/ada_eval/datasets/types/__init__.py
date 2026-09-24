@@ -19,6 +19,7 @@ from .evaluation_stats import (
     EvaluationStatsProve,
     EvaluationStatsTest,
     EvaluationStatsTimedOut,
+    HarnessResult,
     ProofCheck,
 )
 from .execution_log import ExecutionLogEntry, LogEntryType
@@ -81,6 +82,7 @@ __all__ = [
     "GeneratedSample",
     "GeneratedSparkSample",
     "GenerationStats",
+    "HarnessResult",
     "Location",
     "LogEntryType",
     "ProofCheck",

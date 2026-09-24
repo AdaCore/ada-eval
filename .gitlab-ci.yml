@@ -37,6 +37,9 @@ check-datasets:
   extends: .default
   stage: validate-datasets
   needs: []
+  services:
+    - image:pe-base
+    - cpu:2
   script:
     - !reference [.script-snippets, install-eval-tools]
     - uv run ada-eval check-datasets

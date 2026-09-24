@@ -251,3 +251,24 @@ def test_pack_unpack(
     (spark_sample_2_dir / "comments.md").unlink()
     (spark_sample_2_dir / "prompt.md").unlink()
     assert_git_status(tmp_path, expect_dirty=False)
+
+
+def test_pack_unpack_proof_harness(expanded_test_datasets: Path, tmp_path: Path):
+    """A sample's proof harness survives a pack/unpack round trip."""
+    sample_dir = expanded_test_datasets / "spark_test" / "test_sample_0"
+    harness_dir = sample_dir / "proof_harness"
+    harness_dir.mkdir()
+    (harness_dir / "harness.gpr").write_text('with "main.gpr";\n', encoding="utf-8")
+
+    packed_dir = tmp_path / "packed"
+    round_tripped_dir = tmp_path / "round_tripped"
+    pack_datasets(src_dir=expanded_test_datasets, dest_dir=packed_dir)
+    unpack_datasets(src=packed_dir, dest_dir=round_tripped_dir)
+
+    sample = load_unpacked_dataset(round_tripped_dir / "spark_test").samples[0]
+    assert isinstance(sample, SparkSample)
+    assert sample.proof_harness.files == {Path("harness.gpr"): b'with "main.gpr";\n'}
+
+    # Samples without a harness keep an empty one, and no stray directory
+    other_sample_dir = round_tripped_dir / "spark_test" / "test_sample_1"
+    assert not (other_sample_dir / "proof_harness").exists()

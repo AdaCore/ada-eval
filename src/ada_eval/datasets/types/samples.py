@@ -47,6 +47,7 @@ class InvalidSampleNameError(ValueError):
 BASE_DIR_NAME = "base"
 SOLUTION_DIR_NAME = "solution"
 UNIT_TEST_DIR_NAME = "tests"
+PROOF_HARNESS_DIR_NAME = "proof_harness"
 GENERATED_SOLUTION_DIR_NAME = "generated_solution"
 OTHER_JSON_NAME = "other.json"
 COMMENTS_FILE_NAME = "comments.md"
@@ -235,7 +236,7 @@ class Sample(BaseModel):
         other_data = {LOCATION_KEY: self.location.model_dump()} | (other_data or {})
         if len(self.canonical_evaluation_results) > 0:
             other_data[CANONICAL_EVAL_KEY] = serialise_sequence(
-                self.canonical_evaluation_results
+                self.canonical_evaluation_results, exclude_defaults=True
             )
         (dest_dir / OTHER_JSON_NAME).write_text(json.dumps(other_data, indent=4) + "\n")
 
@@ -347,16 +348,33 @@ class ExplainSample(Sample):
 
 
 class SparkSample(AdaSample):
+    """
+    SPARK-specific sample extending `AdaSample`.
+
+    Attributes:
+        required_checks (Sequence[ProofCheck]): Checks the solution must prove.
+        proof_harness (DirectoryContents): An optional GPR project, withheld
+            from the tool under evaluation, whose postconditions state the
+            properties the solution's contracts must imply.
+
+    """
+
     kind: ClassVar = SampleKind.SPARK
 
     required_checks: Sequence[ProofCheck] = []
+    proof_harness: DirectoryContents = DirectoryContents({})
 
     def unpack(self, dataset_root: Path, other_data: dict[str, object] | None = None):
         if len(self.required_checks) > 0:
             other_data = {
-                REQUIRED_CHECKS_KEY: serialise_sequence(self.required_checks)
+                REQUIRED_CHECKS_KEY: serialise_sequence(
+                    self.required_checks, exclude_defaults=True
+                )
             } | (other_data or {})
         super().unpack(dataset_root=dataset_root, other_data=other_data)
+        if len(self.proof_harness.files) > 0:
+            dest_dir = self.working_dir_in(dataset_root)
+            self.proof_harness.unpack_to(dest_dir / PROOF_HARNESS_DIR_NAME)
 
     @classmethod
     def load_unpacked_sample(cls, sample_dir: Path):
@@ -375,6 +393,7 @@ class SparkSample(AdaSample):
             canonical_evaluation_results=ada_sample.canonical_evaluation_results,
             unit_tests=ada_sample.unit_tests,
             required_checks=required_checks,
+            proof_harness=get_contents_git_aware(sample_dir / PROOF_HARNESS_DIR_NAME),
         )
 
 
@@ -576,7 +595,9 @@ class EvaluatedSample(GeneratedSample):
 
     def unpack(self, dataset_root: Path, other_data: dict[str, object] | None = None):
         other_data = {
-            EVALUATION_RESULTS_KEY: serialise_sequence(self.evaluation_results)
+            EVALUATION_RESULTS_KEY: serialise_sequence(
+                self.evaluation_results, exclude_defaults=True
+            )
         } | (other_data or {})
         super().unpack(dataset_root=dataset_root, other_data=other_data)
 
