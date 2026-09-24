@@ -146,6 +146,9 @@ example_sample
 ├── comments.md  # Comments about the sample for humans to better understand it
 ├── other.json  # Contains additional metadata for the sample. For SPARK samples, this will include the name of the subprogram of interest, and the relative path to the file that contains its specification.
 ├── prompt.md  # The prompt that is provided to the tool to specify the challenge/problem
+├── proof_harness  # Optional. A project, withheld from the tool, whose postconditions state what the solution's contracts must imply
+│   ├── harness.gpr
+│   └── src
 ├── solution  # A solution to the challenge/problem. For SPARK samples, this will be a project that can be built, passes the tests, and gnatprove is happy with.
 │   ├── main.gpr
 │   ├── main.adc
@@ -162,6 +165,7 @@ example_sample
     - `base/`: A project that contains the code that needs to be modified to solve the challenge/problem
     - `solution/`: A complete project that contains the modified code with the solved problem
     - `tests/`: A project that contains unit tests for the sample. It should compile to an executable at `tests/bin/tests` which returns a zero exit code if (and only if) the tests pass.
+    - `proof_harness/`: Optional. A project that `with`s the solution's `main.gpr` and wraps the subprogram of interest in a subprogram with the same inputs and outputs, whose postcondition states the properties the solution's contracts must imply. Name the wrapper `Proof_Harness.Check_<subprogram_name>` (for example, `Proof_Harness.Check_Max_Array`). It is withheld from the tool, and it must prove against the canonical solution. The wrapper must have a postcondition check, and the harness must have no `pragma Assume`, non-SPARK entities, or GNATprove warnings.
     - `comments.md`: if the challenge isn't obvious, consider including a more detailed description of the challenge/problem in this file
     - `prompt.md`: A prompt that describes the challenge/problem. This will be provided to the tool to generate a solution.
     - `other.json`: A file that contains additional metadata about the sample. For SPARK samples, this should look like:
@@ -174,8 +178,7 @@ example_sample
           "required_checks": [
               {
                   "rule": "VC_POSTCONDITION",  // Rule name of a check that must be proved
-                  "entity_name": "Integer_Utils.Increment",  // Optional name of the entity the check must be attached to
-                  "src_pattern": "Increment'Result = X \\+ 1;"  // Optional regex pattern which must match the proved source code
+                  "entity_name": "Integer_Utils.Increment"  // Optional name of the entity the check must be attached to
               },
               ...
           ]
@@ -189,12 +192,17 @@ example_sample
       samples, since the proof and/or tests will simply fail unless the problem
       is solved. However, for checks like postconditions, a desperate agent may
       "fix" the proof failure by simply removing or relaxing the condition.
-      Where the proof of a postcondition or similar is a key part of a
-      challenge/problem, a corresponding `required_check` should be added to
-      ensure that such "fixes" are not erroneously evaluated as correct. The
-      `"src_pattern"` must match starting from the location reported by
-      `gnatprove` (run `gnatprove` on the solution with `--report=all` for an
-      output which includes the line and column numbers of these locations).
+      When no proof harness covers the property, a `required_check` can catch a
+      removed postcondition, but it cannot detect a weaker one. A proof harness
+      (see above) checks the property's meaning through the solution's visible
+      contract, so a separate postcondition check is unnecessary when the
+      harness already covers it. An optional `"src_pattern"` regex may pin
+      the text of a flow aspect such as `Depends`, which has a single correct
+      form. `check-datasets` rejects one on a `VC_*` rule, since matching text
+      pins a contract's wording and not its meaning. The `"src_pattern"` must
+      match starting from the location reported by `gnatprove` (run `gnatprove`
+      on the solution with `--report=all` for an output which includes the line
+      and column numbers of these locations).
 3.  Verify that the solution builds, proves, etc. by running
     ```sh
     make evaluate-canonical

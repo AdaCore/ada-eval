@@ -10,6 +10,7 @@ from ada_eval.datasets import (
     EvaluationStatsInvalid,
     ExplainSample,
     Sample,
+    SparkSample,
     load_datasets,
     verify_datasets_equal,
 )
@@ -179,12 +180,49 @@ def check_evaluation_baseline(datasets: Sequence[Dataset[Sample]], jobs: int) ->
                 raise InvalidBaselineEvaluationError(dataset, sample)
 
 
+class ProofRuleSrcPatternError(IncorrectDatasetError):
+    """Raised when a `src_pattern` is attached to a proof rule."""
+
+    def __init__(self, dataset: Dataset[Sample], sample: Sample, rule: str):
+        self.dataset, self.sample, self.rule = dataset, sample, rule
+        super().__init__(
+            f"sample '{sample.name}' in dataset '{dataset.dirname}' has a "
+            f"'src_pattern' on proof rule '{rule}'. Matching source text can "
+            f"only pin a contract's wording, not its meaning, so a candidate "
+            f"can keep the text and still weaken the property. Pin the "
+            f"property with a proof harness instead."
+        )
+
+
+def check_src_patterns(datasets: Sequence[Dataset[Sample]]) -> None:
+    """
+    Verify no `required_checks` entry pins a proof rule by source text.
+
+    A `src_pattern` can pin the text of a flow aspect such as `Depends`.
+    For a proof rule, it pins contract wording rather than the property:
+    the contract can be weakened without changing the matched text.
+
+    Raises:
+        ProofRuleSrcPatternError: If a `src_pattern` is attached to a rule whose
+            name marks it as a proof rule.
+
+    """
+    for dataset in datasets:
+        for sample in dataset.samples:
+            if not isinstance(sample, SparkSample):
+                continue
+            for check in sample.required_checks:
+                if check.src_pattern is not None and check.rule.startswith("VC_"):
+                    raise ProofRuleSrcPatternError(dataset, sample, check.rule)
+
+
 def check_base_datasets(dataset_dirs: Sequence[Path], jobs: int) -> None:
     """
     Check the correctness of a collection of base datasets.
 
     Checks that:
     - the specified directories all contain identical datasets.
+    - no `required_checks` entry pins a proof rule by source text.
     - all canonical evaluation results in the datasets represent passing results.
     - all canonical evaluation results in the datasets are accurate.
     - a null generation fails at least one eval on all samples.
@@ -192,6 +230,8 @@ def check_base_datasets(dataset_dirs: Sequence[Path], jobs: int) -> None:
     Raises:
         DatasetsMismatchError: If any difference is found between any of the
             datasets.
+        ProofRuleSrcPatternError: If any `required_checks` entry pins a proof
+            rule by source text.
         FailedCanonicalEvaluationError: If any canonical evaluation result does
             not represent a passing result.
         InaccurateCanonicalEvaluationError: If any of the current canonical
@@ -219,6 +259,7 @@ def check_base_datasets(dataset_dirs: Sequence[Path], jobs: int) -> None:
             load_datasets(other_datasets_dir),
             dataset_names.get(other_datasets_dir.resolve(), f"'{other_datasets_dir}'"),
         )
+    check_src_patterns(datasets)
     # Verify that all canonical evaluation results represent passing results
     check_canonical_evaluation_results(datasets)
     # Re-run a full canonical evaluation and verify that we get the same results

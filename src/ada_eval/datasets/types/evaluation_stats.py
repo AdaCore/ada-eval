@@ -112,6 +112,18 @@ class ProofCheck(BaseModel):
     """
 
 
+HarnessResult = Literal["not_applicable", "proved", "unproved", "error"]
+"""
+The outcome of proving a sample's proof harness.
+
+- `"not_applicable"`: the sample has no proof harness
+- `"proved"`: all harness checks proved against the solution's contracts
+- `"unproved"`: the solution's contracts are too weak to satisfy the challenge
+- `"error"`: the harness failed to build or was invalid, for example due to
+    an assumption, warning, non-SPARK entity, or missing postcondition.
+"""
+
+
 class EvaluationStatsProve(EvaluationStatsBase):
     eval: Literal[Eval.PROVE] = Eval.PROVE
     result: Literal[
@@ -123,6 +135,7 @@ class EvaluationStatsProve(EvaluationStatsBase):
     non_spark_entities: Sequence[str]
     missing_required_checks: Sequence[ProofCheck]
     pragma_assume_count: int
+    harness: HarnessResult = "not_applicable"
 
     @property
     def passed(self) -> bool:
@@ -150,6 +163,8 @@ class EvaluationStatsProve(EvaluationStatsBase):
                     ),
                     "pragma assume": metric_value(value=self.pragma_assume_count),
                     "warnings": metric_value(value=self.warnings.total()),
+                    "harness unproved": metric_value(when=self.harness == "unproved"),
+                    "harness error": metric_value(when=self.harness == "error"),
                 },
                 when=self.result == "proved_incorrectly",
             ),

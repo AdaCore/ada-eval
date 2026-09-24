@@ -13,13 +13,16 @@ from ada_eval.check_datasets import (
     InaccurateCanonicalEvaluationError,
     InvalidBaselineEvaluationError,
     PassedBaselineEvaluationError,
+    ProofRuleSrcPatternError,
     check_base_datasets,
+    check_src_patterns,
 )
 from ada_eval.datasets import (
     Dataset,
     Eval,
     EvaluationStatsBuild,
     ExitStatus,
+    ProofCheck,
     Sample,
     dataset_has_sample_type,
     load_datasets,
@@ -296,3 +299,28 @@ def test_check_base_datasets(
     check_base_datasets([], jobs=8)
     assert_log(caplog, INFO, "No dataset directories specified; nothing to check.")
     assert len(caplog.records) == 1
+
+
+def test_check_src_patterns(check_test_datasets: Path):
+    """A `src_pattern` may pin a flow aspect, but not a proof rule."""
+    datasets = load_datasets(check_test_datasets)
+    spark_dataset = next(d for d in datasets if dataset_has_sample_type(d, SparkSample))
+    sample = spark_dataset.samples[0]
+
+    # A flow aspect has a single correct form, so pinning its text is exact
+    sample.required_checks = [
+        ProofCheck(rule="DEPENDS_WRONG", src_pattern=r"Depends => \(X => X\)")
+    ]
+    check_src_patterns(datasets)
+
+    # A proof rule may be required, just not pinned by source text
+    sample.required_checks = [ProofCheck(rule="VC_POSTCONDITION")]
+    check_src_patterns(datasets)
+
+    sample.required_checks = [ProofCheck(rule="VC_POSTCONDITION", src_pattern="X >= 0")]
+    error_msg = (
+        "sample 'good' in dataset 'spark_check' has a 'src_pattern' on proof "
+        "rule 'VC_POSTCONDITION'."
+    )
+    with pytest.raises(ProofRuleSrcPatternError, match=re.escape(error_msg)):
+        check_src_patterns(datasets)

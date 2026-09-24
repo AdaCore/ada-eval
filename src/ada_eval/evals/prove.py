@@ -1,7 +1,9 @@
 import json
 import logging
+import os
 import re
 from collections import Counter
+from collections.abc import Sequence
 from pathlib import Path
 from typing import ClassVar, Literal
 
@@ -12,6 +14,7 @@ from ada_eval.datasets import (
     EvaluatedSparkSample,
     EvaluationStatsProve,
     GeneratedSparkSample,
+    HarnessResult,
     ProofCheck,
     SubprogramNotFoundError,
 )
@@ -29,6 +32,8 @@ logger = logging.getLogger(__name__)
 
 
 PROVE_TIMEOUT_S = 60
+
+PROOF_HARNESS_PROJECT = "harness.gpr"
 
 
 def empty_prove_stats(
@@ -97,6 +102,27 @@ def extract_proof_results(spark_data: dict[str, object]) -> list[ProofResult]:
                 )
             )
     return results
+
+
+def extract_non_spark_entities(spark_files: Sequence[dict[str, object]]) -> list[str]:
+    """Find entities for which SPARK analysis was disabled."""
+    entities: list[str] = []
+    for spark_file in spark_files:
+        entity_names = extract_entities(spark_file)
+        entities.extend(
+            entity_names[int(num_str)]
+            for num_str, value in type_checked(spark_file["spark"], dict).items()
+            if value != "all"
+        )
+    return entities
+
+
+def count_pragma_assumes(spark_files: Sequence[dict[str, object]]) -> int:
+    """Count `pragma Assume` uses reported by GNATprove."""
+    return sum(
+        len(type_checked(spark_file["pragma_assume"], list))
+        for spark_file in spark_files
+    )
 
 
 class ProofResultSourceNotFoundError(ValueError):
@@ -200,6 +226,80 @@ def proof_check_is_satisfied(
     return re.match(check.src_pattern, src_str) is not None
 
 
+def evaluate_proof_harness(
+    sample: GeneratedSparkSample, solution_dir: Path
+) -> HarnessResult:
+    """
+    Run GNATprove on `sample`'s proof harness against its generated solution.
+
+    The harness wraps the subprogram of interest in a subprogram with the same
+    inputs and outputs, whose postcondition states the properties the
+    solution's contracts must imply. GNATprove analyzes a caller using only the
+    callee's contract, so the harness proves when those contracts are at least
+    as strong as the sample requires.
+
+    Args:
+        sample: The sample being evaluated. Must have a non-empty `proof_harness`.
+        solution_dir: The directory the generated solution is unpacked in,
+            which the harness project is resolved against.
+
+    """
+    env = os.environ.copy()
+    env["GPR_PROJECT_PATH"] = str(solution_dir)
+    with sample.proof_harness.unpacked() as harness_dir:
+        logger.debug("Proving harness for '%s' in %s", sample.name, harness_dir)
+        harness_sources = sorted(
+            path.name
+            for path in sample.proof_harness.files
+            if path.suffix in (".ads", ".adb")
+        )
+        proc_result, _ = run_cmd_with_timeout(
+            [
+                "gnatprove",
+                f"-P{PROOF_HARNESS_PROJECT}",
+                "--warnings=error",
+                "-u",
+                *harness_sources,
+            ],
+            harness_dir,
+            PROVE_TIMEOUT_S,
+            env=env,
+        )
+        if proc_result.returncode != 0:
+            return "error"
+        spark_files = [
+            type_checked(json.loads(spark_file_path.read_text("utf-8")), dict)
+            for spark_file_path in (harness_dir / "obj" / "gnatprove").glob("*.spark")
+        ]
+    if len(spark_files) == 0:
+        return "error"
+    proof_results = [
+        result
+        for spark_file in spark_files
+        for result in extract_proof_results(spark_file)
+    ]
+    wrapper_name = f"Proof_Harness.Check_{sample.location.subprogram_name}".casefold()
+    if (
+        not any(
+            result.rule == "VC_POSTCONDITION"
+            and result.entity_name.casefold() == wrapper_name
+            for result in proof_results
+        )
+        or count_pragma_assumes(spark_files) > 0
+        or len(extract_non_spark_entities(spark_files)) > 0
+    ):
+        return "error"
+    return (
+        "unproved"
+        if any(
+            result.severity != "info"
+            for result in proof_results
+            if result.severity != "warning"
+        )
+        else "proved"
+    )
+
+
 class Prove(GenericEval[GeneratedSparkSample, EvaluatedSparkSample]):
     """An evaluation that runs GNATprove and checks for any proof failures."""
 
@@ -242,6 +342,11 @@ class Prove(GenericEval[GeneratedSparkSample, EvaluatedSparkSample]):
                 type_checked(json.loads(spark_file_path.read_text("utf-8")), dict)
                 for spark_file_path in gnatprove_dir.glob("*.spark")
             ]
+            harness_result: HarnessResult = (
+                evaluate_proof_harness(sample, working_dir)
+                if len(sample.proof_harness.files) > 0
+                else "not_applicable"
+            )
         # Extract the `proof_result`s from the `.spark` files
         proof_results = [
             r for spark_file in spark_files for r in extract_proof_results(spark_file)
@@ -263,14 +368,7 @@ class Prove(GenericEval[GeneratedSparkSample, EvaluatedSparkSample]):
         if rule_counts["error"].total() > 0:
             return empty_prove_stats("error")
         # Find any entities for which SPARK was disabled
-        non_spark_entities: list[str] = []
-        for spark_file in spark_files:
-            entity_names = extract_entities(spark_file)
-            non_spark_entities.extend(
-                entity_names[int(num_str)]
-                for num_str, value in type_checked(spark_file["spark"], dict).items()
-                if value != "all"
-            )
+        non_spark_entities = extract_non_spark_entities(spark_files)
         # Determine which `required_checks` have been satisfied
         missing_proof_checks = list(sample.required_checks)
         for proof_result in proof_results:
@@ -279,10 +377,7 @@ class Prove(GenericEval[GeneratedSparkSample, EvaluatedSparkSample]):
                     missing_proof_checks.pop(idx)
                     break
         # Count the number of `pragma Assume`s
-        pragma_assume_count = sum(
-            len(type_checked(spark_file["pragma_assume"], list))
-            for spark_file in spark_files
-        )
+        pragma_assume_count = count_pragma_assumes(spark_files)
         # Categorise the overall result
         if unproved_checks.total() > 0:
             result = "unproved"
@@ -291,6 +386,7 @@ class Prove(GenericEval[GeneratedSparkSample, EvaluatedSparkSample]):
             and len(missing_proof_checks) == 0
             and warnings.total() == 0
             and pragma_assume_count == 0
+            and harness_result in ("not_applicable", "proved")
         ):
             result = "proved_incorrectly"
         else:
@@ -304,4 +400,5 @@ class Prove(GenericEval[GeneratedSparkSample, EvaluatedSparkSample]):
             non_spark_entities=sorted(non_spark_entities),
             missing_required_checks=missing_proof_checks,
             pragma_assume_count=pragma_assume_count,
+            harness=harness_result,
         )

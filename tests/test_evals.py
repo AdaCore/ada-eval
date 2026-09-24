@@ -12,6 +12,8 @@ from helpers import assert_git_status, assert_log, dictify_datasets, setup_git_r
 
 from ada_eval.datasets import Dataset, dataset_has_sample_type
 from ada_eval.datasets.loader import load_datasets
+from ada_eval.datasets.trivial_generations import generate_canonical
+from ada_eval.datasets.types.directory_contents import DirectoryContents
 from ada_eval.datasets.types.evaluation_stats import (
     Eval,
     EvaluationStatsBase,
@@ -43,6 +45,7 @@ from ada_eval.evals import (
     evaluate_directory,
 )
 from ada_eval.evals.generic_eval import GenericEval, WrongEvalOutputTypeError
+from ada_eval.evals.prove import evaluate_proof_harness
 from ada_eval.utils import ExecutableNotFoundError
 
 GENERATED_TYPE_TO_EVALUATED: dict[type[GeneratedSample], type[EvaluatedSample]] = {
@@ -558,8 +561,8 @@ def test_build(
     test_datasets = load_datasets(eval_test_datasets)
     evaluate_datasets_canonical([Eval.BUILD], test_datasets, jobs=8)
     assert caplog.text == ""
-    # 23 = 2x4 (build) + 10 (prove) + 5 (test)
-    check_progress_bar(capsys.readouterr(), 23, "build")
+    # 24 = 2x4 (build) + 11 (prove) + 5 (test)
+    check_progress_bar(capsys.readouterr(), 24, "build")
 
     # Verify that the evaluation results are as expected for the build test
     # datasets
@@ -615,7 +618,7 @@ def test_prove(
     test_datasets = [d for d in all_datasets if d.name in ("build", "prove")]
     evaluate_datasets_canonical([Eval.PROVE], test_datasets, jobs=8)
     assert caplog.text == ""
-    check_progress_bar(capsys.readouterr(), 10, "prove")  # 10 spark samples
+    check_progress_bar(capsys.readouterr(), 11, "prove")  # 11 spark samples
 
     # Verify that the evaluation results are as expected for the build dataset
     # (only spark samples are compatible with prove, so this should be an empty
@@ -647,7 +650,9 @@ def test_prove(
         entity_name="Increment",
         src_pattern="Increment'Result\\s+=\\s+X\\s+\\+\\s+1;",
     )
-    assert samples["proves"].canonical_evaluation_results == [expected_eval_stats]
+    assert samples["proves"].canonical_evaluation_results == [
+        expected_eval_stats.model_copy(update={"harness": "proved"})
+    ]
     assert samples["warns"].canonical_evaluation_results == [
         expected_eval_stats.model_copy(
             update={"result": "proved_incorrectly", "warnings": {"INEFFECTIVE": 1}}
@@ -677,12 +682,21 @@ def test_prove(
             }
         )
     ]
+    # The harness catches both a weakened postcondition and a stronger
+    # precondition, without relying on the source pattern.
     assert samples["wrong_postcondition"].canonical_evaluation_results == [
         expected_eval_stats.model_copy(
             update={
                 "result": "proved_incorrectly",
                 "missing_required_checks": [expected_proof_check],
+                "harness": "unproved",
             }
+        )
+    ]
+    # A proving solution with an incompatible subprogram profile
+    assert samples["changed_profile"].canonical_evaluation_results == [
+        expected_eval_stats.model_copy(
+            update={"result": "proved_incorrectly", "harness": "error"}
         )
     ]
     assert samples["no_postcondition"].canonical_evaluation_results == [
@@ -720,6 +734,76 @@ def test_prove(
             }
         )
     ]
+
+
+@pytest.mark.slow
+@pytest.mark.skipif(not shutil.which("gnatprove"), reason="gnatprove not available")
+def test_proof_harness_rejects_assumptions_warnings_and_missing_wrapper_postconditions(
+    eval_test_datasets: Path,
+):
+    dataset = next(d for d in load_datasets(eval_test_datasets) if d.name == "prove")
+    sample = next(
+        s for s in generate_canonical([dataset])[0].samples if s.name == "proves"
+    )
+    assert isinstance(sample, GeneratedSparkSample)
+    original_files = dict(sample.proof_harness.files)
+    body_path = Path("src/proof_harness.adb")
+
+    with sample.generated_solution.unpacked() as solution_dir:
+        assert evaluate_proof_harness(sample, solution_dir) == "proved"
+
+        # This makes the postcondition vacuous, but GNATprove still reports it
+        # as proved. The pragma_assume entry must invalidate the harness.
+        assume_files = dict(original_files)
+        assume_files[body_path] = assume_files[body_path].replace(
+            b"      return Increment (X);",
+            b"      pragma Assume (False);\n      return Increment (X);",
+        )
+        sample.proof_harness = DirectoryContents(assume_files)
+        assert evaluate_proof_harness(sample, solution_dir) == "error"
+
+        # An ineffective initialization is a GNATprove warning, which must also
+        # invalidate the harness.
+        warning_files = dict(original_files)
+        warning_files[body_path] = warning_files[body_path].replace(
+            b"   begin\n",
+            b"      Copy : Integer := X;\n   begin\n",
+        )
+        sample.proof_harness = DirectoryContents(warning_files)
+        assert evaluate_proof_harness(sample, solution_dir) == "error"
+
+        # Without a postcondition, the wrapper proves but states nothing.
+        spec_path = Path("src/proof_harness.ads")
+        no_post_files = dict(original_files)
+        no_post_files[spec_path] = no_post_files[spec_path].replace(
+            b", Post => Check_Increment'Result = X + 1", b""
+        )
+        sample.proof_harness = DirectoryContents(no_post_files)
+        assert evaluate_proof_harness(sample, solution_dir) == "error"
+
+        # A postcondition on an unrelated helper cannot stand in for the
+        # wrapper's missing postcondition.
+        unrelated_post_files = dict(no_post_files)
+        unrelated_post_files[spec_path] = unrelated_post_files[spec_path].replace(
+            b"end Proof_Harness;",
+            b"   function Dummy (X : Integer) return Integer\n"
+            b"   with Post => Dummy'Result = X;\n\nend Proof_Harness;",
+        )
+        unrelated_post_files[body_path] = unrelated_post_files[body_path].replace(
+            b"end Proof_Harness;",
+            b"   function Dummy (X : Integer) return Integer is\n"
+            b"   begin\n      return X;\n   end Dummy;\n\nend Proof_Harness;",
+        )
+        sample.proof_harness = DirectoryContents(unrelated_post_files)
+        assert evaluate_proof_harness(sample, solution_dir) == "error"
+
+        # GNATprove writes a .spark file for an empty package; it must not
+        # count as proof of a property.
+        empty_files = dict(original_files)
+        empty_files.pop(body_path)
+        empty_files[spec_path] = b"package Proof_Harness is end Proof_Harness;\n"
+        sample.proof_harness = DirectoryContents(empty_files)
+        assert evaluate_proof_harness(sample, solution_dir) == "error"
 
 
 @pytest.mark.slow

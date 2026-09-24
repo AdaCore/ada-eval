@@ -105,9 +105,18 @@ def index_from_line_and_col(text: str, line: int, col: int) -> int:
     return sum(len(line) for line in lines[: line - 1]) + col - 1
 
 
-def serialise_sequence(seq: Sequence[BaseModel]) -> list[dict[str, object]]:
-    """Serialise a sequence of Pydantic models to a list of dictionaries."""
-    return [item.model_dump() for item in seq]
+def serialise_sequence(
+    seq: Sequence[BaseModel], *, exclude_defaults: bool = False
+) -> list[dict[str, object]]:
+    """
+    Serialise a sequence of Pydantic models to a list of dictionaries.
+
+    Args:
+        seq: The models to serialise.
+        exclude_defaults: Omit optional fields that are set to the default value.
+
+    """
+    return [item.model_dump(exclude_defaults=exclude_defaults) for item in seq]
 
 
 def construct_enum_case_insensitive(cls: type[Enum], value: object) -> Enum | None:
