@@ -72,3 +72,11 @@ evaluate-canonical:
 
 check-datasets:
 	uv run ada-eval check-datasets
+
+.PHONY: smoke-test
+smoke-test:
+ifndef CONFIG
+	$(error Set CONFIG to a tool config, e.g. `make smoke-test CONFIG=tools/configs/shell_dummy.json ALLOW_UNSOLVED=1`)
+endif
+	uv run ada-eval smoke-test --tool-config $(CONFIG) \
+		$(if $(ALLOW_UNSOLVED),--allow-unsolved) $(if $(SAMPLE),--sample $(SAMPLE))

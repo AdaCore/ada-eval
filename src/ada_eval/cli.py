@@ -1,5 +1,6 @@
 import argparse
 import logging
+import sys
 from os import cpu_count
 from pathlib import Path
 
@@ -12,8 +13,15 @@ from ada_eval.paths import (
     EVALUATED_DATASETS_DIR,
     EXPANDED_DATASETS_DIR,
     GENERATED_DATASETS_DIR,
+    SMOKE_TEST_DIR,
+    TOOL_CONFIGS_DIR,
 )
 from ada_eval.report import report_evaluation_results
+from ada_eval.smoke_test import (
+    DEFAULT_SMOKE_SAMPLE,
+    default_output_dir,
+    run_smoke_test,
+)
 from ada_eval.tools import create_tool_from_config
 
 
@@ -63,6 +71,18 @@ def call_report_evaluation_results(args) -> None:
         metrics_filter=args.with_metric,
         list_samples=args.list_samples,
     )
+
+
+def call_smoke_test(args) -> None:
+    passed = run_smoke_test(
+        tool_config=args.tool_config,
+        datasets_dir=EXPANDED_DATASETS_DIR,
+        output_dir=args.output_dir or default_output_dir(args.tool_config),
+        sample_id=args.sample,
+        allow_unsolved=args.allow_unsolved,
+    )
+    if not passed:
+        sys.exit(1)
 
 
 def main() -> None:
@@ -281,6 +301,48 @@ def main() -> None:
         help=(
             "Instead of displaying metric values, simply list the names of the "
             "samples that match the filters."
+        ),
+    )
+
+    smoke_test_parser = subparsers.add_parser(
+        "smoke-test",
+        help=(
+            "Smoke test that generation and evaluation work end to end, "
+            "using a single sample, and that the canonical solution passes."
+            "Useful for checking that an environment is correctly configured."
+        ),
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    smoke_test_parser.set_defaults(func=call_smoke_test)
+    smoke_test_parser.add_argument(
+        "--tool-config",
+        type=Path,
+        help="Path to tool configuration file",
+        required=True,
+    )
+    smoke_test_parser.add_argument(
+        "--sample",
+        type=str,
+        help=f"Sample to use, as '<dataset>/<sample>' within '{EXPANDED_DATASETS_DIR}'",
+        default=DEFAULT_SMOKE_SAMPLE,
+    )
+    smoke_test_parser.add_argument(
+        "--output-dir",
+        type=Path,
+        help=(
+            "Directory for the generated and evaluated sample. "
+            f"(Default: '{SMOKE_TEST_DIR}/<tool config path within "
+            f"'{TOOL_CONFIGS_DIR}'>')"
+        ),
+        default=None,
+    )
+    smoke_test_parser.add_argument(
+        "--allow-unsolved",
+        action="store_true",
+        help=(
+            "Allow failed checks on the generated sample; the canonical checks "
+            "must pass, generation must succeed, and evaluations must finish "
+            "without errors or timeouts"
         ),
     )
 

@@ -25,6 +25,7 @@ Framework for evaluating LLM based tools for Ada/SPARK use cases.
       - [Adding a new SPARK sample](#adding-a-new-spark-sample)
     - [Generating new completions](#generating-new-completions)
     - [Evaluating completions](#evaluating-completions)
+    - [Smoke testing a setup](#smoke-testing-a-setup)
 
 ## Setup
 
@@ -252,6 +253,30 @@ Filtering options etc. can likewise be found via the `--help` switch.
 The combination of both of these commands is available via the shortcut `make evaluate`.
 
 This interface is not final.
+
+### Smoke testing a setup
+
+Check generation and evaluation for one sample with a tool configuration:
+```sh
+make smoke-test CONFIG=tools/configs/claude_agent_haiku.json
+```
+The command first evaluates the canonical solution to check the Ada/SPARK
+toolchain. It then generates and evaluates a solution with the configured tool,
+stopping at the first failure. By default, every evaluation of the generated
+solution must pass.
+
+Set `ALLOW_UNSOLVED=1` to allow failing evaluation results
+for that solution, such as when checking a dummy tool. This does not change the
+tool's prompt or configuration: the canonical solution must still pass, tool
+generation must succeed, and every evaluation must finish without an error or
+timeout.
+
+Use `SAMPLE=<dataset>/<sample>` to select another sample.
+
+Results are saved under `data/smoke-test/<config name>/`. To inspect the
+evaluated results from this example, run `uv run ada-eval report --dataset-dirs
+data/smoke-test/claude_agent_haiku/evaluated`.
+
 ## Acknowledgments
 
 Some evaluation problems are adapted from the [MultiPL-E dataset](https://huggingface.co/datasets/nuprl/MultiPL-E). See [THIRD_PARTY_LICENSES.md](THIRD_PARTY_LICENSES.md) for license details.
