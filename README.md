@@ -273,9 +273,20 @@ timeout.
 
 Use `SAMPLE=<dataset>/<sample>` to select another sample.
 
-Results are saved under `data/smoke-test/<config name>/`. To inspect the
-evaluated results from this example, run `uv run ada-eval report --dataset-dirs
-data/smoke-test/claude_agent_haiku/evaluated`.
+Results are saved under `data/smoke-test/<config path>/`. The config path is
+relative to `tools/configs/`, with its extension removed; configs outside that
+directory use only their filename stem. Use `--output-dir` with
+`uv run ada-eval smoke-test` to choose another output directory. Previous results
+are replaced only after the config, toolchain, sample, and canonical checks pass.
+An existing output directory
+must contain only `generated/` and `evaluated/` directories of valid dataset files
+and the smoke test's `.gitignore`; unexpected files or symlinks cause the command
+to fail without clearing anything.
+
+To inspect the evaluated results from this example:
+```sh
+uv run ada-eval report --dataset-dirs data/smoke-test/claude_agent_haiku/evaluated
+```
 
 ## Acknowledgments
 

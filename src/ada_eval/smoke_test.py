@@ -4,7 +4,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from ada_eval.datasets.loader import load_datasets
+from ada_eval.datasets.loader import load_datasets, load_packed_dataset
 from ada_eval.datasets.trivial_generations import generate_canonical
 from ada_eval.datasets.types import (
     Dataset,
@@ -15,6 +15,7 @@ from ada_eval.datasets.types import (
     ExitStatus,
     GeneratedSample,
     Sample,
+    SampleStage,
     save_datasets,
 )
 from ada_eval.datasets.types.execution_log import ReasoningLogEntry
@@ -84,6 +85,45 @@ def default_output_dir(tool_config: Path) -> Path:
     return SMOKE_TEST_DIR / relative.with_suffix("")
 
 
+def validate_output_dir(output_dir: Path) -> None:
+    """Check every entry before allowing previous results to be removed."""
+    if output_dir.is_symlink() or (output_dir.exists() and not output_dir.is_dir()):
+        msg = f"refusing to clear '{output_dir}': not a plain directory"
+        raise SmokeTestFailedError(msg)
+    if not output_dir.exists():
+        return
+    stages = {"generated": SampleStage.GENERATED, "evaluated": SampleStage.EVALUATED}
+    for entry in output_dir.iterdir():
+        if (
+            not entry.is_symlink()
+            and entry.name == ".gitignore"
+            and entry.is_file()
+            and entry.read_text() == "*\n"
+        ):
+            continue
+        if entry.is_symlink() or entry.name not in stages or not entry.is_dir():
+            msg = f"refusing to clear '{output_dir}': unexpected entry '{entry}'"
+            raise SmokeTestFailedError(msg)
+        for dataset_file in entry.iterdir():
+            if (
+                dataset_file.is_symlink()
+                or not dataset_file.is_file()
+                or dataset_file.suffix != ".jsonl"
+            ):
+                msg = (
+                    f"refusing to clear '{output_dir}': "
+                    f"unexpected entry '{dataset_file}'"
+                )
+                raise SmokeTestFailedError(msg)
+            dataset = load_packed_dataset(dataset_file)
+            if not dataset.samples or dataset.stage != stages[entry.name]:
+                msg = (
+                    f"refusing to clear '{output_dir}': '{dataset_file}' "
+                    f"is not a nonempty {entry.name} dataset"
+                )
+                raise SmokeTestFailedError(msg)
+
+
 class SmokeTest:
     tool: GenericTool[Any, Any, Any]
     dataset: Dataset[Sample]
@@ -101,6 +141,7 @@ class SmokeTest:
         self.tool_config = tool_config
         self.datasets_dir = datasets_dir
         self.output_dir = output_dir
+        self.output_ready = False
         self.sample_id = sample_id
         self.allow_unsolved = allow_unsolved
 
@@ -129,6 +170,17 @@ class SmokeTest:
             msg = f"the canonical solution should pass every eval, but {description}"
             raise SmokeTestFailedError(msg)
         return description
+
+    def prepare_output_dir(self) -> str:
+        validate_output_dir(self.output_dir)
+        self.output_dir.mkdir(parents=True, exist_ok=True)
+        for name in ("generated", "evaluated"):
+            directory = self.output_dir / name
+            if directory.exists():
+                shutil.rmtree(directory)
+        (self.output_dir / ".gitignore").write_text("*\n")
+        self.output_ready = True
+        return str(self.output_dir)
 
     def generate(self) -> str:
         (sample,) = self.dataset.samples
@@ -164,16 +216,12 @@ class SmokeTest:
         return description
 
     def run(self) -> bool:
-        if self.output_dir.exists():
-            shutil.rmtree(self.output_dir)
-        self.output_dir.mkdir(parents=True)
-        (self.output_dir / ".gitignore").write_text("*\n")
-
         stages: list[tuple[str, Callable[[], str]]] = [
             ("Load tool config", self.load_config),
             ("Find Ada/SPARK tools", self.find_executables),
             ("Load sample", self.load_sample),
             ("Evaluate canonical solution", self.evaluate_canonical),
+            ("Prepare results directory", self.prepare_output_dir),
             ("Generate", self.generate),
             ("Evaluate generation", self.evaluate_generation),
         ]
@@ -193,10 +241,10 @@ class SmokeTest:
             if not passed:
                 break
         verdict = "PASSED" if passed else "FAILED"
-        print(
-            f"\nSmoke test {verdict} in {time.monotonic() - start:.0f}s "
-            f"(results in '{self.output_dir}')"
-        )
+        summary = f"\nSmoke test {verdict} in {time.monotonic() - start:.0f}s"
+        if self.output_ready:
+            summary += f" (results in '{self.output_dir}')"
+        print(summary)
         return passed
 
 

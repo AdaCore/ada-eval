@@ -330,9 +330,13 @@ def main() -> None:
         "--output-dir",
         type=Path,
         help=(
-            "Directory for the generated and evaluated sample. "
-            f"(Default: '{SMOKE_TEST_DIR}/<tool config path within "
-            f"'{TOOL_CONFIGS_DIR}'>')"
+            "Directory for generated and evaluated results. Previous results "
+            "are replaced after the canonical checks pass, provided the "
+            "directory contains only generated/evaluated datasets and the "
+            "smoke test's .gitignore. "
+            f"Defaults to '{SMOKE_TEST_DIR}' followed by the config's path "
+            f"relative to '{TOOL_CONFIGS_DIR}', without its extension "
+            "(or just the filename stem for a config outside that directory)."
         ),
         default=None,
     )
