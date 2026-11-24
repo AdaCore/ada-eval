@@ -1,4 +1,5 @@
 import copy
+import os
 import re
 from pathlib import Path
 from typing import Any
@@ -8,8 +9,11 @@ import pytest
 from ada_eval.utils import (
     TextPositionOutOfRangeError,
     diff_dicts,
+    gpr_project_path,
+    gpr_tools_env,
     index_from_line_and_col,
     make_files_relative_to,
+    sparklib_project_dir,
 )
 
 
@@ -103,3 +107,49 @@ def test_index_from_line_and_col():
     error_msg = "line 4 is out of range [1, 3]"
     with pytest.raises(TextPositionOutOfRangeError, match=re.escape(error_msg)):
         index_from_line_and_col(text, 4, 1)
+
+
+@pytest.fixture
+def gnatprove_prefix(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
+    """Isolate PATH to a test installation of GNATprove and SPARKlib."""
+    prefix = tmp_path / "gnatprove-install"
+    gnatprove = prefix / "bin" / "gnatprove"
+    gnatprove.parent.mkdir(parents=True)
+    gnatprove.write_text("#!/bin/sh\n")
+    gnatprove.chmod(0o755)
+    (prefix / "lib" / "gnat").mkdir(parents=True)
+    (prefix / "lib" / "gnat" / "sparklib_internal.gpr").write_text(
+        "project SPARKlib_Internal is end SPARKlib_Internal;\n"
+    )
+    monkeypatch.setenv("PATH", str(gnatprove.parent))
+    return prefix.resolve()
+
+
+def test_sparklib_project_dir(gnatprove_prefix: Path, monkeypatch: pytest.MonkeyPatch):
+    assert sparklib_project_dir() == gnatprove_prefix / "lib" / "gnat"
+
+    # Exercise both a missing SPARKlib project and a missing executable.
+    (gnatprove_prefix / "lib" / "gnat" / "sparklib_internal.gpr").unlink()
+    assert sparklib_project_dir() is None
+    monkeypatch.setenv("PATH", str(gnatprove_prefix))
+    assert sparklib_project_dir() is None
+
+
+def test_gpr_project_path(gnatprove_prefix: Path, monkeypatch: pytest.MonkeyPatch):
+    # The evaluation constructs a fresh project path.
+    monkeypatch.setenv("GPR_PROJECT_PATH", "/somewhere/else")
+    sparklib_dir = str(gnatprove_prefix / "lib" / "gnat")
+    assert gpr_project_path() == sparklib_dir
+    assert gpr_project_path(Path("/sol"), Path("/lib")) == os.pathsep.join(
+        ["/sol", "/lib", sparklib_dir]
+    )
+
+    env = gpr_tools_env(Path("/sol"))
+    assert env["GPR_PROJECT_PATH"] == os.pathsep.join(["/sol", sparklib_dir])
+    assert env["PATH"] == os.environ["PATH"]  # Retain the caller's PATH.
+    assert os.environ["GPR_PROJECT_PATH"] == "/somewhere/else"
+
+    # Preserve the requested directory order when SPARKlib is absent.
+    (gnatprove_prefix / "lib" / "gnat" / "sparklib_internal.gpr").unlink()
+    assert gpr_project_path() == ""
+    assert gpr_project_path(Path("/sol")) == "/sol"

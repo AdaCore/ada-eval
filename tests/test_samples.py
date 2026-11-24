@@ -1,18 +1,23 @@
+import json
 import re
 from pathlib import Path
 
 import pytest
 
+from ada_eval.datasets.types.directory_contents import DirectoryContents
 from ada_eval.datasets.types.exit_status import ExitStatus
 from ada_eval.datasets.types.samples import (
     EVALUATED_SAMPLE_TYPES,
     GENERATED_SAMPLE_TYPES,
     INITIAL_SAMPLE_TYPES,
+    GeneratedProofSample,
     GenerationStats,
     Location,
     PathMustBeRelativeError,
+    ProofSample,
     SampleKind,
     SampleStage,
+    SparkSample,
     SubprogramNotFoundError,
 )
 
@@ -73,6 +78,7 @@ def test_location_find_line_number(tmp_path: Path):
 def test_sample_kind_str():
     assert str(SampleKind.ADA) == "ada"
     assert str(SampleKind.EXPLAIN) == "explain"
+    assert str(SampleKind.PROOF) == "proof"
     assert str(SampleKind.SPARK) == "spark"
 
 
@@ -132,3 +138,79 @@ class TestGenerationStatsBackwardCompat:
             runtime_ms=100,
         )
         assert stats.exit_status == ExitStatus.SUCCESS
+
+
+def test_spark_sample_expected_non_spark_entities_round_trip(tmp_path: Path):
+    sample = SparkSample(
+        name="stubbed",
+        location=Location(path=Path("src/p.ads"), subprogram_name="P"),
+        prompt="",
+        comments="",
+        sources=DirectoryContents({}),
+        canonical_solution=DirectoryContents({}),
+        canonical_evaluation_results=[],
+        unit_tests=DirectoryContents({}),
+        expected_non_spark_entities=["P.Helper"],
+    )
+    sample.unpack(tmp_path)
+    other = json.loads((tmp_path / "stubbed" / "other.json").read_text())
+    assert other["expected_non_spark_entities"] == ["P.Helper"]
+    assert SparkSample.load_unpacked_sample(tmp_path / "stubbed") == sample
+
+
+def test_proof_sample_round_trip_has_no_tests_dir(tmp_path: Path):
+    sample = ProofSample(
+        name="proof_only",
+        location=Location(path=Path("src/p.ads"), subprogram_name="P"),
+        prompt="",
+        comments="",
+        sources=DirectoryContents({Path("main.gpr"): b"project Main is end Main;"}),
+        canonical_solution=DirectoryContents(
+            {Path("main.gpr"): b"project Main is end Main;"}
+        ),
+        canonical_evaluation_results=[],
+        expected_non_spark_entities=["P.Helper"],
+    )
+    sample.unpack(tmp_path)
+    assert not (tmp_path / "proof_only" / "tests").exists()
+    other = json.loads((tmp_path / "proof_only" / "other.json").read_text())
+    assert "prove_whole_project" not in other
+    assert ProofSample.load_unpacked_sample(tmp_path / "proof_only") == sample
+    whole = sample.model_copy(update={"name": "whole", "prove_whole_project": True})
+    whole.unpack(tmp_path)
+    other = json.loads((tmp_path / "whole" / "other.json").read_text())
+    assert other["prove_whole_project"] is True
+    assert ProofSample.load_unpacked_sample(tmp_path / "whole") == whole
+
+
+def test_solution_to_evaluate_uses_the_canonical_project_files():
+    sample = GeneratedProofSample(
+        name="pinned",
+        location=Location(path=Path("src/p.ads"), subprogram_name="P"),
+        prompt="",
+        comments="",
+        sources=DirectoryContents({}),
+        canonical_solution=DirectoryContents(
+            {
+                Path("main.gpr"): b"canonical",
+                Path("gnat.adc"): b"pragma SPARK_Mode;",
+                Path("src/p.adb"): b"canonical body",
+            }
+        ),
+        canonical_evaluation_results=[],
+        generation_stats=GenerationStats(
+            exit_status=ExitStatus.SUCCESS, stdout="", stderr="", runtime_ms=0
+        ),
+        generated_solution=DirectoryContents(
+            {
+                Path("main.gpr"): b"generated",
+                Path("other.gpr"): b"generated",
+                Path("src/p.adb"): b"generated body",
+            }
+        ),
+    )
+    assert sample.solution_to_evaluate().files == {
+        Path("main.gpr"): b"canonical",
+        Path("gnat.adc"): b"pragma SPARK_Mode;",
+        Path("src/p.adb"): b"generated body",
+    }

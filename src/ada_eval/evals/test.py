@@ -1,5 +1,4 @@
 import logging
-import os
 from typing import ClassVar
 
 from ada_eval.datasets import (
@@ -10,7 +9,7 @@ from ada_eval.datasets import (
     GeneratedAdaSample,
     GeneratedSparkSample,
 )
-from ada_eval.utils import check_on_path, run_cmd_with_timeout
+from ada_eval.utils import check_on_path, gpr_tools_env, run_cmd_with_timeout
 
 from .generic_eval import GenericEval
 
@@ -39,11 +38,10 @@ class Test(GenericEval[GeneratedAdaSample, EvaluatedAdaSample]):
 
     def evaluate(self, sample: GeneratedAdaSample) -> EvaluationStatsTest:
         with (
-            sample.generated_solution.unpacked() as src_working_dir,
+            sample.solution_to_evaluate().unpacked() as src_working_dir,
             sample.unit_tests.unpacked() as test_working_dir,
         ):
-            env = os.environ.copy()
-            env["GPR_PROJECT_PATH"] = str(src_working_dir)
+            env = gpr_tools_env(src_working_dir)
             logger.debug(
                 "Evaluating '%s' in '%s' with unit tests in %s",
                 sample.name,

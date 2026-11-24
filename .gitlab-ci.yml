@@ -11,19 +11,25 @@ stages:
   # Install the tools needed to run evaluations
   install-eval-tools:
     - anod init wave /it/wave
+    - eval "$(cd "/it/wave"; anod install gnatformat; anod printenv gnatformat)"
     - |
-      for x in gnat gnatformat; do
-        eval "$(cd "/it/wave"; anod install $x; anod printenv $x)"
+      for tool in gnat:16.1.0 gprbuild:26.0.0 gnatprove:16.1.0; do
+        name="${tool%%:*}"
+        version="x86_64-linux-${tool#*:}"
+        download_generic_package eng/ai/ada-eval "/it/$name.tar.gz" "$version"
+        tar -xzf "/it/$name.tar.gz" -C /it/
+        export PATH="/it/$name-$version-1/bin:$PATH"
       done
-    - download_generic_package eng/ai/ada-eval /it/gnatprove.tar.gz x86_64-linux-15.1.0
-    - tar -xzf /it/gnatprove.tar.gz -C /it/
-    - chmod +x /it/gnatprove-x86_64-linux-15.1.0-1/bin/gnatprove
-    - export PATH="$PATH:/it/gnatprove-x86_64-linux-15.1.0-1/bin/"
+    # Record the active toolchain in the job log.
+    - gnat --version | sed -n 1p
+    - gnatprove --version | sed -n 1p
+    - gprbuild --version | sed -n 1p
+    - gnatformat --version
 
 
 .default:
   services:
-    - image:pe-base
+    - image:pe-base-24
   before_script:
     - rm .python-version  # Use whatever is available in the image
     - pip install uv
@@ -38,11 +44,11 @@ check-datasets:
   stage: validate-datasets
   needs: []
   services:
-    - image:pe-base
-    - cpu:2
+    - image:pe-base-24
+    - cpu:16
   script:
     - !reference [.script-snippets, install-eval-tools]
-    - uv run ada-eval check-datasets
+    - uv run ada-eval check-datasets --jobs 8
 
 .lint:
   extends: .default
@@ -83,12 +89,12 @@ mypy:
 pytest-3.12:
   extends: .pytest
   services:
-    - image:pe-base-py312
+    - image:pe-base-24-py312
 
 pytest-3.14:
   extends: .pytest
   services:
-    - image:pe-base-py314
+    - image:pe-base-24-py314
 
 include:
   - component: $CI_SERVER_FQDN/it/gitlab-templates/gitleaks@~latest

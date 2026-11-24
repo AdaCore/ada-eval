@@ -4,6 +4,7 @@ import textwrap
 from logging import ERROR, WARN
 from pathlib import Path
 from typing import ClassVar
+from unittest.mock import patch
 
 import pytest
 from helpers import assert_log
@@ -32,6 +33,7 @@ from ada_eval.datasets.types.samples import (
 from ada_eval.tools.factory import create_tool_from_config
 from ada_eval.tools.generic_tool import BaseConfig, GenericTool
 from ada_eval.tools.shell_script import ShellScriptConfig
+from ada_eval.utils import gpr_project_path
 
 
 def check_progress_bar(capsys: pytest.CaptureFixture[str], total: int, tool_name: str):
@@ -348,3 +350,27 @@ def test_shell_script(
 
     # Nothing should have been logged, since nothing failed
     assert caplog.text == ""
+
+
+def test_shell_script_runs_with_gpr_tools_env(
+    tmp_path: Path, compacted_test_datasets: Path, monkeypatch: pytest.MonkeyPatch
+):
+    shell_script = tmp_path / "script.sh"
+    shell_script.write_text("#!/usr/bin/env sh\n")
+    config_file = tmp_path / "config.json"
+    config_file.write_text('{"timeout_s": 1, "shell_script": "script.sh"}')
+    tool = create_tool_from_config(config_file)
+    spark_dataset = next(
+        d for d in load_datasets(compacted_test_datasets) if d.kind == SampleKind.SPARK
+    )
+    sample = spark_dataset.samples[0]
+    assert isinstance(sample, SparkSample)
+
+    # Pass the evaluator's project search path to the shell script.
+    monkeypatch.setenv("GPR_PROJECT_PATH", "/somewhere/else")
+    completed = subprocess.CompletedProcess([], returncode=0, stdout="", stderr="")
+    with patch(
+        "ada_eval.tools.shell_script.run_cmd_with_timeout", return_value=(completed, 0)
+    ) as run_cmd:
+        tool.apply(sample)
+    assert run_cmd.call_args.kwargs["env"]["GPR_PROJECT_PATH"] == gpr_project_path()

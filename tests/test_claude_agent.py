@@ -12,9 +12,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from ada_eval.datasets.types import ExitStatus
+from ada_eval.datasets.types import ExitStatus, SampleKind
 from ada_eval.tools import ClaudeAgent
 from ada_eval.tools.claude_agent import ClaudeAgentConfig
+from ada_eval.utils import gpr_project_path
 
 
 @pytest.fixture
@@ -33,6 +34,7 @@ def mock_spark_sample(tmp_path: Path) -> MagicMock:
     (sample_dir / "src" / "test.adb").write_text("-- Ada code")
 
     sample = MagicMock()
+    sample.kind = SampleKind.SPARK
     sample.name = "test_sample"
     sample.prompt = "Add a postcondition to ensure the result is positive"
 
@@ -210,13 +212,14 @@ class TestClaudeAgent:
     def _patch_sdk(self, mock_client: MockClaudeSDKClient):
         """Patch SDK names in the claude_agent module so isinstance checks work."""
         mod = "ada_eval.tools.claude_agent"
+        client_class = MagicMock(return_value=mock_client)
         with (
-            patch(f"{mod}.ClaudeSDKClient", MagicMock(return_value=mock_client)),
+            patch(f"{mod}.ClaudeSDKClient", client_class),
             patch(f"{mod}.AssistantMessage", MockAssistantMessage),
             patch(f"{mod}.ResultMessage", MockResultMessage),
             patch(f"{mod}.TextBlock", MockTextBlock),
         ):
-            yield
+            yield client_class
 
     def test_apply_success(
         self,
@@ -231,13 +234,17 @@ class TestClaudeAgent:
 
         mock_client = MockClaudeSDKClient([assistant_msg, result_msg])
 
-        with self._patch_sdk(mock_client):
+        with self._patch_sdk(mock_client) as client_class:
             agent = ClaudeAgent(claude_agent_config)
             result = agent.apply(mock_spark_sample)
 
             assert result.generation_stats.exit_status == ExitStatus.SUCCESS
             assert result.generation_stats.total_cost_usd == 0.05
             assert result.generation_stats.num_turns == 3
+
+        # Use the evaluator's project path for subprocesses launched by the agent.
+        options = client_class.call_args.kwargs["options"]
+        assert options.env == {"GPR_PROJECT_PATH": gpr_project_path()}
 
     def test_apply_timeout(
         self,

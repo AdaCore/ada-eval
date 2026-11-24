@@ -135,6 +135,11 @@ class EvaluationStatsProve(EvaluationStatsBase):
     non_spark_entities: Sequence[str]
     missing_required_checks: Sequence[ProofCheck]
     pragma_assume_count: int
+    justified_checks: Counter[str] = Counter()
+    skipped_entities: Sequence[str] = []
+    changed_project_files: Sequence[str] = []
+    changed_object_files: Sequence[str] = []
+    """Object files that differ after a single-file submission passes proof."""
     harness: HarnessResult = "not_applicable"
 
     @property
@@ -159,9 +164,21 @@ class EvaluationStatsProve(EvaluationStatsBase):
                         value=len(self.missing_required_checks)
                     ),
                     "non-spark entities": metric_value(
-                        value=len(self.non_spark_entities)
+                        value=(
+                            Counter(n.casefold() for n in self.non_spark_entities)
+                            - Counter(
+                                n.casefold() for n in canonical_stats.non_spark_entities
+                            )
+                        ).total()
                     ),
                     "pragma assume": metric_value(value=self.pragma_assume_count),
+                    "justified checks": metric_value(
+                        value=self.justified_checks.total()
+                    ),
+                    "skipped entities": metric_value(value=len(self.skipped_entities)),
+                    "changed object files": metric_value(
+                        value=len(self.changed_object_files)
+                    ),
                     "warnings": metric_value(value=self.warnings.total()),
                     "harness unproved": metric_value(when=self.harness == "unproved"),
                     "harness error": metric_value(when=self.harness == "error"),
@@ -179,6 +196,9 @@ class EvaluationStatsProve(EvaluationStatsBase):
             "error": metric_value(when=self.result == "error"),
             "subprogram not found": metric_value(
                 when=self.result == "subprogram_not_found"
+            ),
+            "changed project files": metric_value(
+                value=len(self.changed_project_files)
             ),
         }
         return metric_section(metrics)

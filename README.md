@@ -47,6 +47,10 @@ alr install gnat_native gprbuild gnatprove gnatformat
 
 By default, this will install the tools in `~/.alire/bin/`, which you must ensure is in your `PATH`. Alternative installation locations can be specified with `alr install`'s `--prefix` option.
 
+ada-eval locates SPARKlib beside the `gnatprove` executable on `PATH`. For builds,
+proofs and generation tools, it sets `GPR_PROJECT_PATH` to the project directories
+needed for the run, including that SPARKlib installation.
+
 ### Per-clone setup
 
 Do this when you first clone the project.
@@ -135,6 +139,7 @@ In `data/base/expanded`, you will find directories that each represent a dataset
 The general idea of each of these types are:
 - **Ada**: Will require the modification of some Ada code to solve the challenge/problem
 - **SPARK**: Will require the modification of some SPARK code to solve the challenge/problem. This could include adding new SPARK contracts, modifying existing ones, or changing the implementation to satisfy the given challenge.
+- **Proof** samples use GNATprove to check the solution. They omit the `tests/` project, which lets them use imported subprograms without linkable bodies. The `"editable_path"` field identifies the single file a solution can edit.
 - **Explain**: Contains some Ada/SPARK code and a question about it. The goal is to generate an explanation of the code that answers the question.
 
 The rough structure of a SPARK sample is as follows:
@@ -154,7 +159,7 @@ example_sample
 │   ├── main.gpr
 │   ├── main.adc
 │   └── src
-└── tests  # Unit test project for the sample. Used in addition to gnatprove to verify that the solution is correct.
+└── tests  # Unit tests supplement GNATprove for SPARK samples.
     ├── src
     └── tests.gpr
 ```
@@ -164,8 +169,8 @@ example_sample
 1.  Create a new directory in `data/base/expanded/your_dataset_of_choice` with the name of the sample.
 2.  Add the following:
     - `base/`: A project that contains the code that needs to be modified to solve the challenge/problem
-    - `solution/`: A complete project that contains the modified code with the solved problem
-    - `tests/`: A project that contains unit tests for the sample. It should compile to an executable at `tests/bin/tests` which returns a zero exit code if (and only if) the tests pass.
+    - `solution/` contains the complete reference solution. The evaluator takes the build and proof settings (`*.gpr` and `*.adc`) from this project when evaluating generated solutions. The evaluation result lists any project files the tool changed. Its `main.gpr` must set `for Object_Dir use "obj";`, as the proof evaluator reads GNATprove results and object files from `obj`.
+    - `tests/` applies to SPARK samples. Build the test executable at `tests/bin/tests` and have it return zero exactly when all tests pass.
     - `proof_harness/`: Optional. A project that `with`s the solution's `main.gpr` and wraps the subprogram of interest in a subprogram with the same inputs and outputs, whose postcondition states the properties the solution's contracts must imply. Name the wrapper `Proof_Harness.Check_<subprogram_name>` (for example, `Proof_Harness.Check_Max_Array`). It is withheld from the tool, and it must prove against the canonical solution. The wrapper must have a postcondition check, and the harness must have no `pragma Assume`, non-SPARK entities, or GNATprove warnings.
     - `comments.md`: if the challenge isn't obvious, consider including a more detailed description of the challenge/problem in this file
     - `prompt.md`: A prompt that describes the challenge/problem. This will be provided to the tool to generate a solution.
@@ -182,12 +187,18 @@ example_sample
                   "entity_name": "Integer_Utils.Increment"  // Optional name of the entity the check must be attached to
               },
               ...
-          ]
+          ],
+          "expected_non_spark_entities": [  // One entry per expected non-SPARK entity
+              "Integer_Utils.Helper"
+          ],
+          "prove_whole_project": true,  // Analyse every unit
+          "editable_path": "src/integer_utils-increment.adb"  // Editable subunit for a proof sample
       }
       ```
-      The `"path"` from the `"location"` is used as the argument to `gnatprove`,
-      so only the corresponding unit, and any it (recursively) depends on,
-      is/are analysed during evaluation.
+      By default, ada-eval passes the basename of `location.path` to GNATprove to
+      analyse that unit and its transitive dependencies. Set `prove_whole_project`
+      to include every unit. Use this option for a generic when its instantiations
+      supply the proof context.
 
       The `"required_checks"` list is optional, and unnecessary for most
       samples, since the proof and/or tests will simply fail unless the problem
@@ -204,6 +215,49 @@ example_sample
       match starting from the location reported by `gnatprove` (run `gnatprove`
       on the solution with `--report=all` for an output which includes the line
       and column numbers of these locations).
+
+      If a sample intentionally uses entities outside SPARK, record their names in
+      `expected_non_spark_entities`. Common examples are imported stubs without
+      bodies and bodies marked `SPARK_Mode => Off`. Run `make evaluate-canonical`
+      and copy the names from `canonical_evaluation_results` under
+      `non_spark_entities`. Keep one entry per entity, including repeated names for
+      overloads. The proof evaluator flags any additional non-SPARK entities in the
+      sample's sources. `check-datasets` requires the recorded list to match the
+      canonical result.
+
+      The canonical solution must discharge every check. The evaluator rejects
+      justifications using `pragma Annotate (GNATprove, False_Positive, ...)` or
+      `Intentional`. It also rejects entities marked `Skip_Proof` or
+      `Skip_Flow_And_Proof`.
+
+      GNATprove relies on the contracts of entities listed in
+      `expected_non_spark_entities` when proving their callers. For example,
+      changing an imported stub's postcondition from `X > 0` to `X > 1` lets a
+      caller assume a stronger guarantee than the stub originally promised.
+
+      A sample that lists such entities must therefore set `editable_path` and
+      declare them outside that file. A solution then cannot edit their
+      contracts.
+
+      For a proof sample, set `editable_path` to the subunit containing the target
+      body. If an enclosing subprogram proves a contractless target by inlining it,
+      use the enclosing body. Name the editable file in the prompt and tell the
+      model which edits it may make.
+
+      The evaluator takes every other file from the canonical solution. In the
+      editable file, a submission may add, change or remove loop invariants, loop
+      variants, assertions and ghost code. Compiling without proof material must
+      yield the same object code as the base. The evaluator also accepts the
+      canonical object code, since a base can use a `null` statement where the
+      canonical file has proof material.
+
+      During dataset validation, `base` and `solution` may differ only in the
+      editable subunit. Its base may contain `Loop_Variant` pragmas and must be free
+      of other assertions and of declarations for expected non-SPARK entities.
+      The checker also inserts an infinite loop into each editable procedure.
+      The loop must fail proof or change the object code. A ghost procedure
+      emits no executable code, so it must be required to terminate, for example
+      with `Always_Terminates`.
 3.  Verify that the solution builds, proves, etc. by running
     ```sh
     make evaluate-canonical
