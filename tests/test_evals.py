@@ -24,6 +24,7 @@ from ada_eval.datasets.types.evaluation_stats import (
     EvaluationStatsTimedOut,
     ProofCheck,
 )
+from ada_eval.datasets.types.exit_status import ExitStatus
 from ada_eval.datasets.types.metrics import MetricSection, metric_section
 from ada_eval.datasets.types.samples import (
     EVALUATED_SAMPLE_TYPES,
@@ -34,19 +35,34 @@ from ada_eval.datasets.types.samples import (
     EvaluatedSparkSample,
     ExplainSample,
     GeneratedAdaSample,
+    GeneratedProofSample,
     GeneratedSample,
     GeneratedSparkSample,
+    GenerationStats,
+    Location,
+    ProofSample,
     Sample,
     SampleKind,
+    SparkSample,
 )
 from ada_eval.evals import (
     evaluate_datasets,
     evaluate_datasets_canonical,
     evaluate_directory,
 )
+from ada_eval.evals.build import Build
 from ada_eval.evals.generic_eval import GenericEval, WrongEvalOutputTypeError
-from ada_eval.evals.prove import evaluate_proof_harness
-from ada_eval.utils import ExecutableNotFoundError
+from ada_eval.evals.prove import (
+    Prove,
+    compile_objects,
+    count_pragma_assumes,
+    evaluate_proof_harness,
+    extract_non_spark_entities,
+    extract_proof_results,
+    extract_skipped_entities,
+    log_gnatprove_failure,
+)
+from ada_eval.utils import ExecutableNotFoundError, gpr_tools_env
 
 GENERATED_TYPE_TO_EVALUATED: dict[type[GeneratedSample], type[EvaluatedSample]] = {
     GENERATED_SAMPLE_TYPES[k]: EVALUATED_SAMPLE_TYPES[k] for k in SampleKind
@@ -561,8 +577,8 @@ def test_build(
     test_datasets = load_datasets(eval_test_datasets)
     evaluate_datasets_canonical([Eval.BUILD], test_datasets, jobs=8)
     assert caplog.text == ""
-    # 24 = 2x4 (build) + 11 (prove) + 5 (test)
-    check_progress_bar(capsys.readouterr(), 24, "build")
+    # Two builds contribute four metrics each, proof fourteen and tests five.
+    check_progress_bar(capsys.readouterr(), 27, "build")
 
     # Verify that the evaluation results are as expected for the build test
     # datasets
@@ -604,6 +620,41 @@ def test_build(
 
 
 @pytest.mark.slow
+@pytest.mark.skipif(not shutil.which("gprbuild"), reason="gprbuild not available")
+@pytest.mark.skipif(not shutil.which("gprclean"), reason="gprclean not available")
+@pytest.mark.skipif(not shutil.which("gnatformat"), reason="gnatformat not available")
+def test_build_checks_only_the_sample_project(eval_test_datasets: Path, tmp_path: Path):
+    # This dependency deliberately violates the formatter's style.
+    other_dir = tmp_path / "other"
+    other_dir.mkdir()
+    other_gpr = other_dir / "other.gpr"
+    other_gpr.write_text('project Other is\n   for Object_Dir use "obj";\nend Other;\n')
+    other_src = other_dir / "other.ads"
+    other_text = "package Other is X:constant Integer:=1; end Other;\n"
+    other_src.write_text(other_text)
+
+    # Import the fixture library from the unformatted sample.
+    dataset = next(d for d in load_datasets(eval_test_datasets) if d.name == "build")
+    sample = next(
+        s for s in generate_canonical([dataset])[0].samples if s.name == "unformatted"
+    )
+    assert isinstance(sample, GeneratedAdaSample)
+    files = dict(sample.generated_solution.files)
+    main_gpr = Path("main.gpr")
+    files[main_gpr] = f'with "{other_gpr}";\n'.encode() + files[main_gpr]
+    main_src = Path("src/hello.adb")
+    files[main_src] = b"with Other;\npragma Unreferenced (Other);\n" + files[main_src]
+    sample.generated_solution = DirectoryContents(files)
+    sample.canonical_solution = DirectoryContents(files)  # Reference settings.
+
+    # The build should pass after formatting only the sample.
+    stats = Build().evaluate(sample)
+    assert other_src.read_text() == other_text
+    assert stats.compiled
+    assert not stats.post_format_warnings
+
+
+@pytest.mark.slow
 @pytest.mark.skipif(not shutil.which("gnatprove"), reason="gnatprove not available")
 @pytest.mark.skipif(not shutil.which("gprbuild"), reason="gprbuild not available")
 @pytest.mark.skipif(not shutil.which("gprls"), reason="gprls not available")
@@ -617,8 +668,20 @@ def test_prove(
     all_datasets = load_datasets(eval_test_datasets)
     test_datasets = [d for d in all_datasets if d.name in ("build", "prove")]
     evaluate_datasets_canonical([Eval.PROVE], test_datasets, jobs=8)
-    assert caplog.text == ""
-    check_progress_bar(capsys.readouterr(), 11, "prove")  # 11 spark samples
+    # Expect diagnostics from the two failing GNATprove invocations.
+    assert {r.levelno for r in caplog.records} == {WARN}
+    assert sorted(r.getMessage().split("\n")[0] for r in caplog.records) == [
+        (
+            "GNATprove failed with exit code 1 on sample 'changed_profile': "
+            "gnatprove -Pharness.gpr --warnings=error -u proof_harness.adb "
+            "proof_harness.ads"
+        ),
+        (
+            "GNATprove failed with exit code 1 on sample 'errors': "
+            "gnatprove -Pmain.gpr -k increment.ads"
+        ),
+    ]
+    check_progress_bar(capsys.readouterr(), 14, "prove")
 
     # Verify that the evaluation results are as expected for the build dataset
     # (only spark samples are compatible with prove, so this should be an empty
@@ -653,6 +716,7 @@ def test_prove(
     assert samples["proves"].canonical_evaluation_results == [
         expected_eval_stats.model_copy(update={"harness": "proved"})
     ]
+    assert samples["child_unit"].canonical_evaluation_results == [expected_eval_stats]
     assert samples["warns"].canonical_evaluation_results == [
         expected_eval_stats.model_copy(
             update={"result": "proved_incorrectly", "warnings": {"INEFFECTIVE": 1}}
@@ -681,6 +745,14 @@ def test_prove(
                 "non_spark_entities": ["Increment.Increment"],
             }
         )
+    ]
+    # An imported stub is a valid exception only when the sample declares it.
+    stub_eval_stats = expected_eval_stats.model_copy(
+        update={"non_spark_entities": ["Helper"]}
+    )
+    assert samples["imports_stub"].canonical_evaluation_results == [stub_eval_stats]
+    assert samples["undeclared_stub"].canonical_evaluation_results == [
+        stub_eval_stats.model_copy(update={"result": "proved_incorrectly"})
     ]
     # The harness catches both a weakened postcondition and a stronger
     # precondition, without relying on the source pattern.
@@ -734,6 +806,291 @@ def test_prove(
             }
         )
     ]
+
+
+@pytest.mark.slow
+@pytest.mark.skipif(not shutil.which("gnatprove"), reason="gnatprove not available")
+@pytest.mark.skipif(not shutil.which("gprbuild"), reason="gprbuild not available")
+@pytest.mark.skipif(not shutil.which("gprls"), reason="gprls not available")
+def test_proof_sample_is_built_and_proved_but_not_tested(eval_test_datasets: Path):
+    prove_dataset = next(
+        d for d in load_datasets(eval_test_datasets) if d.name == "prove"
+    )
+    spark_sample = next(s for s in prove_dataset.samples if s.name == "proves")
+    proof_sample = ProofSample(
+        **spark_sample.model_dump(
+            exclude={"unit_tests", "canonical_evaluation_results"}
+        ),
+        canonical_evaluation_results=[],
+    )
+    dataset = Dataset(name="prove", sample_type=ProofSample, samples=[proof_sample])
+    evaluate_datasets_canonical([Eval.BUILD, Eval.PROVE, Eval.TEST], [dataset], jobs=1)
+    results = {es.eval: es for es in proof_sample.canonical_evaluation_results}
+    assert results.keys() == {Eval.BUILD, Eval.PROVE}
+    prove_stats = results[Eval.PROVE]
+    assert isinstance(prove_stats, EvaluationStatsProve)
+    assert prove_stats.result == "proved"
+    assert prove_stats.harness == "proved"
+
+
+@pytest.mark.slow
+@pytest.mark.skipif(not shutil.which("gnatprove"), reason="gnatprove not available")
+@pytest.mark.skipif(not shutil.which("gprbuild"), reason="gprbuild not available")
+@pytest.mark.skipif(not shutil.which("gprls"), reason="gprls not available")
+def test_prove_whole_project_analyses_a_generic(eval_test_datasets: Path):
+    prove_dataset = next(
+        d for d in load_datasets(eval_test_datasets) if d.name == "prove"
+    )
+    spark_sample = next(s for s in prove_dataset.samples if s.name == "proves")
+    assert isinstance(spark_sample, SparkSample)
+    project_files = {
+        path: contents
+        for path, contents in spark_sample.canonical_solution.files.items()
+        if path.suffix in (".gpr", ".adc")
+    }
+    # Instantiate a generic with an unsatisfiable postcondition.
+    solution = DirectoryContents(
+        project_files
+        | {
+            Path("src/gen.ads"): (
+                b"generic\n"
+                b"function Gen (X : Integer) return Integer\n"
+                b"with Post => Gen'Result = X + 1;\n"
+            ),
+            Path("src/gen.adb"): (
+                b"function Gen (X : Integer) return Integer is\n"
+                b"begin\n"
+                b"   return X;\n"
+                b"end Gen;\n"
+            ),
+            Path("src/inst.ads"): b"with Gen;\nfunction Inst is new Gen;\n",
+        }
+    )
+    sample = GeneratedProofSample(
+        name="generic",
+        location=Location(path=Path("src/gen.ads"), subprogram_name="Gen"),
+        prompt="",
+        comments="",
+        sources=solution,
+        canonical_solution=solution,
+        canonical_evaluation_results=[],
+        generation_stats=GenerationStats(
+            exit_status=ExitStatus.SUCCESS, stdout="", stderr="", runtime_ms=0
+        ),
+        generated_solution=solution,
+    )
+    # Unit-only analysis misses the instance.
+    unit_stats = Prove().evaluate(sample)
+    assert unit_stats.proved_checks.total() == 0
+    assert unit_stats.unproved_checks.total() == 0
+    # Project-wide analysis reaches the failing postcondition.
+    sample.prove_whole_project = True
+    project_stats = Prove().evaluate(sample)
+    assert project_stats.result == "unproved"
+    assert project_stats.unproved_checks["VC_POSTCONDITION"] == 1
+
+
+def test_extract_non_spark_entities():
+    spark_data: dict[str, object] = {
+        "entities": {
+            "1": {"name": "P.Own", "sloc": [{"file": "p.adb", "line": 3, "col": 4}]},
+            "2": {"name": "P.Lib", "sloc": [{"file": "lib.ads", "line": 1, "col": 1}]},
+            "3": {"name": "P.Unlocated"},
+            "4": {
+                "name": "P.In_Spark",
+                "sloc": [{"file": "p.ads", "line": 2, "col": 4}],
+            },
+            "5": {
+                "name": "P.Freegp603.Free",
+                "sloc": [{"file": "p.adb", "line": 9, "col": 4}],
+            },
+            "6": {
+                "name": "P.FREE_TEXTGP1096.Free_Text",
+                "sloc": [{"file": "p.adb", "line": 12, "col": 4}],
+            },
+        },
+        "spark": {
+            "1": "spec",
+            "2": "spec",
+            "3": "no",
+            "4": "all",
+            "5": "no",
+            "6": "no",
+        },
+    }
+    assert extract_non_spark_entities([spark_data]) == [
+        "P.Own",
+        "P.Lib",
+        "P.Unlocated",
+        "P.Free",
+        "P.Free_Text",
+    ]
+    # The source filter retains entities that have no reported location.
+    assert extract_non_spark_entities([spark_data], declared_in={"p.ads", "p.adb"}) == [
+        "P.Own",
+        "P.Unlocated",
+        "P.Free",
+        "P.Free_Text",
+    ]
+
+
+def test_extract_skipped_entities():
+    spark_data: dict[str, object] = {
+        "entities": {
+            " 1": {"name": "P.Own", "sloc": [{"file": "p.adb", "line": 3}]},
+            " 2": {"name": "P.Own.T1B", "sloc": [{"file": "p.adb", "line": 4}]},
+            " 3": {"name": "P.Lib", "sloc": [{"file": "lib.adb", "line": 1}]},
+            " 4": {"name": "P.Flow", "sloc": [{"file": "p.adb", "line": 9}]},
+        },
+        "spark": {" 1": "all", " 2": "all", " 3": "all", " 4": "all"},
+        "skip_proof": [1, 2, 3],
+        "skip_flow_proof": [4],
+    }
+    # Keep outermost skipped entities from the sample.
+    assert extract_skipped_entities([spark_data], declared_in={"p.adb"}) == [
+        "P.Flow",
+        "P.Own",
+    ]
+    assert extract_skipped_entities([{"entities": {}, "spark": {}}]) == []
+
+
+def test_extract_proof_results_marks_justified_checks():
+    result = {"entity": 1, "rule": "VC_ASSERT", "severity": "info", "file": "p.adb"}
+    spark_data: dict[str, object] = {
+        "entities": {" 1": {"name": "P"}},
+        "flow": [],
+        "proof": [
+            result | {"line": 1, "col": 1},
+            result | {"line": 2, "col": 1, "suppressed": "trust me"},
+        ],
+    }
+    assert [r.justified for r in extract_proof_results(spark_data)] == [False, True]
+    # GNATprove can omit all result sections for a unit.
+    assert extract_proof_results({"entities": {}}) == []
+    assert count_pragma_assumes([{"entities": {}}]) == 0
+
+
+@pytest.mark.slow
+@pytest.mark.skipif(not shutil.which("gnatprove"), reason="gnatprove not available")
+@pytest.mark.skipif(not shutil.which("gprbuild"), reason="gprbuild not available")
+@pytest.mark.skipif(not shutil.which("gprls"), reason="gprls not available")
+def test_prove_rejects_justified_checks_and_skipped_proof(eval_test_datasets: Path):
+    dataset = next(d for d in load_datasets(eval_test_datasets) if d.name == "prove")
+    samples = {s.name: s for s in generate_canonical([dataset])[0].samples}
+
+    def with_file(name: str, path: str, text: str) -> GeneratedSparkSample:
+        sample = samples[name]
+        assert isinstance(sample, GeneratedSparkSample)
+        files = dict(sample.generated_solution.files)
+        files[Path(path)] = text.encode()
+        return sample.model_copy(
+            update={"generated_solution": DirectoryContents(files)}
+        )
+
+    # Record the justification on an assertion GNATprove cannot prove.
+    justified = Prove().evaluate(
+        with_file(
+            "proves",
+            "src/increment.adb",
+            "function Increment (X : Integer) return Integer is\n"
+            "begin\n"
+            "   pragma Assert (X > 0);\n"
+            '   pragma Annotate (GNATprove, False_Positive, "assertion", "trust me");\n'
+            "   return X + 1;\n"
+            "end Increment;\n",
+        )
+    )
+    assert justified.result == "proved_incorrectly"
+    assert justified.justified_checks == {"VC_ASSERT": 1}
+    assert "VC_ASSERT" not in justified.proved_checks
+
+    # A skipped body still counts as an incomplete proof.
+    skipped = Prove().evaluate(
+        with_file(
+            "fails",
+            "src/increment.ads",
+            "function Increment (X : Integer) return Integer\n"
+            "with Post => Increment'Result = X + 1,\n"
+            "     Annotate => (GNATprove, Skip_Proof);\n",
+        )
+    )
+    assert skipped.result == "proved_incorrectly"
+    assert skipped.unproved_checks == {}
+    assert skipped.skipped_entities == ["Increment"]
+
+    # Canonical proof switches expose the original failing checks.
+    fails = samples["fails"]
+    assert isinstance(fails, GeneratedSparkSample)
+    gpr = fails.generated_solution.files[Path("main.gpr")].decode()
+    limited = with_file(
+        "fails",
+        "main.gpr",
+        gpr.replace(
+            "end Main;",
+            "   package Prove is\n"
+            '      for Proof_Switches ("Ada") use ("--limit-line=increment.adb:1");\n'
+            "   end Prove;\nend Main;",
+        ),
+    )
+    assert "--limit-line" in limited.generated_solution.files[Path("main.gpr")].decode()
+    limited_stats = Prove().evaluate(limited)
+    assert limited_stats.result == "unproved"
+    assert limited_stats.unproved_checks != {}
+    assert limited_stats.changed_project_files == ["main.gpr"]
+
+
+@pytest.mark.slow
+@pytest.mark.skipif(not shutil.which("gnatprove"), reason="gnatprove not available")
+@pytest.mark.skipif(not shutil.which("gprbuild"), reason="gprbuild not available")
+@pytest.mark.skipif(not shutil.which("gprls"), reason="gprls not available")
+def test_prove_ignores_entity_case_and_supplied_results(eval_test_datasets: Path):
+    dataset = next(d for d in load_datasets(eval_test_datasets) if d.name == "prove")
+    samples = {
+        s.name: s
+        for s in generate_canonical([dataset])[0].samples
+        if isinstance(s, GeneratedSparkSample)
+    }
+
+    def with_files(name: str, files: dict[Path, bytes]) -> GeneratedSparkSample:
+        sample = samples[name]
+        return sample.model_copy(
+            update={
+                "generated_solution": DirectoryContents(
+                    {**sample.generated_solution.files, **files}
+                )
+            }
+        )
+
+    # Ada identifier case leaves the declared exception valid.
+    stub_files = samples["imports_stub"].generated_solution.files
+    renamed = Prove().evaluate(
+        with_files(
+            "imports_stub",
+            {
+                path: contents.replace(b"Helper", b"HELPER")
+                for path, contents in stub_files.items()
+                if path.suffix in (".ads", ".adb")
+            },
+        )
+    )
+    assert renamed.result == "proved"
+    assert renamed.non_spark_entities == ["HELPER"]
+
+    # Collect proof results from the current run only.
+    with samples["proves"].generated_solution.unpacked() as working_dir:
+        subprocess.run(
+            ["gnatprove", "-Pmain.gpr", "-k", "increment.ads"],
+            cwd=working_dir,
+            check=True,
+            capture_output=True,
+            env=gpr_tools_env(),
+        )
+        planted = (working_dir / "obj" / "gnatprove" / "increment.spark").read_bytes()
+    with_planted = Prove().evaluate(
+        with_files("no_postcondition", {Path("obj/gnatprove/planted.spark"): planted})
+    )
+    assert with_planted.result == "proved_incorrectly"
+    assert with_planted.missing_required_checks != []
 
 
 @pytest.mark.slow
@@ -865,3 +1222,156 @@ def test_eval_path_checks(eval_test_datasets: Path):
             pytest.raises(ExecutableNotFoundError, match=re.escape(error_msg)),
         ):
             evaluate_datasets_canonical([eval_], test_datasets, jobs=8)
+
+
+def test_log_gnatprove_failure_shows_the_command_and_the_end_of_the_output(
+    caplog: pytest.LogCaptureFixture,
+):
+    output = "".join(f"line {i}\n" for i in range(100))
+    proc_result = subprocess.CompletedProcess(
+        ["gnatprove", "-Pmain.gpr", "-k"], 1, stdout=output, stderr="the error\n"
+    )
+    log_gnatprove_failure("sample", proc_result)
+    assert len(caplog.records) == 1
+    assert caplog.records[0].levelno == WARN
+    message = caplog.records[0].getMessage()
+    assert message.startswith(
+        "GNATprove failed with exit code 1 on sample 'sample': "
+        "gnatprove -Pmain.gpr -k\n"
+    )
+    assert message.endswith("line 99\nthe error")
+    assert "line 60\n" not in message
+    assert "line 61\n" in message
+
+
+S1_PROJECT = (
+    'project Main is\n   for Source_Dirs use ("src");\n   for Object_Dir use "obj";\n'
+    '   for Create_Missing_Dirs use "True";\nend Main;\n'
+)
+S1_SPEC = (
+    "package P with SPARK_Mode is\n"
+    "   function Count (X : Natural) return Natural with Post => Count'Result = X;\n"
+    "end P;\n"
+)
+S1_BODY = (
+    "package body P with SPARK_Mode is\n"
+    "   function Count (X : Natural) return Natural is separate;\n"
+    "end P;\n"
+)
+S1_BASE_COUNT = (
+    "separate (P)\n"
+    "function Count (X : Natural) return Natural is\n"
+    "   R : Natural := 0;\n"
+    "begin\n"
+    "   for I in 1 .. X loop\n"
+    "      R := R + 1;\n"
+    "   end loop;\n"
+    "   return R;\n"
+    "end Count;\n"
+)
+S1_CANONICAL_COUNT = S1_BASE_COUNT.replace(
+    "loop\n", "loop\n      pragma Loop_Invariant (R = I - 1);\n", 1
+)
+
+
+def s1_sample(
+    changes: dict[str, str] | None = None, base: str = S1_BASE_COUNT
+) -> GeneratedProofSample:
+    """
+    Generate a single-file proof submission from its canonical solution.
+
+    `changes` replaces files of the generated solution (deleting those set to "").
+    """
+
+    def contents(count: str) -> DirectoryContents:
+        return DirectoryContents(
+            {
+                Path("main.gpr"): S1_PROJECT.encode(),
+                Path("src/p.ads"): S1_SPEC.encode(),
+                Path("src/p.adb"): S1_BODY.encode(),
+                Path("src/p-count.adb"): count.encode(),
+            }
+        )
+
+    generated = dict(contents(S1_CANONICAL_COUNT).files)
+    for path, text in (changes or {}).items():
+        generated[Path(path)] = text.encode()
+    return GeneratedProofSample(
+        name="s1",
+        location=Location(path=Path("src/p.ads"), subprogram_name="Count"),
+        prompt="",
+        comments="",
+        sources=contents(base),
+        canonical_solution=contents(S1_CANONICAL_COUNT),
+        canonical_evaluation_results=[],
+        editable_path=Path("src/p-count.adb"),
+        generation_stats=GenerationStats(
+            exit_status=ExitStatus.SUCCESS, stdout="", stderr="", runtime_ms=0
+        ),
+        generated_solution=DirectoryContents(
+            {path: text for path, text in generated.items() if text != b""}
+        ),
+    )
+
+
+def test_solution_to_evaluate_takes_only_the_editable_file():
+    sample = s1_sample(
+        {"src/p.ads": "package P is end P;\n", "src/p-count.adb": "-- edited\n"}
+    )
+    files = sample.solution_to_evaluate().files
+    assert files[Path("src/p.ads")] == S1_SPEC.encode()
+    assert files[Path("src/p-count.adb")] == b"-- edited\n"
+    missing = s1_sample({"src/p-count.adb": ""})
+    assert Path("src/p-count.adb") not in missing.solution_to_evaluate().files
+    assert missing.solution_to_evaluate().files[Path("src/p.adb")] == S1_BODY.encode()
+
+
+@pytest.mark.slow
+@pytest.mark.skipif(not shutil.which("gnatprove"), reason="gnatprove not available")
+@pytest.mark.skipif(not shutil.which("gprbuild"), reason="gprbuild not available")
+@pytest.mark.skipif(not shutil.which("gprls"), reason="gprls not available")
+def test_prove_compares_the_code_of_the_editable_file():
+    # Adding proof annotations preserves the executable code.
+    canonical = Prove().evaluate(s1_sample())
+    assert canonical.result == "proved"
+    assert canonical.changed_object_files == []
+
+    # Replacing the loop can satisfy the contract while changing the object code.
+    replaced = Prove().evaluate(
+        s1_sample(
+            {
+                "src/p-count.adb": "separate (P)\n"
+                "function Count (X : Natural) return Natural is\n"
+                "begin\n   return X;\nend Count;\n"
+            }
+        )
+    )
+    assert replaced.result == "proved_incorrectly"
+    assert replaced.changed_object_files == ["p.o"]
+
+    # The original postcondition still applies when the submitted spec weakens it.
+    weakened = Prove().evaluate(
+        s1_sample(
+            {
+                "src/p.ads": S1_SPEC.replace("Count'Result = X", "Count'Result >= 0"),
+                "src/p-count.adb": S1_CANONICAL_COUNT.replace("return R;", "return 0;"),
+            }
+        )
+    )
+    assert weakened.result == "unproved"
+
+    # A missing subunit prevents compilation.
+    assert Prove().evaluate(s1_sample({"src/p-count.adb": ""})).result == "error"
+
+    # Replacing a base placeholder can produce the canonical object code.
+    placeholder = S1_BASE_COUNT.replace("loop\n", "loop\n      null;\n", 1)
+    assert compile_objects(s1_sample(base=placeholder).sources) != compile_objects(
+        s1_sample().canonical_solution
+    )
+    kept = S1_CANONICAL_COUNT.replace("loop\n", "loop\n      null;\n", 1)
+    for count in (kept, S1_CANONICAL_COUNT):
+        stats = Prove().evaluate(
+            s1_sample({"src/p-count.adb": count}, base=placeholder)
+        )
+        assert stats.result == "proved"
+        assert stats.changed_object_files == []

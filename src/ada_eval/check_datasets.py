@@ -1,4 +1,6 @@
 import logging
+import re
+from collections import Counter
 from collections.abc import Collection, Sequence
 from pathlib import Path
 
@@ -8,14 +10,20 @@ from ada_eval.datasets import (
     EvaluatedSample,
     EvaluationStats,
     EvaluationStatsInvalid,
+    EvaluationStatsProve,
     ExplainSample,
+    GeneratedProofSample,
+    GeneratedSample,
+    ProofSample,
     Sample,
-    SparkSample,
+    SampleKind,
     load_datasets,
     verify_datasets_equal,
 )
 from ada_eval.datasets.trivial_generations import generate_canonical, generate_null
+from ada_eval.datasets.types.directory_contents import DirectoryContents
 from ada_eval.evals.evaluate import evaluate_datasets
+from ada_eval.evals.prove import ADA_COMMENT, ada_tokens
 from ada_eval.paths import COMPACTED_DATASETS_DIR, EXPANDED_DATASETS_DIR
 from ada_eval.utils import diff_sequences, serialise_sequence
 
@@ -180,6 +188,50 @@ def check_evaluation_baseline(datasets: Sequence[Dataset[Sample]], jobs: int) ->
                 raise InvalidBaselineEvaluationError(dataset, sample)
 
 
+class UnexpectedNonSparkEntitiesError(IncorrectDatasetError):
+    """The sample metadata and the prover list different non-SPARK entities."""
+
+    def __init__(
+        self, dataset: Dataset[Sample], sample: ProofSample, actual: Sequence[str]
+    ):
+        self.dataset, self.sample, self.actual = dataset, sample, actual
+        super().__init__(
+            f"sample '{sample.name}' in dataset '{dataset.dirname}' declares "
+            f"'expected_non_spark_entities' "
+            f"{sorted(sample.expected_non_spark_entities)}, but its canonical "
+            f"solution has {sorted(actual)}. If these exclusions are intentional, "
+            "record the canonical list in other.json."
+        )
+
+
+def check_expected_non_spark_entities(datasets: Sequence[Dataset[Sample]]) -> None:
+    """
+    Check the declared non-SPARK entities against the canonical proof.
+
+    Each entry permits one entity, such as an imported stub, to fall outside
+    analysis. Match the canonical list exactly, including repeated names.
+
+    Raises:
+        UnexpectedNonSparkEntitiesError: If the sample lists different entities
+            from those found in the reference proof.
+
+    """
+    for dataset in datasets:
+        for sample in dataset.samples:
+            if not isinstance(sample, ProofSample):
+                continue
+            for stats in sample.canonical_evaluation_results:
+                if (
+                    isinstance(stats, EvaluationStatsProve)
+                    and stats.result not in ("error", "subprogram_not_found")
+                    and Counter(stats.non_spark_entities)
+                    != Counter(sample.expected_non_spark_entities)
+                ):
+                    raise UnexpectedNonSparkEntitiesError(
+                        dataset, sample, stats.non_spark_entities
+                    )
+
+
 class ProofRuleSrcPatternError(IncorrectDatasetError):
     """Raised when a `src_pattern` is attached to a proof rule."""
 
@@ -209,38 +261,284 @@ def check_src_patterns(datasets: Sequence[Dataset[Sample]]) -> None:
     """
     for dataset in datasets:
         for sample in dataset.samples:
-            if not isinstance(sample, SparkSample):
+            if not isinstance(sample, ProofSample):
                 continue
             for check in sample.required_checks:
                 if check.src_pattern is not None and check.rule.startswith("VC_"):
                     raise ProofRuleSrcPatternError(dataset, sample, check.rule)
 
 
-def check_base_datasets(dataset_dirs: Sequence[Path], jobs: int) -> None:
-    """
-    Check the correctness of a collection of base datasets.
+class ObjectDirError(IncorrectDatasetError):
+    """The sample's project does not place its objects in `obj`."""
 
-    Checks that:
-    - the specified directories all contain identical datasets.
-    - no `required_checks` entry pins a proof rule by source text.
-    - all canonical evaluation results in the datasets represent passing results.
-    - all canonical evaluation results in the datasets are accurate.
-    - a null generation fails at least one eval on all samples.
+    def __init__(self, dataset: Dataset[Sample], sample: Sample):
+        self.dataset, self.sample = dataset, sample
+        super().__init__(
+            f"the 'main.gpr' of sample '{sample.name}' in dataset "
+            f"'{dataset.dirname}' lacks `for Object_Dir use \"obj\";`. The proof "
+            f"evaluation reads GNATprove results and object files from 'obj'."
+        )
+
+
+OBJECT_DIR_TOKENS = ["for", "object_dir", "use", '"obj"', ";"]
+
+
+def check_object_dirs(datasets: Sequence[Dataset[Sample]]) -> None:
+    """
+    Verify that each proof project builds into `obj`.
 
     Raises:
-        DatasetsMismatchError: If any difference is found between any of the
-            datasets.
-        ProofRuleSrcPatternError: If any `required_checks` entry pins a proof
-            rule by source text.
-        FailedCanonicalEvaluationError: If any canonical evaluation result does
-            not represent a passing result.
-        InaccurateCanonicalEvaluationError: If any of the current canonical
-            evaluation results do not match the results of a re-run of a full
-            canonical evaluation.
-        PassedBaselineEvaluationError: If any sample passes all evals when
-            evaluated with a null generation.
-        InvalidBaselineEvaluationError: If any sample encounters an error or
-            timeout during evaluation of the null generation.
+        ObjectDirError: If a sample's `main.gpr` sets no or another `Object_Dir`.
+
+    """
+    for dataset in datasets:
+        for sample in dataset.samples:
+            if not isinstance(sample, ProofSample):
+                continue
+            gpr = sample.canonical_solution.files.get(Path("main.gpr"), b"")
+            tokens = ada_tokens(gpr.decode("utf-8", errors="replace"))
+            if not any(
+                tokens[k : k + len(OBJECT_DIR_TOKENS)] == OBJECT_DIR_TOKENS
+                for k in range(len(tokens))
+            ):
+                raise ObjectDirError(dataset, sample)
+
+
+class EditableFileError(IncorrectDatasetError):
+    """The reference projects disagree about which file can be edited."""
+
+    def __init__(self, dataset: Dataset[Sample], sample: Sample, problem: str):
+        self.dataset, self.sample = dataset, sample
+        super().__init__(
+            f"sample '{sample.name}' in dataset '{dataset.dirname}' {problem}."
+        )
+
+
+class ExistingAssertionError(IncorrectDatasetError):
+    """The initial editable file contains a disallowed assertion."""
+
+    def __init__(self, dataset: Dataset[Sample], sample: Sample, pragma: str):
+        self.dataset, self.sample = dataset, sample
+        super().__init__(
+            f"the editable file of proof sample '{sample.name}' in dataset "
+            f"'{dataset.dirname}' has a `pragma {pragma}` in its base. A solution "
+            f"may remove existing assertions, so the challenge must not rely on "
+            f"one; only `Loop_Variant`s may be given."
+        )
+
+
+class TrustedEntityInEditableFileError(IncorrectDatasetError):
+    """The editable file contains a trusted declaration."""
+
+    def __init__(self, dataset: Dataset[Sample], sample: Sample, entity: str):
+        self.dataset, self.sample = dataset, sample
+        super().__init__(
+            f"proof sample '{sample.name}' in dataset '{dataset.dirname}' expects "
+            f"the non-SPARK entity '{entity}', which is declared in its editable "
+            f"file. A solution could change what is assumed about it, so declare "
+            f"it in another file."
+        )
+
+
+class NonTerminatingSolutionPassedError(IncorrectDatasetError):
+    """An infinite loop in an editable procedure was not rejected."""
+
+    def __init__(self, dataset: Dataset[Sample], sample: Sample):
+        self.dataset, self.sample = dataset, sample
+        super().__init__(
+            f"an infinite loop at the end of the editable procedure of sample "
+            f"'{sample.name}' in dataset '{dataset.dirname}' neither failed "
+            f"proof nor changed the object code. Its proof must require "
+            f"termination, for example with `Always_Terminates`, as a ghost "
+            f"procedure's code is not compared."
+        )
+
+
+ASSERTION_PRAGMAS = frozenset(
+    {"assert", "assert_and_cut", "assume", "check", "loop_invariant"}
+)
+
+
+def editable_unit(sample: ProofSample) -> tuple[str, str]:
+    """
+    Identify the editable subunit in the base sources.
+
+    Return its kind (procedure, function or package) and qualified name in lowercase.
+
+    Raises:
+        ValueError: If the file is not a subunit.
+
+    """
+    text = sample.sources.files[Path(str(sample.editable_path))].decode("utf-8")
+    tokens = ada_tokens(text)
+    try:
+        start = tokens.index("separate")
+        parent_end = tokens.index(")", start)
+        kind = tokens[parent_end + 1]
+        name = tokens[parent_end + 3] if kind == "package" else tokens[parent_end + 2]
+    except (ValueError, IndexError) as e:
+        msg = "is not a subunit"
+        raise ValueError(msg) from e
+    return kind, f"{''.join(tokens[start + 2 : parent_end])}.{name}"
+
+
+def check_editable_files(datasets: Sequence[Dataset[Sample]]) -> None:
+    """
+    Validate the editable subunit against both reference projects.
+
+    The projects must contain the same files and agree everywhere outside the
+    editable subunit. Its base may contain loop variants. Other assertions
+    and declarations of trusted non-SPARK entities belong outside that file.
+
+    Other samples that expect non-SPARK entities follow the same rules, so
+    that no solution can edit the contracts of those entities.
+
+    Raises:
+        EditableFileError: If a proof sample's editable file is missing, is not
+            a subunit, or is not the only file its canonical solution changes.
+        ExistingAssertionError: If a base editable file has an assertion.
+        TrustedEntityInEditableFileError: If an expected non-SPARK entity is
+            declared in the editable file.
+
+    """
+    for dataset in datasets:
+        for sample in dataset.samples:
+            # Without an editable file, a solution could edit trusted contracts.
+            if not isinstance(sample, ProofSample) or (
+                sample.kind != SampleKind.PROOF
+                and len(sample.expected_non_spark_entities) == 0
+            ):
+                continue
+            editable = sample.editable_path
+            if editable is None:
+                problem = (
+                    "declares no 'editable_path', which a proof sample or any "
+                    "sample expecting non-SPARK entities must have"
+                )
+                raise EditableFileError(dataset, sample, problem)
+            base, canonical = sample.sources.files, sample.canonical_solution.files
+            if editable not in base or editable not in canonical:
+                problem = f"lacks its editable file '{editable}' in base or solution"
+                raise EditableFileError(dataset, sample, problem)
+            changed = sorted(
+                str(path)
+                for path in base.keys() | canonical.keys()
+                if path != editable and base.get(path) != canonical.get(path)
+            )
+            if len(changed) > 0:
+                problem = f"changes files other than '{editable}': {changed}"
+                raise EditableFileError(dataset, sample, problem)
+            tokens = ada_tokens(base[editable].decode("utf-8"))
+            for k in range(len(tokens) - 1):
+                if tokens[k] == "pragma" and tokens[k + 1] in ASSERTION_PRAGMAS:
+                    raise ExistingAssertionError(dataset, sample, tokens[k + 1])
+            try:
+                _, unit = editable_unit(sample)
+            except ValueError as e:
+                problem = f"has an editable file '{editable}' that {e}"
+                raise EditableFileError(dataset, sample, problem) from e
+            for entity in sample.expected_non_spark_entities:
+                if f"{entity.casefold()}.".startswith(f"{unit}."):
+                    raise TrustedEntityInEditableFileError(dataset, sample, entity)
+
+
+def with_infinite_loop(sample: ProofSample) -> DirectoryContents | None:
+    """
+    Insert an infinite loop at the end of the canonical editable procedure.
+
+    Return `None` for other kinds of subunit. SPARK already requires functions
+    to terminate.
+    """
+    kind, _ = editable_unit(sample)
+    if kind != "procedure":
+        return None
+    editable = Path(str(sample.editable_path))
+    text = sample.canonical_solution.files[editable].decode("utf-8")
+    # Blank the comments so that the last `end [Name];` closes the procedure.
+    code = ADA_COMMENT.sub(lambda m: m.group(1) or " " * len(m.group()), text)
+    end = list(re.finditer(r"\bend\b[^;]*;", code, re.IGNORECASE))[-1]
+    indent = text[text.rfind("\n", 0, end.start()) + 1 : end.start()]
+    indent = indent if indent.isspace() else ""
+    loop = f"   loop\n{indent}      null;\n{indent}   end loop;\n{indent}"
+    files = dict(sample.canonical_solution.files)
+    files[editable] = (text[: end.start()] + loop + text[end.start() :]).encode()
+    return DirectoryContents(files)
+
+
+def check_editable_procedures_terminate(
+    datasets: Sequence[Dataset[Sample]], jobs: int
+) -> None:
+    """
+    Check that an infinite loop in each editable procedure is rejected.
+
+    The loop must either fail proof or change the object code. Ghost
+    procedures emit no executable code, so their proof must require
+    termination.
+
+    Raises:
+        NonTerminatingSolutionPassedError: The added loop neither fails proof
+            nor changes the object code.
+        InvalidBaselineEvaluationError: The evaluator reports an error or timeout.
+
+    """
+    generated_datasets: list[Dataset[GeneratedSample]] = []
+    for dataset in generate_canonical(datasets):
+        samples = [
+            sample.model_copy(update={"generated_solution": solution})
+            for sample in dataset.samples
+            if isinstance(sample, GeneratedProofSample)
+            and sample.kind == SampleKind.PROOF
+            and (solution := with_infinite_loop(sample)) is not None
+        ]
+        if len(samples) > 0:
+            generated_datasets.append(
+                Dataset(
+                    name=dataset.name, sample_type=dataset.sample_type, samples=samples
+                )
+            )
+    if len(generated_datasets) == 0:
+        return
+    logger.info("Checking that editable procedures must terminate ...")
+    for dataset in evaluate_datasets([Eval.PROVE], generated_datasets, jobs=jobs):
+        for sample in dataset.samples:
+            for es in sample.evaluation_results:
+                if isinstance(es, EvaluationStatsInvalid):
+                    raise InvalidBaselineEvaluationError(dataset, sample)
+                # Other failures, such as a warning, say nothing about the loop.
+                if not (
+                    isinstance(es, EvaluationStatsProve)
+                    and (es.result == "unproved" or es.changed_object_files)
+                ):
+                    raise NonTerminatingSolutionPassedError(dataset, sample)
+
+
+def check_base_datasets(dataset_dirs: Sequence[Path], jobs: int) -> None:
+    """
+    Validate the datasets and reproduce their recorded evaluation results.
+
+    Compare the datasets across directories. Check the source patterns and
+    the list of entities each sample permits outside SPARK. Rerun the
+    reference solutions and verify that a null generation fails at least
+    one evaluation for each sample.
+
+    Verify that each proof project builds into `obj` and has a single
+    editable subunit. Append an infinite loop to editable procedures and
+    verify that the proof evaluation rejects the result.
+
+    Raises:
+        DatasetsMismatchError: The directories contain different datasets.
+        ProofRuleSrcPatternError: A proof rule specifies a source pattern.
+        ObjectDirError: A proof project does not build into `obj`.
+        UnexpectedNonSparkEntitiesError: The declared exceptions differ from
+            the non-SPARK entities in the reference proof.
+        FailedCanonicalEvaluationError: A recorded reference result fails.
+        InaccurateCanonicalEvaluationError: A rerun differs from the recorded result.
+        PassedBaselineEvaluationError: A null generation passes every evaluation.
+        InvalidBaselineEvaluationError: The evaluator reports an error or timeout.
+        EditableFileError: The starter or reference violates the editable-file rule.
+        ExistingAssertionError: The editable starter contains a disallowed assertion.
+        TrustedEntityInEditableFileError: The editable file declares a trusted entity.
+        NonTerminatingSolutionPassedError: An infinite loop is not rejected.
 
     """
     if len(dataset_dirs) == 0:
@@ -260,6 +558,9 @@ def check_base_datasets(dataset_dirs: Sequence[Path], jobs: int) -> None:
             dataset_names.get(other_datasets_dir.resolve(), f"'{other_datasets_dir}'"),
         )
     check_src_patterns(datasets)
+    check_object_dirs(datasets)
+    check_expected_non_spark_entities(datasets)
+    check_editable_files(datasets)
     # Verify that all canonical evaluation results represent passing results
     check_canonical_evaluation_results(datasets)
     # Re-run a full canonical evaluation and verify that we get the same results
@@ -269,5 +570,7 @@ def check_base_datasets(dataset_dirs: Sequence[Path], jobs: int) -> None:
     # Check that a null generation fails at least one eval on all samples
     logger.info("Checking that null generations fail at least one eval ...")
     check_evaluation_baseline(datasets, jobs=jobs)
+    # Exercise the termination obligation for each editable procedure.
+    check_editable_procedures_terminate(datasets, jobs=jobs)
     # Report success
     logger.info("Base datasets are correct.")

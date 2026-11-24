@@ -6,12 +6,16 @@ from typing import ClassVar
 from ada_eval.datasets import (
     Eval,
     EvaluatedAdaSample,
+    EvaluatedProjectSample,
+    EvaluatedProofSample,
     EvaluatedSparkSample,
     EvaluationStatsBuild,
     GeneratedAdaSample,
+    GeneratedProjectSample,
+    GeneratedProofSample,
     GeneratedSparkSample,
 )
-from ada_eval.utils import check_on_path, run_cmd_with_timeout
+from ada_eval.utils import check_on_path, gpr_tools_env, run_cmd_with_timeout
 
 from .generic_eval import GenericEval
 
@@ -27,18 +31,21 @@ def _run_gprbuild(
     working_dir: Path, *, check_warnings: bool
 ) -> subprocess.CompletedProcess[str]:
     """Return the result of running `gprbuild`."""
-    args = ["gprbuild", PROJ_ARG]
+    args = ["gprbuild", PROJ_ARG, "-u"]
     if check_warnings:
         args.extend(["-gnatwae", "-gnatyy", "-gnatVa"])
-    return run_cmd_with_timeout(args, working_dir, BUILD_TIMEOUT_S)[0]
+    return run_cmd_with_timeout(
+        args, working_dir, BUILD_TIMEOUT_S, env=gpr_tools_env()
+    )[0]
 
 
-class Build(GenericEval[GeneratedAdaSample, EvaluatedAdaSample]):
+class Build(GenericEval[GeneratedProjectSample, EvaluatedProjectSample]):
     """An evaluation that runs GPRbuild and checks if compilation succeeds."""
 
     eval: ClassVar = Eval.BUILD
     supported_types: ClassVar = {
         GeneratedAdaSample: EvaluatedAdaSample,
+        GeneratedProofSample: EvaluatedProofSample,
         GeneratedSparkSample: EvaluatedSparkSample,
     }
 
@@ -49,8 +56,8 @@ class Build(GenericEval[GeneratedAdaSample, EvaluatedAdaSample]):
         check_on_path("gprclean")
         check_on_path("gnatformat")
 
-    def evaluate(self, sample: GeneratedAdaSample) -> EvaluationStatsBuild:
-        with sample.generated_solution.unpacked() as working_dir:
+    def evaluate(self, sample: GeneratedProjectSample) -> EvaluationStatsBuild:
+        with sample.solution_to_evaluate().unpacked() as working_dir:
             logger.debug(
                 "Evaluating '%s' with GPRbuild in %s", sample.name, working_dir
             )
@@ -60,14 +67,23 @@ class Build(GenericEval[GeneratedAdaSample, EvaluatedAdaSample]):
             )
             # Run `gprbuild` on the unformatted sources with warnings enabled
             run_cmd_with_timeout(
-                ["gprclean", "-r", PROJ_ARG], working_dir, BUILD_TIMEOUT_S, check=True
+                ["gprclean", "-r", PROJ_ARG],
+                working_dir,
+                BUILD_TIMEOUT_S,
+                check=True,
+                env=gpr_tools_env(),
             )
             result = _run_gprbuild(working_dir, check_warnings=True)
             if result.returncode == 0:
                 return eval_stats  # Compiled successfully without warnings
             eval_stats.pre_format_warnings = True
             # If that failed, try reformating the sources with GNATformat and try again
-            run_cmd_with_timeout(["gnatformat", PROJ_ARG], working_dir, BUILD_TIMEOUT_S)
+            run_cmd_with_timeout(
+                ["gnatformat", PROJ_ARG, "--no-subprojects"],
+                working_dir,
+                BUILD_TIMEOUT_S,
+                env=gpr_tools_env(),
+            )
             result = _run_gprbuild(working_dir, check_warnings=True)
             if result.returncode == 0:
                 return eval_stats  # Compiled with no warnings after formatting

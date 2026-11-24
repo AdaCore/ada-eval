@@ -19,13 +19,21 @@ from claude_agent_sdk import (
 )
 from pydantic import field_validator
 
-from ada_eval.datasets import GeneratedSparkSample, SparkSample, get_contents
+from ada_eval.datasets import (
+    GENERATED_SAMPLE_TYPES,
+    GeneratedProofSample,
+    GeneratedSparkSample,
+    ProofSample,
+    SparkSample,
+    get_contents,
+)
 from ada_eval.datasets.types import ExitStatus, GenerationStats
 from ada_eval.datasets.types.execution_log import (
     AnyLogEntry,
     ReasoningLogEntry,
     ToolCallLogEntry,
 )
+from ada_eval.utils import gpr_project_path, type_checked
 
 from .generic_tool import BaseConfig, GenericTool
 from .tool_type import ToolType
@@ -221,7 +229,7 @@ async def _run_agent(
     return exit_status, result_message
 
 
-class ClaudeAgent(GenericTool[ClaudeAgentConfig, SparkSample, GeneratedSparkSample]):
+class ClaudeAgent(GenericTool[ClaudeAgentConfig, ProofSample, GeneratedProofSample]):
     """
     Tool that uses the Anthropic Agent SDK to generate completions.
 
@@ -232,14 +240,17 @@ class ClaudeAgent(GenericTool[ClaudeAgentConfig, SparkSample, GeneratedSparkSamp
     """
 
     name: ClassVar[Literal["claude_agent"]] = "claude_agent"
-    type_map: ClassVar = {SparkSample: GeneratedSparkSample}
+    type_map: ClassVar = {
+        ProofSample: GeneratedProofSample,
+        SparkSample: GeneratedSparkSample,
+    }
     config_type = ClaudeAgentConfig
 
-    def apply(self, sample: SparkSample) -> GeneratedSparkSample:
+    def apply(self, sample: ProofSample) -> GeneratedProofSample:
         """Apply the agent to a sample (sync wrapper for async implementation)."""
         return asyncio.run(self._apply_async(sample))
 
-    async def _apply_async(self, sample: SparkSample) -> GeneratedSparkSample:
+    async def _apply_async(self, sample: ProofSample) -> GeneratedProofSample:
         """Run the Agent SDK and collect results."""
 
         with sample.sources.unpacked() as sample_working_dir:
@@ -297,6 +308,7 @@ class ClaudeAgent(GenericTool[ClaudeAgentConfig, SparkSample, GeneratedSparkSamp
                 model=self.config.model,
                 disallowed_tools=disallowed,
                 mcp_servers=self.config.mcp_config or {},
+                env={"GPR_PROJECT_PATH": gpr_project_path()},
                 stderr=stderr_buffer.append,
                 hooks={
                     "PreToolUse": [HookMatcher(hooks=[pre_tool_hook])],  # type: ignore[list-item]
@@ -361,8 +373,9 @@ class ClaudeAgent(GenericTool[ClaudeAgentConfig, SparkSample, GeneratedSparkSamp
             # Pack results
             generated_files = get_contents(sample_working_dir)
 
-            return GeneratedSparkSample(
+            generated_sample = GENERATED_SAMPLE_TYPES[sample.kind](
                 **sample.model_dump(),
                 generated_solution=generated_files,
                 generation_stats=generation_stats,
             )
+            return type_checked(generated_sample, GeneratedProofSample)

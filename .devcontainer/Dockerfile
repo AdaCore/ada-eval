@@ -28,7 +28,7 @@ RUN ARCH=$(uname -m) \
 USER $USERNAME
 ENV TMPDIR=/tmp
 ENV PATH="/home/$USERNAME/.alire/bin:${PATH}"
-RUN alr install gnat_native=15.2.1 gprbuild=25.0.1 gnatprove=15.1.0 \
+RUN alr install gnat_native=16.1.0 gprbuild=26.0.1 gnatprove=16.1.0 \
     && alr -C ~ get gnatformat=26.0.0 \
     && alr -n -C ~/gnatformat_26.0.0_a0a869fa build -- -j12 \
     && mv ~/gnatformat_26.0.0_a0a869fa/bin/gnatformat ~/.alire/bin/gnatformat \

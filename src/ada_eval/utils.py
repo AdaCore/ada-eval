@@ -1,4 +1,5 @@
 import logging
+import os
 import shutil
 import subprocess
 import time
@@ -211,6 +212,45 @@ class ExecutableNotFoundError(RuntimeError):
 
     def __init__(self, executable_name: str):
         super().__init__(f"'{executable_name}' is not available in the PATH.")
+
+
+def sparklib_project_dir() -> Path | None:
+    """
+    Locate the SPARKlib project directory beside the active GNATprove.
+
+    Returns:
+        The directory containing sparklib_internal.gpr, when installed.
+
+    """
+    gnatprove = shutil.which("gnatprove")
+    if gnatprove is None:
+        return None
+    project_dir = Path(gnatprove).resolve().parent.parent / "lib" / "gnat"
+    return project_dir if (project_dir / "sparklib_internal.gpr").is_file() else None
+
+
+def gpr_project_path(*project_dirs: Path) -> str:
+    """
+    Build the GPR search path in the requested directory order.
+
+    Append GNATprove's SPARKlib directory when available.
+
+    Args:
+        project_dirs: directories to include, in order
+
+    """
+    sparklib_dir = sparklib_project_dir()
+    search_dirs = list(project_dirs)
+    if sparklib_dir is not None:
+        search_dirs.append(sparklib_dir)
+    return os.pathsep.join(map(str, search_dirs))
+
+
+def gpr_tools_env(*project_dirs: Path) -> dict[str, str]:
+    """Build a process environment with the evaluation's GPR search path."""
+    env = os.environ.copy()
+    env["GPR_PROJECT_PATH"] = gpr_project_path(*project_dirs)
+    return env
 
 
 def check_on_path(executable_name: str) -> None:

@@ -42,9 +42,8 @@ def generate_null(
     """
     Perform null generations on a collection of datasets.
 
-    For `AdaSample`s, the generated solution will be an unmodified copy of the
-    raw `sources`. For `ExplainSample`s, the generated explanation will be the
-    empty string.
+    Use the base sources for project samples and an empty answer for
+    explanation samples.
 
     The `generation_stats` will be set to
     ``GenerationStats(exit_status=ExitStatus.SUCCESS, ...)``.

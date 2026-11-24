@@ -58,6 +58,9 @@ INCORRECT_STATEMENTS_KEY = "incorrect_statements"
 LOCATION_KEY = "location"
 CANONICAL_EVAL_KEY = "canonical_evaluation_results"
 REQUIRED_CHECKS_KEY = "required_checks"
+EXPECTED_NON_SPARK_KEY = "expected_non_spark_entities"
+PROVE_WHOLE_PROJECT_KEY = "prove_whole_project"
+EDITABLE_PATH_KEY = "editable_path"
 GENERATED_SOLUTION_KEY = "generated_solution"
 GENERATION_STATS_KEY = "generation_stats"
 EVALUATION_RESULTS_KEY = "evaluation_results"
@@ -145,6 +148,7 @@ class SampleKind(StrEnum):
 
     ADA = "ada"
     EXPLAIN = "explain"
+    PROOF = "proof"
     SPARK = "spark"
 
     # Constructor should be case-insensitive
@@ -275,31 +279,25 @@ def is_unpacked_sample(path: Path) -> bool:
     return path.is_dir() and other_json.is_file()
 
 
-class AdaSample(Sample):
+class ProjectSample(Sample):
     """
-    Ada-specific sample extending the base Sample class.
+    A sample with a complete GPR project as its reference solution.
 
     Attributes:
         canonical_solution (DirectoryContents): Canonical solution for the sample.
-        unit_tests (DirectoryContents): The unit tests for the sample.
 
     """
 
-    kind: ClassVar = SampleKind.ADA
-
     canonical_solution: DirectoryContents
-    unit_tests: DirectoryContents
 
     def unpack(self, dataset_root: Path, other_data: dict[str, object] | None = None):
         super().unpack(dataset_root=dataset_root, other_data=other_data)
         dest_dir = self.working_dir_in(dataset_root)
         self.canonical_solution.unpack_to(dest_dir / SOLUTION_DIR_NAME)
-        self.unit_tests.unpack_to(dest_dir / UNIT_TEST_DIR_NAME)
 
     @classmethod
     def load_unpacked_sample(cls, sample_dir: Path):
         solution_files = get_contents_git_aware(sample_dir / SOLUTION_DIR_NAME)
-        unit_test_files = get_contents_git_aware(sample_dir / UNIT_TEST_DIR_NAME)
         base_sample = Sample.load_unpacked_sample(sample_dir)
         return cls(
             name=base_sample.name,
@@ -309,7 +307,33 @@ class AdaSample(Sample):
             sources=base_sample.sources,
             canonical_solution=solution_files,
             canonical_evaluation_results=base_sample.canonical_evaluation_results,
-            unit_tests=unit_test_files,
+        )
+
+
+class AdaSample(ProjectSample):
+    """
+    An Ada project evaluated with its unit tests.
+
+    Attributes:
+        unit_tests (DirectoryContents): The unit tests for the sample.
+
+    """
+
+    kind: ClassVar = SampleKind.ADA
+
+    unit_tests: DirectoryContents
+
+    def unpack(self, dataset_root: Path, other_data: dict[str, object] | None = None):
+        super().unpack(dataset_root=dataset_root, other_data=other_data)
+        dest_dir = self.working_dir_in(dataset_root)
+        self.unit_tests.unpack_to(dest_dir / UNIT_TEST_DIR_NAME)
+
+    @classmethod
+    def load_unpacked_sample(cls, sample_dir: Path):
+        project_sample = ProjectSample.load_unpacked_sample(sample_dir)
+        return cls(
+            **dict(project_sample),
+            unit_tests=get_contents_git_aware(sample_dir / UNIT_TEST_DIR_NAME),
         )
 
 
@@ -347,30 +371,66 @@ class ExplainSample(Sample):
         )
 
 
-class SparkSample(AdaSample):
+class ProofSample(ProjectSample):
     """
-    SPARK-specific sample extending `AdaSample`.
+    A project evaluated by GNATprove without a unit-test executable.
 
     Attributes:
         required_checks (Sequence[ProofCheck]): Checks the solution must prove.
-        proof_harness (DirectoryContents): An optional GPR project, withheld
-            from the tool under evaluation, whose postconditions state the
-            properties the solution's contracts must imply.
+        expected_non_spark_entities (Sequence[str]): Entities outside SPARK by design,
+            including imported stubs.
+        proof_harness (DirectoryContents): Optional private project that tests the
+            target's contract. The harness precondition must imply the target's
+            precondition, and the target's postcondition must imply the harness's.
+        prove_whole_project (bool): Include every unit in the proof run. A generic
+            needs this when its instantiations live in other units.
+        editable_path (Path | None): Subunit containing the target body or an
+            enclosing body. Edits are restricted to proof material in this
+            file. The evaluator takes other files from the canonical solution.
 
     """
 
-    kind: ClassVar = SampleKind.SPARK
+    kind: ClassVar = SampleKind.PROOF
 
     required_checks: Sequence[ProofCheck] = []
+    expected_non_spark_entities: Sequence[str] = []
     proof_harness: DirectoryContents = DirectoryContents({})
+    prove_whole_project: bool = False
+    editable_path: Path | None = None
+
+    @field_validator("editable_path")
+    @classmethod
+    def editable_path_must_be_relative(cls, value):
+        if value is not None and Path(value).is_absolute():
+            raise PathMustBeRelativeError(Path(value))
+        return value
+
+    def with_editable_file_from(self, solution: DirectoryContents) -> DirectoryContents:
+        """Use the submitted editable file in the canonical project."""
+        editable = self.editable_path
+        if editable is None:
+            msg = f"sample '{self.name}' has no editable file"
+            raise ValueError(msg)
+        files = dict(self.canonical_solution.files)
+        files.pop(editable, None)
+        if editable in solution.files:
+            files[editable] = solution.files[editable]
+        return DirectoryContents(files)
 
     def unpack(self, dataset_root: Path, other_data: dict[str, object] | None = None):
+        proof_data: dict[str, object] = {}
         if len(self.required_checks) > 0:
-            other_data = {
-                REQUIRED_CHECKS_KEY: serialise_sequence(
-                    self.required_checks, exclude_defaults=True
-                )
-            } | (other_data or {})
+            proof_data[REQUIRED_CHECKS_KEY] = serialise_sequence(
+                self.required_checks, exclude_defaults=True
+            )
+        if len(self.expected_non_spark_entities) > 0:
+            proof_data[EXPECTED_NON_SPARK_KEY] = list(self.expected_non_spark_entities)
+        if self.prove_whole_project:
+            proof_data[PROVE_WHOLE_PROJECT_KEY] = True
+        if self.editable_path is not None:
+            proof_data[EDITABLE_PATH_KEY] = str(self.editable_path)
+        if len(proof_data) > 0:
+            other_data = proof_data | (other_data or {})
         super().unpack(dataset_root=dataset_root, other_data=other_data)
         if len(self.proof_harness.files) > 0:
             dest_dir = self.working_dir_in(dataset_root)
@@ -382,18 +442,33 @@ class SparkSample(AdaSample):
         required_checks = TypeAdapter(list[ProofCheck]).validate_python(
             other_data.get(REQUIRED_CHECKS_KEY, [])
         )
-        ada_sample = AdaSample.load_unpacked_sample(sample_dir)
+        expected_non_spark_entities = TypeAdapter(list[str]).validate_python(
+            other_data.get(EXPECTED_NON_SPARK_KEY, [])
+        )
+        project_sample = ProjectSample.load_unpacked_sample(sample_dir)
         return cls(
-            name=ada_sample.name,
-            location=ada_sample.location,
-            prompt=ada_sample.prompt,
-            comments=ada_sample.comments,
-            sources=ada_sample.sources,
-            canonical_solution=ada_sample.canonical_solution,
-            canonical_evaluation_results=ada_sample.canonical_evaluation_results,
-            unit_tests=ada_sample.unit_tests,
+            **dict(project_sample),
             required_checks=required_checks,
+            expected_non_spark_entities=expected_non_spark_entities,
             proof_harness=get_contents_git_aware(sample_dir / PROOF_HARNESS_DIR_NAME),
+            prove_whole_project=TypeAdapter(bool).validate_python(
+                other_data.get(PROVE_WHOLE_PROJECT_KEY, False)
+            ),
+            editable_path=other_data.get(EDITABLE_PATH_KEY),
+        )
+
+
+class SparkSample(ProofSample, AdaSample):
+    """A SPARK project checked by both proof and unit tests."""
+
+    kind: ClassVar = SampleKind.SPARK
+
+    @classmethod
+    def load_unpacked_sample(cls, sample_dir: Path):
+        proof_sample = ProofSample.load_unpacked_sample(sample_dir)
+        return cls(
+            **dict(proof_sample),
+            unit_tests=get_contents_git_aware(sample_dir / UNIT_TEST_DIR_NAME),
         )
 
 
@@ -455,15 +530,52 @@ class GeneratedSample(Sample):
         super().unpack(dataset_root=dataset_root, other_data=other_data)
 
 
-class GeneratedAdaSample(AdaSample, GeneratedSample):
-    # Note that `AdaSample` must be inherited before `GeneratedSample`, so that
-    # the `canonical_solution` field has type `DirectoryContents`, not `object`.
+PROJECT_FILE_SUFFIXES = (".gpr", ".adc")
+
+
+class GeneratedProjectSample(ProjectSample, GeneratedSample):
+    # ProjectSample supplies the concrete type of canonical_solution.
     generated_solution: DirectoryContents
+
+    def solution_to_evaluate(self) -> DirectoryContents:
+        """
+        Apply the reference build and proof settings to the submitted sources.
+
+        The sample owns the GPR and configuration pragma files, including
+        the switches passed to GNATprove.
+        """
+        return DirectoryContents(
+            {
+                path: contents
+                for path, contents in self.generated_solution.files.items()
+                if path.suffix not in PROJECT_FILE_SUFFIXES
+            }
+            | {
+                path: contents
+                for path, contents in self.canonical_solution.files.items()
+                if path.suffix in PROJECT_FILE_SUFFIXES
+            }
+        )
+
+    def changed_project_files(self) -> list[str]:
+        """List added, removed or modified project and configuration files."""
+        canonical = self.canonical_solution.files
+        generated = self.generated_solution.files
+        return sorted(
+            str(path)
+            for path in canonical.keys() | generated.keys()
+            if path.suffix in PROJECT_FILE_SUFFIXES
+            and canonical.get(path) != generated.get(path)
+        )
 
     def unpack(self, dataset_root: Path, other_data: dict[str, object] | None = None):
         super().unpack(dataset_root=dataset_root, other_data=other_data)
         dest_dir = self.working_dir_in(dataset_root)
         self.generated_solution.unpack_to(dest_dir / GENERATED_SOLUTION_DIR_NAME)
+
+
+class GeneratedAdaSample(AdaSample, GeneratedProjectSample):
+    pass
 
 
 class GeneratedExplainSample(ExplainSample, GeneratedSample):
@@ -478,7 +590,20 @@ class GeneratedExplainSample(ExplainSample, GeneratedSample):
         super().unpack(dataset_root=dataset_root, other_data=other_data)
 
 
-class GeneratedSparkSample(SparkSample, GeneratedAdaSample):
+class GeneratedProofSample(ProofSample, GeneratedProjectSample):
+    def solution_to_evaluate(self) -> DirectoryContents:
+        """
+        Assemble the project used for this proof evaluation.
+
+        For a single-file challenge, take only the editable subunit from
+        the submission. A submission that omits it is evaluated without it.
+        """
+        if self.editable_path is None:
+            return super().solution_to_evaluate()
+        return self.with_editable_file_from(self.generated_solution)
+
+
+class GeneratedSparkSample(SparkSample, GeneratedAdaSample, GeneratedProofSample):
     pass
 
 
@@ -602,7 +727,11 @@ class EvaluatedSample(GeneratedSample):
         super().unpack(dataset_root=dataset_root, other_data=other_data)
 
 
-class EvaluatedAdaSample(GeneratedAdaSample, EvaluatedSample):
+class EvaluatedProjectSample(GeneratedProjectSample, EvaluatedSample):
+    pass
+
+
+class EvaluatedAdaSample(GeneratedAdaSample, EvaluatedProjectSample):
     pass
 
 
@@ -610,19 +739,26 @@ class EvaluatedExplainSample(GeneratedExplainSample, EvaluatedSample):
     pass
 
 
-class EvaluatedSparkSample(GeneratedSparkSample, EvaluatedAdaSample):
+class EvaluatedProofSample(GeneratedProofSample, EvaluatedProjectSample):
+    pass
+
+
+class EvaluatedSparkSample(
+    GeneratedSparkSample, EvaluatedAdaSample, EvaluatedProofSample
+):
     pass
 
 
 INITIAL_SAMPLE_TYPES = {
     sample_type.kind: sample_type
-    for sample_type in (AdaSample, ExplainSample, SparkSample)
+    for sample_type in (AdaSample, ExplainSample, ProofSample, SparkSample)
 }
 GENERATED_SAMPLE_TYPES = {
     sample_type.kind: sample_type
     for sample_type in (
         GeneratedAdaSample,
         GeneratedExplainSample,
+        GeneratedProofSample,
         GeneratedSparkSample,
     )
 }
@@ -631,6 +767,7 @@ EVALUATED_SAMPLE_TYPES = {
     for sample_type in (
         EvaluatedAdaSample,
         EvaluatedExplainSample,
+        EvaluatedProofSample,
         EvaluatedSparkSample,
     )
 }

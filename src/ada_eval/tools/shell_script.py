@@ -5,9 +5,16 @@ from typing import ClassVar, Literal, Self
 
 from pydantic import field_validator
 
-from ada_eval.datasets import GeneratedSparkSample, SparkSample, get_contents
+from ada_eval.datasets import (
+    GENERATED_SAMPLE_TYPES,
+    GeneratedProofSample,
+    GeneratedSparkSample,
+    ProofSample,
+    SparkSample,
+    get_contents,
+)
 from ada_eval.datasets.types import ExitStatus, GenerationStats
-from ada_eval.utils import run_cmd_with_timeout
+from ada_eval.utils import gpr_tools_env, run_cmd_with_timeout, type_checked
 
 from .generic_tool import BaseConfig, GenericTool
 from .tool_type import ToolType
@@ -35,12 +42,15 @@ class ShellScriptConfig(BaseConfig):
         return config.model_copy(update={"shell_script": resolved_script_path})
 
 
-class ShellScript(GenericTool[ShellScriptConfig, SparkSample, GeneratedSparkSample]):
+class ShellScript(GenericTool[ShellScriptConfig, ProofSample, GeneratedProofSample]):
     name: ClassVar[Literal["shell_script"]] = "shell_script"
-    type_map: ClassVar = {SparkSample: GeneratedSparkSample}
+    type_map: ClassVar = {
+        ProofSample: GeneratedProofSample,
+        SparkSample: GeneratedSparkSample,
+    }
     config_type = ShellScriptConfig
 
-    def apply(self, sample: SparkSample) -> GeneratedSparkSample:
+    def apply(self, sample: ProofSample) -> GeneratedProofSample:
         with sample.sources.unpacked() as sample_working_dir:
             logger.debug(
                 "Applying ShellScript to %s in %s", sample.name, sample_working_dir
@@ -51,6 +61,7 @@ class ShellScript(GenericTool[ShellScriptConfig, SparkSample, GeneratedSparkSamp
                     [str(self.config.shell_script), sample.prompt],
                     sample_working_dir,
                     self.config.timeout_s,
+                    env=gpr_tools_env(),
                 )
             except subprocess.TimeoutExpired:
                 generation_stats = GenerationStats(
@@ -66,10 +77,11 @@ class ShellScript(GenericTool[ShellScriptConfig, SparkSample, GeneratedSparkSamp
                     stderr=result.stderr,
                     runtime_ms=time_ms,
                 )
-            # Pack up the resulting files and return a GeneratedSparkSample
+            # Capture the files left in the sample directory.
             generated_files = get_contents(sample_working_dir)
-            return GeneratedSparkSample(
+            generated_sample = GENERATED_SAMPLE_TYPES[sample.kind](
                 **sample.model_dump(),  # Copy all fields from the original sample
                 generated_solution=generated_files,
                 generation_stats=generation_stats,
             )
+            return type_checked(generated_sample, GeneratedProofSample)

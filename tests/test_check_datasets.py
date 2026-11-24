@@ -9,18 +9,30 @@ import pytest
 from helpers import assert_log
 
 from ada_eval.check_datasets import (
+    EditableFileError,
+    ExistingAssertionError,
     FailedCanonicalEvaluationError,
     InaccurateCanonicalEvaluationError,
     InvalidBaselineEvaluationError,
+    NonTerminatingSolutionPassedError,
+    ObjectDirError,
     PassedBaselineEvaluationError,
     ProofRuleSrcPatternError,
+    TrustedEntityInEditableFileError,
+    UnexpectedNonSparkEntitiesError,
     check_base_datasets,
+    check_editable_files,
+    check_editable_procedures_terminate,
+    check_expected_non_spark_entities,
+    check_object_dirs,
     check_src_patterns,
+    with_infinite_loop,
 )
 from ada_eval.datasets import (
     Dataset,
     Eval,
     EvaluationStatsBuild,
+    EvaluationStatsProve,
     ExitStatus,
     ProofCheck,
     Sample,
@@ -28,17 +40,22 @@ from ada_eval.datasets import (
     load_datasets,
     save_datasets,
 )
+from ada_eval.datasets.trivial_generations import generate_canonical
 from ada_eval.datasets.types.datasets import DatasetsMismatchError
 from ada_eval.datasets.types.directory_contents import DirectoryContents
 from ada_eval.datasets.types.samples import (
     EvaluatedSparkSample,
     ExplainSample,
+    GeneratedProofSample,
     GeneratedSparkSample,
     GenerationStats,
+    Location,
+    ProofSample,
     SparkSample,
 )
 from ada_eval.evals.evaluate import create_eval
 from ada_eval.evals.generic_eval import GenericEval
+from ada_eval.evals.prove import Prove
 
 
 @pytest.mark.slow
@@ -324,3 +341,215 @@ def test_check_src_patterns(check_test_datasets: Path):
     )
     with pytest.raises(ProofRuleSrcPatternError, match=re.escape(error_msg)):
         check_src_patterns(datasets)
+
+
+def test_check_expected_non_spark_entities(check_test_datasets: Path):
+    """Require one metadata entry per non-SPARK entity in the canonical result."""
+    datasets = load_datasets(check_test_datasets)
+    check_expected_non_spark_entities(datasets)
+    spark_dataset = next(d for d in datasets if dataset_has_sample_type(d, SparkSample))
+    sample = next(s for s in spark_dataset.samples if s.name == "good")
+    assert isinstance(sample, SparkSample)
+
+    sample.expected_non_spark_entities = ["Helper"]
+    error_msg = (
+        "sample 'good' in dataset 'spark_check' declares "
+        "'expected_non_spark_entities' ['Helper'], but its canonical solution has []"
+    )
+    with pytest.raises(UnexpectedNonSparkEntitiesError, match=re.escape(error_msg)):
+        check_expected_non_spark_entities(datasets)
+
+    # Overloaded names contribute one entry per declaration.
+    stats = next(
+        s
+        for s in sample.canonical_evaluation_results
+        if isinstance(s, EvaluationStatsProve)
+    )
+    stats.non_spark_entities = ["Helper", "Helper"]
+    error_msg = (
+        "sample 'good' in dataset 'spark_check' declares "
+        "'expected_non_spark_entities' ['Helper'], but its canonical solution has "
+        "['Helper', 'Helper']"
+    )
+    with pytest.raises(UnexpectedNonSparkEntitiesError, match=re.escape(error_msg)):
+        check_expected_non_spark_entities(datasets)
+    sample.expected_non_spark_entities = ["Helper", "Helper"]
+    check_expected_non_spark_entities(datasets)
+
+
+def lemma_sample(
+    lemma: str = "procedure Lemma is\nbegin\n   null;\nend Lemma;\n",
+    aspects: str = "",
+    **fields: object,
+) -> ProofSample:
+    """Build a proof sample with an editable ghost procedure."""
+    files = DirectoryContents(
+        {
+            Path("main.gpr"): (
+                b'project Main is\n   for Source_Dirs use ("src");\n'
+                b'   for Object_Dir use "obj";\n'
+                b'   for Create_Missing_Dirs use "True";\nend Main;\n'
+            ),
+            Path("src/p.ads"): (
+                "package P with SPARK_Mode is\n"
+                f"   procedure Lemma with Ghost, Global => null{aspects};\nend P;\n"
+            ).encode(),
+            Path("src/p.adb"): (
+                b"package body P with SPARK_Mode is\n"
+                b"   procedure Lemma is separate;\nend P;\n"
+            ),
+            Path("src/p-lemma.adb"): f"separate (P)\n{lemma}".encode(),
+        }
+    )
+    return ProofSample(
+        **{
+            "name": "lemma",
+            "location": Location(path=Path("src/p.ads"), subprogram_name="Lemma"),
+            "prompt": "",
+            "comments": "",
+            "sources": files,
+            "canonical_solution": files,
+            "canonical_evaluation_results": [],
+            "editable_path": Path("src/p-lemma.adb"),
+            **fields,
+        }
+    )
+
+
+def test_check_editable_files():
+    """Check the allowed differences between the base and canonical subunit."""
+
+    def check(sample: ProofSample) -> None:
+        dataset = Dataset(name="proof", sample_type=ProofSample, samples=[sample])
+        check_editable_files([dataset])
+
+    check(lemma_sample())
+    check(
+        lemma_sample(
+            lemma="procedure Lemma is\n   pragma Loop_Variant (Increases => 1);\n"
+        )
+    )
+
+    with pytest.raises(EditableFileError, match="declares no 'editable_path'"):
+        check(lemma_sample(editable_path=None))
+    with pytest.raises(EditableFileError, match="lacks its editable file"):
+        check(lemma_sample(editable_path=Path("src/p-other.adb")))
+    changed = lemma_sample()
+    changed.canonical_solution = DirectoryContents(
+        changed.canonical_solution.files | {Path("src/p.ads"): b"package P is end P;"}
+    )
+    with pytest.raises(
+        EditableFileError, match=re.escape("other than 'src/p-lemma.adb'")
+    ):
+        check(changed)
+    with pytest.raises(EditableFileError, match="that is not a subunit"):
+        check(lemma_sample(lemma="-- separate (P)\n"))
+
+    # A removable base assertion could invalidate the challenge.
+    with pytest.raises(ExistingAssertionError, match="`pragma assert`"):
+        check(lemma_sample(lemma="procedure Lemma is begin pragma Assert (True); end;"))
+
+    # Keep trusted declarations outside the file the model can edit.
+    check(lemma_sample(expected_non_spark_entities=["P.Other", "P.Lemmas"]))
+    with pytest.raises(
+        TrustedEntityInEditableFileError, match=re.escape("'P.LEMMA.Stub'")
+    ):
+        check(lemma_sample(expected_non_spark_entities=["P.LEMMA.Stub"]))
+
+    # A trusted contract is out of a solution's reach only behind an editable file.
+    spark = dict(lemma_sample(editable_path=None)) | {
+        "unit_tests": DirectoryContents({})
+    }
+    check(SparkSample(**spark))
+    with pytest.raises(EditableFileError, match="declares no 'editable_path'"):
+        check(SparkSample(**spark | {"expected_non_spark_entities": ["P.Other"]}))
+
+
+def test_check_object_dirs():
+    """Require the object directory that the proof evaluation reads."""
+
+    def check(gpr: bytes) -> None:
+        sample = lemma_sample()
+        sample.canonical_solution = DirectoryContents(
+            sample.canonical_solution.files | {Path("main.gpr"): gpr}
+        )
+        dataset = Dataset(name="proof", sample_type=ProofSample, samples=[sample])
+        check_object_dirs([dataset])
+
+    gpr = lemma_sample().sources.files[Path("main.gpr")]
+    check(gpr.replace(b"for Object_Dir use", b"FOR object_dir\n   use"))
+    for bad in (
+        gpr.replace(b'"obj"', b'"build"'),
+        gpr.replace(b"   for Object_Dir", b"   --  for Object_Dir"),
+    ):
+        with pytest.raises(ObjectDirError, match="'lemma'"):
+            check(bad)
+
+
+def test_with_infinite_loop():
+    """Insert the loop before each legal form of the procedure's end."""
+
+    def looped(lemma: str) -> str:
+        solution = with_infinite_loop(lemma_sample(lemma=lemma))
+        assert solution is not None
+        return solution.files[Path("src/p-lemma.adb")].decode()
+
+    loop = "   loop\n      null;\n   end loop;\n"
+    start = "separate (P)\nprocedure Lemma is\nbegin\n   null;\n"
+    for end in ("end Lemma;\n", "end;\n", "end Lemma;\n--  Not the end;\n"):
+        assert (
+            looped(f"procedure Lemma is\nbegin\n   null;\n{end}") == start + loop + end
+        )
+    assert (
+        looped("procedure Lemma is begin null; end;\n")
+        == f"separate (P)\nprocedure Lemma is begin null; {loop}end;\n"
+    )
+    nested = (
+        "procedure Lemma is\n   procedure Q is\n   begin\n      null;\n   end Q;\n"
+        "begin\n   Q;\n"
+    )
+    assert looped(nested + "end Lemma;\n").endswith(f"   Q;\n{loop}end Lemma;\n")
+    assert (
+        with_infinite_loop(lemma_sample(lemma="function Lemma return Boolean;")) is None
+    )
+
+
+@pytest.mark.slow
+@pytest.mark.skipif(not shutil.which("gnatprove"), reason="gnatprove not available")
+@pytest.mark.skipif(not shutil.which("gprbuild"), reason="gprbuild not available")
+@pytest.mark.skipif(not shutil.which("gprls"), reason="gprls not available")
+def test_check_editable_procedures_terminate():
+    """Require the added loop to fail proof or to change the object code."""
+
+    def check(sample: ProofSample) -> None:
+        dataset = Dataset(name="proof", sample_type=ProofSample, samples=[sample])
+        check_editable_procedures_terminate([dataset], jobs=1)
+
+    # Proof must reject the infinite loop even though ghost code is erased.
+    with pytest.raises(NonTerminatingSolutionPassedError, match="'lemma'"):
+        check(lemma_sample())
+    check(lemma_sample(aspects=", Always_Terminates"))
+
+    # A loop in executable code changes the object file instead.
+    plain = lemma_sample()
+    spec = plain.sources.files[Path("src/p.ads")].replace(b"with Ghost, ", b"with ")
+    plain.sources = plain.canonical_solution = DirectoryContents(
+        plain.sources.files | {Path("src/p.ads"): spec}
+    )
+    check(plain)
+
+    # GNATprove rejects a ghost call there that might not return, so erased
+    # code cannot hide a loop in an executable procedure either.
+    spinner = (
+        b"separate (P)\nprocedure Lemma is\n"
+        b"   procedure Spin with Ghost, Post => False is\n   begin\n"
+        b"      loop\n         null;\n      end loop;\n   end Spin;\n"
+        b"begin\n   Spin;\nend Lemma;\n"
+    )
+    plain.canonical_solution = DirectoryContents(
+        plain.sources.files | {Path("src/p-lemma.adb"): spinner}
+    )
+    dataset = Dataset(name="proof", sample_type=ProofSample, samples=[plain])
+    (generated,) = generate_canonical([dataset])[0].samples
+    assert isinstance(generated, GeneratedProofSample)
+    assert Prove().evaluate(generated).result == "unproved"
