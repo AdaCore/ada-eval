@@ -1,0 +1,59 @@
+{
+    "location": {
+        "path": "src/spark-containers-functional-vectors-higher_order-lemma_count_eq.adb",
+        "subprogram_name": "Do_Proof"
+    },
+    "expected_non_spark_entities": [
+        "Inst.My_Sequences",
+        "Inst.Nested.\"=\"",
+        "Inst.Nested.Element_Type",
+        "Inst.Nested.Equivalent_Elements",
+        "Inst.Nested.First",
+        "Inst.Nested.Last",
+        "Inst.Nested.Witness",
+        "Inst.Nested.Witness"
+    ],
+    "prove_whole_project": true,
+    "editable_path": "src/spark-containers-functional-vectors-higher_order-lemma_count_eq.adb",
+    "canonical_evaluation_results": [
+        {
+            "eval": "build",
+            "compiled": true,
+            "pre_format_warnings": false,
+            "post_format_warnings": false
+        },
+        {
+            "eval": "prove",
+            "result": "proved",
+            "proved_checks": {
+                "GLOBAL_WRONG": 10,
+                "SUBPROGRAM_TERMINATION": 19,
+                "VC_CONTAINER_AGGR_CHECK": 4,
+                "VC_FEASIBLE_POST": 2,
+                "VC_LOOP_INVARIANT_INIT": 1,
+                "VC_LOOP_INVARIANT_PRESERV": 1,
+                "VC_NULL_EXCLUSION": 4,
+                "VC_OVERFLOW_CHECK": 3,
+                "VC_POSTCONDITION": 10,
+                "VC_PRECONDITION": 25,
+                "VC_PREDICATE_CHECK": 12,
+                "VC_RANGE_CHECK": 10,
+                "VC_SUBPROGRAM_VARIANT": 1
+            },
+            "unproved_checks": {},
+            "warnings": {},
+            "non_spark_entities": [
+                "Inst.My_Sequences",
+                "Inst.Nested.\"=\"",
+                "Inst.Nested.Element_Type",
+                "Inst.Nested.Equivalent_Elements",
+                "Inst.Nested.First",
+                "Inst.Nested.Last",
+                "Inst.Nested.Witness",
+                "Inst.Nested.Witness"
+            ],
+            "missing_required_checks": [],
+            "pragma_assume_count": 0
+        }
+    ]
+}

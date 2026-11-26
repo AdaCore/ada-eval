@@ -1,0 +1,22 @@
+--  json's generic specs (JSON.Types / JSON.Streams / JSON.Parsers) use 'Old in
+--  potentially-unevaluated postconditions -- legal under the pragma json sets
+--  for its own sources. Instantiating those generics in Memcp.Envelope
+--  re-analyses their contracts in memcp's compilation context, so memcp needs
+--  the same permission. See ../../json-spark/json/gnat.adc.
+pragma Unevaluated_Use_Of_Old (Allow);
+
+--  SPARK is the default for every unit compiled against this file. A unit
+--  outside SPARK must say so at its own declaration.
+pragma SPARK_Mode (On);
+
+--  SPARKlib's formal containers (Memcp.Store's Unbounded_Vectors) are Ada 2022
+--  (aspect Aggregate, etc.); instantiating them re-analyses their specs here,
+--  so memcp compiles in Ada 2022 mode. A superset of what the json generics
+--  need, so it costs the rest of the tree nothing.
+pragma Ada_2022;
+
+--  Memcp.Store's SQL layer releases each statement in a `finally` part, which
+--  FSF 16.1 gates on this pragma alone -- neither -gnatX nor
+--  Extensions_Allowed (On) admits it. The pragma opens every extension, not
+--  that one; see docs/design/0020.
+pragma Extensions_Allowed (All_Extensions);

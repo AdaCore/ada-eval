@@ -1,0 +1,35 @@
+{
+    "location": {
+        "path": "src/json-tokenizers.ads",
+        "subprogram_name": "Scan_Number_Scale_Down"
+    },
+    "prove_whole_project": true,
+    "editable_path": "src/json-tokenizers-scan_number_scale_down.adb",
+    "canonical_evaluation_results": [
+        {
+            "eval": "build",
+            "compiled": true,
+            "pre_format_warnings": false,
+            "post_format_warnings": false
+        },
+        {
+            "eval": "prove",
+            "result": "proved",
+            "proved_checks": {
+                "SUBPROGRAM_TERMINATION": 1,
+                "VC_ASSERT": 1,
+                "VC_DIVISION_CHECK": 2,
+                "VC_FP_OVERFLOW_CHECK": 3,
+                "VC_LOOP_INVARIANT_INIT": 3,
+                "VC_LOOP_INVARIANT_PRESERV": 3,
+                "VC_OVERFLOW_CHECK": 1,
+                "VC_POSTCONDITION": 1
+            },
+            "unproved_checks": {},
+            "warnings": {},
+            "non_spark_entities": [],
+            "missing_required_checks": [],
+            "pragma_assume_count": 0
+        }
+    ]
+}

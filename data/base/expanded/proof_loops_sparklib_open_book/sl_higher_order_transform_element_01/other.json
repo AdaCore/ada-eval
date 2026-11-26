@@ -1,0 +1,60 @@
+{
+    "location": {
+        "path": "src/spark-containers-functional-maps-higher_order.ads",
+        "subprogram_name": "Transform_Element"
+    },
+    "expected_non_spark_entities": [
+        "Inst.My_Maps",
+        "Inst.Nested.\"=\"",
+        "Inst.Nested.\"=\"",
+        "Inst.Nested.Element_Type",
+        "Inst.Nested.Equivalent_Elements",
+        "Inst.Nested.Equivalent_Keys",
+        "Inst.Nested.Key_Type",
+        "Inst.Nested.Witness",
+        "Inst.Nested.Witness",
+        "Inst.Nested.Witness"
+    ],
+    "prove_whole_project": true,
+    "editable_path": "src/spark-containers-functional-maps-higher_order-transform_element.adb",
+    "canonical_evaluation_results": [
+        {
+            "eval": "build",
+            "compiled": true,
+            "pre_format_warnings": false,
+            "post_format_warnings": false
+        },
+        {
+            "eval": "prove",
+            "result": "proved",
+            "proved_checks": {
+                "GLOBAL_WRONG": 14,
+                "SUBPROGRAM_TERMINATION": 29,
+                "UNINITIALIZED": 1,
+                "VC_CONTAINER_AGGR_CHECK": 6,
+                "VC_FEASIBLE_POST": 1,
+                "VC_LOOP_INVARIANT_INIT": 4,
+                "VC_LOOP_INVARIANT_PRESERV": 4,
+                "VC_POSTCONDITION": 13,
+                "VC_PRECONDITION": 35,
+                "VC_PREDICATE_CHECK": 5
+            },
+            "unproved_checks": {},
+            "warnings": {},
+            "non_spark_entities": [
+                "Inst.My_Maps",
+                "Inst.Nested.\"=\"",
+                "Inst.Nested.\"=\"",
+                "Inst.Nested.Element_Type",
+                "Inst.Nested.Equivalent_Elements",
+                "Inst.Nested.Equivalent_Keys",
+                "Inst.Nested.Key_Type",
+                "Inst.Nested.Witness",
+                "Inst.Nested.Witness",
+                "Inst.Nested.Witness"
+            ],
+            "missing_required_checks": [],
+            "pragma_assume_count": 0
+        }
+    ]
+}

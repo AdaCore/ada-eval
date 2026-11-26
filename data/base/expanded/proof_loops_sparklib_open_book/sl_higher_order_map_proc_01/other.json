@@ -1,0 +1,38 @@
+{
+    "location": {
+        "path": "src/spark-higher_order.ads",
+        "subprogram_name": "Map_Proc"
+    },
+    "expected_non_spark_entities": [
+        "Map_Proc_Instance.F",
+        "Map_Proc_Instance.Init_Prop"
+    ],
+    "prove_whole_project": true,
+    "editable_path": "src/spark-higher_order-map_proc.adb",
+    "canonical_evaluation_results": [
+        {
+            "eval": "build",
+            "compiled": true,
+            "pre_format_warnings": false,
+            "post_format_warnings": false
+        },
+        {
+            "eval": "prove",
+            "result": "proved",
+            "proved_checks": {
+                "VC_INDEX_CHECK": 5,
+                "VC_LOOP_INVARIANT_INIT": 1,
+                "VC_LOOP_INVARIANT_PRESERV": 1,
+                "VC_POSTCONDITION": 1
+            },
+            "unproved_checks": {},
+            "warnings": {},
+            "non_spark_entities": [
+                "Map_Proc_Instance.F",
+                "Map_Proc_Instance.Init_Prop"
+            ],
+            "missing_required_checks": [],
+            "pragma_assume_count": 0
+        }
+    ]
+}

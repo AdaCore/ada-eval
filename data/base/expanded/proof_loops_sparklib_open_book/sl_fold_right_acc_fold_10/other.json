@@ -1,0 +1,54 @@
+{
+    "location": {
+        "path": "src/spark-higher_order-fold.ads",
+        "subprogram_name": "Fold"
+    },
+    "expected_non_spark_entities": [
+        "Test_Higher_Order.F",
+        "Test_Higher_Order.Final_Prop",
+        "Test_Higher_Order.Ind_Prop",
+        "Test_Higher_Order.My_Fold_Right.Acc.Prove_Ind",
+        "Test_Higher_Order.My_Fold_Right.Acc.Prove_Last",
+        "Test_Higher_Order.My_Fold_Right.Fold",
+        "Test_Types.Nested.Id"
+    ],
+    "prove_whole_project": true,
+    "editable_path": "src/spark-higher_order-fold-fold_right_acc-fold.adb",
+    "canonical_evaluation_results": [
+        {
+            "eval": "build",
+            "compiled": true,
+            "pre_format_warnings": false,
+            "post_format_warnings": false
+        },
+        {
+            "eval": "prove",
+            "result": "proved",
+            "proved_checks": {
+                "SUBPROGRAM_TERMINATION": 1,
+                "VC_ASSERT": 1,
+                "VC_INDEX_CHECK": 14,
+                "VC_LENGTH_CHECK": 1,
+                "VC_LOOP_INVARIANT_INIT": 3,
+                "VC_LOOP_INVARIANT_PRESERV": 3,
+                "VC_OVERFLOW_CHECK": 5,
+                "VC_POSTCONDITION": 1,
+                "VC_PRECONDITION": 12,
+                "VC_RANGE_CHECK": 11
+            },
+            "unproved_checks": {},
+            "warnings": {},
+            "non_spark_entities": [
+                "Test_Higher_Order.F",
+                "Test_Higher_Order.Final_Prop",
+                "Test_Higher_Order.Ind_Prop",
+                "Test_Higher_Order.My_Fold_Right.Acc.Prove_Ind",
+                "Test_Higher_Order.My_Fold_Right.Acc.Prove_Last",
+                "Test_Higher_Order.My_Fold_Right.Fold",
+                "Test_Types.Nested.Id"
+            ],
+            "missing_required_checks": [],
+            "pragma_assume_count": 0
+        }
+    ]
+}

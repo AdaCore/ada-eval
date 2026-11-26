@@ -1,0 +1,36 @@
+{
+    "location": {
+        "path": "src/json-types.ads",
+        "subprogram_name": "Unescape"
+    },
+    "editable_path": "src/json-types-unescape.adb",
+    "canonical_evaluation_results": [
+        {
+            "eval": "build",
+            "compiled": true,
+            "pre_format_warnings": false,
+            "post_format_warnings": false
+        },
+        {
+            "eval": "prove",
+            "result": "proved",
+            "proved_checks": {
+                "SUBPROGRAM_TERMINATION": 4,
+                "VC_DIVISION_CHECK": 12,
+                "VC_INDEX_CHECK": 20,
+                "VC_LENGTH_CHECK": 1,
+                "VC_LOOP_INVARIANT_INIT": 2,
+                "VC_LOOP_INVARIANT_PRESERV": 2,
+                "VC_OVERFLOW_CHECK": 47,
+                "VC_POSTCONDITION": 4,
+                "VC_PRECONDITION": 6,
+                "VC_RANGE_CHECK": 18
+            },
+            "unproved_checks": {},
+            "warnings": {},
+            "non_spark_entities": [],
+            "missing_required_checks": [],
+            "pragma_assume_count": 0
+        }
+    ]
+}

@@ -1,0 +1,61 @@
+{
+    "location": {
+        "path": "src/spark-containers-functional-vectors-higher_order-lemma_filter_eq.adb",
+        "subprogram_name": "Do_Proof"
+    },
+    "expected_non_spark_entities": [
+        "Test_Sequence_HO.HO.Filter",
+        "Test_Sequence_HO.My_Sequences",
+        "Test_Sequence_HO.Nested.\"=\"",
+        "Test_Sequence_HO.Nested.Element_Type",
+        "Test_Sequence_HO.Nested.Equivalent_Elements",
+        "Test_Sequence_HO.Nested.First",
+        "Test_Sequence_HO.Nested.Last",
+        "Test_Sequence_HO.Nested.Witness",
+        "Test_Sequence_HO.Nested.Witness"
+    ],
+    "prove_whole_project": true,
+    "editable_path": "src/spark-containers-functional-vectors-higher_order-lemma_filter_eq.adb",
+    "canonical_evaluation_results": [
+        {
+            "eval": "build",
+            "compiled": true,
+            "pre_format_warnings": false,
+            "post_format_warnings": false
+        },
+        {
+            "eval": "prove",
+            "result": "proved",
+            "proved_checks": {
+                "GLOBAL_WRONG": 10,
+                "SUBPROGRAM_TERMINATION": 20,
+                "VC_CONTAINER_AGGR_CHECK": 4,
+                "VC_FEASIBLE_POST": 4,
+                "VC_LOOP_INVARIANT_INIT": 2,
+                "VC_LOOP_INVARIANT_PRESERV": 2,
+                "VC_NULL_EXCLUSION": 9,
+                "VC_OVERFLOW_CHECK": 5,
+                "VC_POSTCONDITION": 11,
+                "VC_PRECONDITION": 36,
+                "VC_PREDICATE_CHECK": 14,
+                "VC_RANGE_CHECK": 15,
+                "VC_SUBPROGRAM_VARIANT": 3
+            },
+            "unproved_checks": {},
+            "warnings": {},
+            "non_spark_entities": [
+                "Test_Sequence_HO.HO.Filter",
+                "Test_Sequence_HO.My_Sequences",
+                "Test_Sequence_HO.Nested.\"=\"",
+                "Test_Sequence_HO.Nested.Element_Type",
+                "Test_Sequence_HO.Nested.Equivalent_Elements",
+                "Test_Sequence_HO.Nested.First",
+                "Test_Sequence_HO.Nested.Last",
+                "Test_Sequence_HO.Nested.Witness",
+                "Test_Sequence_HO.Nested.Witness"
+            ],
+            "missing_required_checks": [],
+            "pragma_assume_count": 0
+        }
+    ]
+}

@@ -1,0 +1,78 @@
+{
+    "location": {
+        "path": "src/memcp-store.ads",
+        "subprogram_name": "Reindex_Session"
+    },
+    "expected_non_spark_entities": [
+        "Memcp.Store.Bind",
+        "Memcp.Store.Bind",
+        "Memcp.Store.Exec",
+        "Memcp.Store.Free_Path",
+        "Memcp.Store.Is_Open",
+        "Memcp.Store.Prepare",
+        "Memcp.Store.Project_Id",
+        "Memcp.Store.Rollback",
+        "Memcp.Store.Step_Done",
+        "Memcp.Store.Step_Row",
+        "Sqlite_Vec_Spark",
+        "Sqlite_Vec_Spark.Column_Double",
+        "Sqlite_Vec_Spark.Column_Int64",
+        "Sqlite_Vec_Spark.Column_Is_Null",
+        "Sqlite_Vec_Spark.Column_Text",
+        "Sqlite_Vec_Spark.Finalize",
+        "Sqlite_Vec_Spark.Free",
+        "Sqlite_Vec_Spark.Handles.Is_Null"
+    ],
+    "editable_path": "src/memcp-store-reindex_session.adb",
+    "canonical_evaluation_results": [
+        {
+            "eval": "build",
+            "compiled": true,
+            "pre_format_warnings": false,
+            "post_format_warnings": false
+        },
+        {
+            "eval": "prove",
+            "result": "proved",
+            "proved_checks": {
+                "DEPENDS_WRONG": 1,
+                "SUBPROGRAM_TERMINATION": 2,
+                "UNINITIALIZED": 10,
+                "VC_DEFAULT_INITIAL_CONDITION": 1,
+                "VC_LOOP_INVARIANT_INIT": 1,
+                "VC_LOOP_INVARIANT_PRESERV": 1,
+                "VC_NULL_POINTER_DEREFERENCE": 1,
+                "VC_OVERFLOW_CHECK": 1,
+                "VC_PRECONDITION": 17,
+                "VC_RAISE": 14,
+                "VC_RECLAMATION_CHECK": 1,
+                "VC_RESOURCE_LEAK": 4,
+                "VC_RESOURCE_LEAK_AT_END_OF_SCOPE": 25
+            },
+            "unproved_checks": {},
+            "warnings": {},
+            "non_spark_entities": [
+                "Memcp.Store.Bind",
+                "Memcp.Store.Bind",
+                "Memcp.Store.Exec",
+                "Memcp.Store.Free_Path",
+                "Memcp.Store.Is_Open",
+                "Memcp.Store.Prepare",
+                "Memcp.Store.Project_Id",
+                "Memcp.Store.Rollback",
+                "Memcp.Store.Step_Done",
+                "Memcp.Store.Step_Row",
+                "Sqlite_Vec_Spark",
+                "Sqlite_Vec_Spark.Column_Double",
+                "Sqlite_Vec_Spark.Column_Int64",
+                "Sqlite_Vec_Spark.Column_Is_Null",
+                "Sqlite_Vec_Spark.Column_Text",
+                "Sqlite_Vec_Spark.Finalize",
+                "Sqlite_Vec_Spark.Free",
+                "Sqlite_Vec_Spark.Handles.Is_Null"
+            ],
+            "missing_required_checks": [],
+            "pragma_assume_count": 0
+        }
+    ]
+}

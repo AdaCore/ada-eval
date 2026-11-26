@@ -1,0 +1,46 @@
+{
+    "location": {
+        "path": "src/vectors.ads",
+        "subprogram_name": "Reverse_Elements"
+    },
+    "expected_non_spark_entities": [
+        "Vectors.\"=\""
+    ],
+    "editable_path": "src/vectors-reverse_elements.adb",
+    "canonical_evaluation_results": [
+        {
+            "eval": "build",
+            "compiled": true,
+            "pre_format_warnings": false,
+            "post_format_warnings": false
+        },
+        {
+            "eval": "prove",
+            "result": "proved",
+            "proved_checks": {
+                "GLOBAL_WRONG": 2,
+                "SUBPROGRAM_TERMINATION": 3,
+                "UNINITIALIZED": 2,
+                "VC_FEASIBLE_POST": 1,
+                "VC_INDEX_CHECK": 9,
+                "VC_INITIALIZATION_CHECK": 2,
+                "VC_LOOP_INVARIANT_INIT": 1,
+                "VC_LOOP_INVARIANT_PRESERV": 1,
+                "VC_LOOP_VARIANT": 1,
+                "VC_OVERFLOW_CHECK": 13,
+                "VC_POSTCONDITION": 1,
+                "VC_PRECONDITION": 3,
+                "VC_PREDICATE_CHECK": 2,
+                "VC_PREDICATE_CHECK_ON_DEFAULT_VALUE": 1,
+                "VC_RANGE_CHECK": 19
+            },
+            "unproved_checks": {},
+            "warnings": {},
+            "non_spark_entities": [
+                "Vectors.\"=\""
+            ],
+            "missing_required_checks": [],
+            "pragma_assume_count": 0
+        }
+    ]
+}

@@ -1,0 +1,48 @@
+{
+    "location": {
+        "path": "src/reachability.ads",
+        "subprogram_name": "All_Set"
+    },
+    "expected_non_spark_entities": [
+        "Reach_Inst.Memory_Index_Sequences",
+        "Reach_Inst.Memory_Index_Sets",
+        "Reach_Inst.Nested.Next"
+    ],
+    "prove_whole_project": true,
+    "editable_path": "src/reachability-all_set.adb",
+    "canonical_evaluation_results": [
+        {
+            "eval": "build",
+            "compiled": true,
+            "pre_format_warnings": false,
+            "post_format_warnings": false
+        },
+        {
+            "eval": "prove",
+            "result": "proved",
+            "proved_checks": {
+                "GLOBAL_WRONG": 14,
+                "SUBPROGRAM_TERMINATION": 30,
+                "UNINITIALIZED": 1,
+                "VC_ASSERT": 1,
+                "VC_CONTAINER_AGGR_CHECK": 8,
+                "VC_INITIAL_CONDITION": 1,
+                "VC_LOOP_INVARIANT_INIT": 3,
+                "VC_LOOP_INVARIANT_PRESERV": 3,
+                "VC_POSTCONDITION": 13,
+                "VC_PRECONDITION": 34,
+                "VC_PREDICATE_CHECK": 38,
+                "VC_RANGE_CHECK": 4
+            },
+            "unproved_checks": {},
+            "warnings": {},
+            "non_spark_entities": [
+                "Reach_Inst.Memory_Index_Sequences",
+                "Reach_Inst.Memory_Index_Sets",
+                "Reach_Inst.Nested.Next"
+            ],
+            "missing_required_checks": [],
+            "pragma_assume_count": 0
+        }
+    ]
+}

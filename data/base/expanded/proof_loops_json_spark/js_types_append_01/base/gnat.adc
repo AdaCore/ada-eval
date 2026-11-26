@@ -1,0 +1,17 @@
+--  SPARK is the default for these sources, so a unit outside SPARK has to say
+--  so at its own declaration. The leakiest hole was never SPARK_Mode => Off --
+--  it was a new file saying nothing at all, which no search for Off can find.
+--  The per-unit aspects are kept as well: this sets the default, the aspect is
+--  what a reader sees at the declaration.
+pragma SPARK_Mode (On);
+
+pragma Restrictions (No_Obsolescent_Features);
+
+--  Allow 'Old in potentially unevaluated contract expressions
+pragma Unevaluated_Use_Of_Old (Allow);
+
+--  No_Implementation_Extensions is not used because SPARK_Mode and other
+--  SPARK annotations ('Loop_Entry, Subprogram_Variant, ...) are
+--  implementation-defined aspects, attributes, and pragmas
+pragma Restrictions (No_Implementation_Identifiers);
+pragma Restrictions (No_Implementation_Units);

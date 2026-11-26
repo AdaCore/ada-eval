@@ -1,0 +1,50 @@
+{
+    "location": {
+        "path": "src/vectors.ads",
+        "subprogram_name": "Merge"
+    },
+    "expected_non_spark_entities": [
+        "Vectors.\"=\"",
+        "Vectors.Insert_Space"
+    ],
+    "editable_path": "src/vectors-merge.adb",
+    "canonical_evaluation_results": [
+        {
+            "eval": "build",
+            "compiled": true,
+            "pre_format_warnings": false,
+            "post_format_warnings": false
+        },
+        {
+            "eval": "prove",
+            "result": "proved",
+            "proved_checks": {
+                "GLOBAL_WRONG": 7,
+                "SUBPROGRAM_TERMINATION": 8,
+                "UNINITIALIZED": 2,
+                "VC_DISJOINT_CASES": 1,
+                "VC_FEASIBLE_POST": 1,
+                "VC_INDEX_CHECK": 11,
+                "VC_INITIALIZATION_CHECK": 2,
+                "VC_LENGTH_CHECK": 2,
+                "VC_LOOP_INVARIANT_INIT": 4,
+                "VC_LOOP_INVARIANT_PRESERV": 4,
+                "VC_LOOP_VARIANT": 1,
+                "VC_OVERFLOW_CHECK": 20,
+                "VC_PRECONDITION": 11,
+                "VC_PREDICATE_CHECK": 7,
+                "VC_PREDICATE_CHECK_ON_DEFAULT_VALUE": 1,
+                "VC_RAISE": 1,
+                "VC_RANGE_CHECK": 24
+            },
+            "unproved_checks": {},
+            "warnings": {},
+            "non_spark_entities": [
+                "Vectors.\"=\"",
+                "Vectors.Insert_Space"
+            ],
+            "missing_required_checks": [],
+            "pragma_assume_count": 0
+        }
+    ]
+}

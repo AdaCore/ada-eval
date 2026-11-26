@@ -1,0 +1,73 @@
+--
+--  Copyright (C) 2023-2026, Free Software Foundation, Inc.
+--
+--  SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+--
+
+pragma Ada_2022;
+
+package body SPARK.Containers.Functional.Vectors.Higher_Order is
+
+   function Sum_Rec
+     (S     : Sequence;
+      Last  : Extended_Index;
+      Value : not null access function (E : Element_Type) return Big_Integer)
+      return Big_Integer
+   with
+     Ghost              => SPARKlib_Full,
+     Subprogram_Variant => (Decreases => Last),
+     Pre                => Last <= Vectors.Last (S);
+   --  Recursive version of Sum
+
+   --------------
+   -- Sum_Impl --
+   --------------
+
+   function Sum_Impl
+     (S     : Sequence;
+      Last  : Extended_Index;
+      Value : not null access function (E : Element_Type) return Big_Integer)
+      return Big_Integer
+   with
+     Pre  => (SPARKlib_Defensive => Last <= Vectors.Last (S)),
+     Post => (SPARKlib_Full => Sum_Impl'Result = Sum_Rec (S, Last, Value));
+
+   function Sum_Impl
+     (S     : Sequence;
+      Last  : Extended_Index;
+      Value : not null access function (E : Element_Type) return Big_Integer)
+      return Big_Integer
+   is separate;
+
+   ---------
+   -- Sum --
+   ---------
+
+   function Sum
+     (S     : Sequence;
+      Last  : Extended_Index;
+      Value : not null access function (E : Element_Type) return Big_Integer)
+      return Big_Integer
+   with
+     Refined_Post => (SPARKlib_Full => Sum'Result = Sum_Rec (S, Last, Value))
+   is
+   begin
+      return Sum_Impl (S, Last, Value);
+   end Sum;
+
+   -------------
+   -- Sum_Rec --
+   -------------
+
+   function Sum_Rec
+     (S     : Sequence;
+      Last  : Extended_Index;
+      Value : not null access function (E : Element_Type) return Big_Integer)
+      return Big_Integer
+   is (if Last = Extended_Index'First
+       then Big_Integer'(0)
+       else
+         Sum_Rec (S, Extended_Index'Pred (Last), Value)
+         + Value (Get (S, Last)));
+
+end SPARK.Containers.Functional.Vectors.Higher_Order;

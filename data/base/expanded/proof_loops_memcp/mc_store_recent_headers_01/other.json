@@ -1,0 +1,56 @@
+{
+    "location": {
+        "path": "src/memcp-store.ads",
+        "subprogram_name": "Recent_Headers"
+    },
+    "expected_non_spark_entities": [
+        "Memcp.Store.Bind",
+        "Memcp.Store.Bind",
+        "Memcp.Store.Is_Open",
+        "Memcp.Store.Name_Vectors",
+        "Memcp.Store.Placeholders",
+        "Memcp.Store.Prepare"
+    ],
+    "editable_path": "src/memcp-store-recent_headers.adb",
+    "canonical_evaluation_results": [
+        {
+            "eval": "build",
+            "compiled": true,
+            "pre_format_warnings": false,
+            "post_format_warnings": false
+        },
+        {
+            "eval": "prove",
+            "result": "proved",
+            "proved_checks": {
+                "GLOBAL_WRONG": 16,
+                "SUBPROGRAM_TERMINATION": 24,
+                "UNINITIALIZED": 2,
+                "VC_CONTAINER_AGGR_CHECK": 8,
+                "VC_DYNAMIC_ACCESSIBILITY_CHECK": 1,
+                "VC_LOOP_INVARIANT_INIT": 1,
+                "VC_LOOP_INVARIANT_PRESERV": 1,
+                "VC_OVERFLOW_CHECK": 10,
+                "VC_POSTCONDITION": 13,
+                "VC_PRECONDITION": 43,
+                "VC_PREDICATE_CHECK": 2,
+                "VC_RAISE": 3,
+                "VC_RANGE_CHECK": 6,
+                "VC_RESOURCE_LEAK": 1,
+                "VC_RESOURCE_LEAK_AT_END_OF_SCOPE": 4
+            },
+            "unproved_checks": {},
+            "warnings": {},
+            "non_spark_entities": [
+                "Memcp.Store.Bind",
+                "Memcp.Store.Bind",
+                "Memcp.Store.Is_Open",
+                "Memcp.Store.Name_Vectors",
+                "Memcp.Store.Placeholders",
+                "Memcp.Store.Prepare"
+            ],
+            "missing_required_checks": [],
+            "pragma_assume_count": 0
+        }
+    ]
+}

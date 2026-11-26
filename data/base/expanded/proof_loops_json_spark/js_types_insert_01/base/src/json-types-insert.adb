@@ -1,0 +1,39 @@
+--  SPDX-License-Identifier: Apache-2.0
+--
+--  Copyright (c) 2016 onox <denkpadje@gmail.com>
+--
+--  Licensed under the Apache License, Version 2.0 (the "License");
+--  you may not use this file except in compliance with the License.
+--  You may obtain a copy of the License at
+--
+--      http://www.apache.org/licenses/LICENSE-2.0
+--
+--  Unless required by applicable law or agreed to in writing, software
+--  distributed under the License is distributed on an "AS IS" BASIS,
+--  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+--  See the License for the specific language governing permissions and
+--  limitations under the License.
+
+separate (JSON.Types)
+procedure Insert
+  (Object : not null access JSON_Value;
+   Key    : String;
+   Value  : in out JSON_Value_Access) is
+begin
+   Value.Key := To_Text (Key);
+   if Object.First_Child = null then
+      Object.First_Child := Value;
+   else
+      declare
+         Node : access JSON_Value := Object.First_Child;
+      begin
+         while Node.Next /= null loop
+            pragma Loop_Variant (Structural => Node);
+            Node := Node.Next;
+         end loop;
+         Node.Next := Value;
+      end;
+   end if;
+   Value := null;
+   Object.Length := Object.Length + 1;
+end Insert;

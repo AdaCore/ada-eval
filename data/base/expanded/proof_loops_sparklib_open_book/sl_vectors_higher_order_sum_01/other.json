@@ -1,0 +1,60 @@
+{
+    "location": {
+        "path": "src/spark-containers-functional-vectors-higher_order.ads",
+        "subprogram_name": "Sum"
+    },
+    "expected_non_spark_entities": [
+        "Test_Sequence_HO.My_Sequences",
+        "Test_Sequence_HO.Nested.\"=\"",
+        "Test_Sequence_HO.Nested.Element_Type",
+        "Test_Sequence_HO.Nested.Equivalent_Elements",
+        "Test_Sequence_HO.Nested.First",
+        "Test_Sequence_HO.Nested.Last",
+        "Test_Sequence_HO.Nested.Witness",
+        "Test_Sequence_HO.Nested.Witness"
+    ],
+    "prove_whole_project": true,
+    "editable_path": "src/spark-containers-functional-vectors-higher_order-sum_impl.adb",
+    "canonical_evaluation_results": [
+        {
+            "eval": "build",
+            "compiled": true,
+            "pre_format_warnings": false,
+            "post_format_warnings": false
+        },
+        {
+            "eval": "prove",
+            "result": "proved",
+            "proved_checks": {
+                "GLOBAL_WRONG": 10,
+                "SUBPROGRAM_TERMINATION": 20,
+                "VC_CONTAINER_AGGR_CHECK": 4,
+                "VC_FEASIBLE_POST": 3,
+                "VC_LOOP_INVARIANT_INIT": 1,
+                "VC_LOOP_INVARIANT_PRESERV": 1,
+                "VC_NULL_EXCLUSION": 4,
+                "VC_OVERFLOW_CHECK": 3,
+                "VC_POSTCONDITION": 10,
+                "VC_PRECONDITION": 25,
+                "VC_PREDICATE_CHECK": 14,
+                "VC_RANGE_CHECK": 8,
+                "VC_REFINED_POST": 1,
+                "VC_SUBPROGRAM_VARIANT": 1
+            },
+            "unproved_checks": {},
+            "warnings": {},
+            "non_spark_entities": [
+                "Test_Sequence_HO.My_Sequences",
+                "Test_Sequence_HO.Nested.\"=\"",
+                "Test_Sequence_HO.Nested.Element_Type",
+                "Test_Sequence_HO.Nested.Equivalent_Elements",
+                "Test_Sequence_HO.Nested.First",
+                "Test_Sequence_HO.Nested.Last",
+                "Test_Sequence_HO.Nested.Witness",
+                "Test_Sequence_HO.Nested.Witness"
+            ],
+            "missing_required_checks": [],
+            "pragma_assume_count": 0
+        }
+    ]
+}

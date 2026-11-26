@@ -1,0 +1,57 @@
+{
+    "location": {
+        "path": "src/spark-containers-functional-multisets.ads",
+        "subprogram_name": "Equal_Except_Left"
+    },
+    "expected_non_spark_entities": [
+        "My_Multiset.Equal_Except",
+        "My_Multiset.Maps",
+        "My_Multiset.Private_Key",
+        "Types.Eq",
+        "Types.Witness"
+    ],
+    "prove_whole_project": true,
+    "editable_path": "src/spark-containers-functional-multisets-equal_except_left.adb",
+    "canonical_evaluation_results": [
+        {
+            "eval": "build",
+            "compiled": true,
+            "pre_format_warnings": false,
+            "post_format_warnings": false
+        },
+        {
+            "eval": "prove",
+            "result": "proved",
+            "proved_checks": {
+                "GLOBAL_WRONG": 37,
+                "SUBPROGRAM_TERMINATION": 60,
+                "UNINITIALIZED": 4,
+                "VC_ASSERT": 5,
+                "VC_CONTAINER_AGGR_CHECK": 9,
+                "VC_DEFAULT_INITIAL_CONDITION": 1,
+                "VC_INLINE_CHECK": 1,
+                "VC_INVARIANT_CHECK": 85,
+                "VC_INVARIANT_CHECK_ON_DEFAULT_VALUE": 1,
+                "VC_LOOP_INVARIANT_INIT": 2,
+                "VC_LOOP_INVARIANT_PRESERV": 2,
+                "VC_POSTCONDITION": 34,
+                "VC_PRECONDITION": 112,
+                "VC_PREDICATE_CHECK": 141,
+                "VC_RANGE_CHECK": 4,
+                "VC_REFINED_POST": 1,
+                "VC_SUBPROGRAM_VARIANT": 8
+            },
+            "unproved_checks": {},
+            "warnings": {},
+            "non_spark_entities": [
+                "My_Multiset.Equal_Except",
+                "My_Multiset.Maps",
+                "My_Multiset.Private_Key",
+                "Types.Eq",
+                "Types.Witness"
+            ],
+            "missing_required_checks": [],
+            "pragma_assume_count": 0
+        }
+    ]
+}

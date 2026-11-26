@@ -1,0 +1,62 @@
+{
+    "location": {
+        "path": "src/memcp-store.ads",
+        "subprogram_name": "Search_Summaries"
+    },
+    "expected_non_spark_entities": [
+        "Memcp.Store.Bind",
+        "Memcp.Store.Contains",
+        "Memcp.Store.Is_Open",
+        "Memcp.Store.Name_Vectors",
+        "Memcp.Store.Prepare",
+        "Memcp.Store.Reset",
+        "Memcp.Store.Step_Row",
+        "Memcp.Store.Summary_Hit_Vectors"
+    ],
+    "editable_path": "src/memcp-store-search_summaries.adb",
+    "canonical_evaluation_results": [
+        {
+            "eval": "build",
+            "compiled": true,
+            "pre_format_warnings": false,
+            "post_format_warnings": false
+        },
+        {
+            "eval": "prove",
+            "result": "proved",
+            "proved_checks": {
+                "GLOBAL_WRONG": 32,
+                "SUBPROGRAM_TERMINATION": 48,
+                "UNINITIALIZED": 6,
+                "VC_CONTAINER_AGGR_CHECK": 16,
+                "VC_DYNAMIC_ACCESSIBILITY_CHECK": 2,
+                "VC_LENGTH_CHECK": 6,
+                "VC_LOOP_INVARIANT_INIT": 1,
+                "VC_LOOP_INVARIANT_PRESERV": 1,
+                "VC_NULL_POINTER_DEREFERENCE": 15,
+                "VC_OVERFLOW_CHECK": 20,
+                "VC_POSTCONDITION": 26,
+                "VC_PRECONDITION": 91,
+                "VC_PREDICATE_CHECK": 4,
+                "VC_RAISE": 7,
+                "VC_RANGE_CHECK": 16,
+                "VC_RESOURCE_LEAK": 2,
+                "VC_RESOURCE_LEAK_AT_END_OF_SCOPE": 20
+            },
+            "unproved_checks": {},
+            "warnings": {},
+            "non_spark_entities": [
+                "Memcp.Store.Bind",
+                "Memcp.Store.Contains",
+                "Memcp.Store.Is_Open",
+                "Memcp.Store.Name_Vectors",
+                "Memcp.Store.Prepare",
+                "Memcp.Store.Reset",
+                "Memcp.Store.Step_Row",
+                "Memcp.Store.Summary_Hit_Vectors"
+            ],
+            "missing_required_checks": [],
+            "pragma_assume_count": 0
+        }
+    ]
+}
