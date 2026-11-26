@@ -1,0 +1,31 @@
+--
+--  Copyright (C) 2023-2026, Free Software Foundation, Inc.
+--
+--  SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+--
+
+pragma Ada_2022;
+separate (SPARK.Containers.Functional.Sets.Higher_Order)
+procedure Lemma_Count_None
+  (S    : Set;
+   Test : not null access function (E : Element_Type) return Boolean)
+is
+
+   procedure Do_Proof
+   with Ghost => Static;
+   --  Prove the lemma
+
+   --------------
+   -- Do_Proof --
+   --------------
+
+   procedure Do_Proof is
+   begin
+      for Subset in Iterate (S) loop
+         null;
+      end loop;
+   end Do_Proof;
+
+begin
+   Do_Proof;
+end Lemma_Count_None;

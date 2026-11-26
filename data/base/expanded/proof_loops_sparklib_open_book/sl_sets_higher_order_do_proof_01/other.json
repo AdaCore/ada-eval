@@ -1,0 +1,55 @@
+{
+    "location": {
+        "path": "src/spark-containers-functional-sets-higher_order-lemma_count_all.adb",
+        "subprogram_name": "Do_Proof"
+    },
+    "expected_non_spark_entities": [
+        "Inst.My_Sets",
+        "Inst.Nested.\"=\"",
+        "Inst.Nested.Element_Type",
+        "Inst.Nested.Equivalent_Elements",
+        "Inst.Nested.Witness",
+        "Inst.Nested.Witness"
+    ],
+    "prove_whole_project": true,
+    "editable_path": "src/spark-containers-functional-sets-higher_order-lemma_count_all.adb",
+    "canonical_evaluation_results": [
+        {
+            "eval": "build",
+            "compiled": true,
+            "pre_format_warnings": false,
+            "post_format_warnings": false
+        },
+        {
+            "eval": "prove",
+            "result": "proved",
+            "proved_checks": {
+                "GLOBAL_WRONG": 6,
+                "SUBPROGRAM_TERMINATION": 13,
+                "VC_ASSERT": 1,
+                "VC_CONTAINER_AGGR_CHECK": 4,
+                "VC_FEASIBLE_POST": 2,
+                "VC_LOOP_INVARIANT_INIT": 1,
+                "VC_LOOP_INVARIANT_PRESERV": 1,
+                "VC_NULL_EXCLUSION": 3,
+                "VC_POSTCONDITION": 6,
+                "VC_PRECONDITION": 25,
+                "VC_PREDICATE_CHECK": 14,
+                "VC_RANGE_CHECK": 1,
+                "VC_SUBPROGRAM_VARIANT": 1
+            },
+            "unproved_checks": {},
+            "warnings": {},
+            "non_spark_entities": [
+                "Inst.My_Sets",
+                "Inst.Nested.\"=\"",
+                "Inst.Nested.Element_Type",
+                "Inst.Nested.Equivalent_Elements",
+                "Inst.Nested.Witness",
+                "Inst.Nested.Witness"
+            ],
+            "missing_required_checks": [],
+            "pragma_assume_count": 0
+        }
+    ]
+}

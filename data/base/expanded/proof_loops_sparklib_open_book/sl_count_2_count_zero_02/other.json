@@ -1,0 +1,44 @@
+{
+    "location": {
+        "path": "src/spark-higher_order-fold.ads",
+        "subprogram_name": "Count_Zero"
+    },
+    "expected_non_spark_entities": [
+        "Test_Higher_Order3.Choose",
+        "Test_Higher_Order3.My_Count_2.Fold_Count.Acc.Fold",
+        "Test_Higher_Order3.My_Count_2.Fold_Count.Fold"
+    ],
+    "prove_whole_project": true,
+    "editable_path": "src/spark-higher_order-fold-count_2-count_zero.adb",
+    "canonical_evaluation_results": [
+        {
+            "eval": "build",
+            "compiled": true,
+            "pre_format_warnings": false,
+            "post_format_warnings": false
+        },
+        {
+            "eval": "prove",
+            "result": "proved",
+            "proved_checks": {
+                "SUBPROGRAM_TERMINATION": 5,
+                "VC_INDEX_CHECK": 12,
+                "VC_LOOP_INVARIANT_INIT": 2,
+                "VC_LOOP_INVARIANT_PRESERV": 2,
+                "VC_OVERFLOW_CHECK": 9,
+                "VC_POSTCONDITION": 3,
+                "VC_PRECONDITION": 5,
+                "VC_RANGE_CHECK": 9
+            },
+            "unproved_checks": {},
+            "warnings": {},
+            "non_spark_entities": [
+                "Test_Higher_Order3.Choose",
+                "Test_Higher_Order3.My_Count_2.Fold_Count.Acc.Fold",
+                "Test_Higher_Order3.My_Count_2.Fold_Count.Fold"
+            ],
+            "missing_required_checks": [],
+            "pragma_assume_count": 0
+        }
+    ]
+}

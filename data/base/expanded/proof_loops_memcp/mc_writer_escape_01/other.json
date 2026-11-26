@@ -1,0 +1,35 @@
+{
+    "location": {
+        "path": "src/spark_mcp-writer.ads",
+        "subprogram_name": "Escape"
+    },
+    "editable_path": "src/spark_mcp-writer-escape.adb",
+    "canonical_evaluation_results": [
+        {
+            "eval": "build",
+            "compiled": true,
+            "pre_format_warnings": false,
+            "post_format_warnings": false
+        },
+        {
+            "eval": "prove",
+            "result": "proved",
+            "proved_checks": {
+                "SUBPROGRAM_TERMINATION": 1,
+                "VC_DIVISION_CHECK": 2,
+                "VC_INDEX_CHECK": 18,
+                "VC_LENGTH_CHECK": 17,
+                "VC_LOOP_INVARIANT_INIT": 1,
+                "VC_LOOP_INVARIANT_PRESERV": 1,
+                "VC_OVERFLOW_CHECK": 45,
+                "VC_POSTCONDITION": 1,
+                "VC_RANGE_CHECK": 22
+            },
+            "unproved_checks": {},
+            "warnings": {},
+            "non_spark_entities": [],
+            "missing_required_checks": [],
+            "pragma_assume_count": 0
+        }
+    ]
+}

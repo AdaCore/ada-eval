@@ -1,0 +1,60 @@
+{
+    "location": {
+        "path": "src/memcp-store.ads",
+        "subprogram_name": "Recent_Headers"
+    },
+    "expected_non_spark_entities": [
+        "Memcp.Store.Bind",
+        "Memcp.Store.Header_Vectors",
+        "Memcp.Store.Is_Open",
+        "Memcp.Store.Name_Vectors",
+        "Memcp.Store.Placeholders",
+        "Memcp.Store.Prepare",
+        "Memcp.Store.Step_Row"
+    ],
+    "editable_path": "src/memcp-store-recent_headers.adb",
+    "canonical_evaluation_results": [
+        {
+            "eval": "build",
+            "compiled": true,
+            "pre_format_warnings": false,
+            "post_format_warnings": false
+        },
+        {
+            "eval": "prove",
+            "result": "proved",
+            "proved_checks": {
+                "GLOBAL_WRONG": 32,
+                "SUBPROGRAM_TERMINATION": 48,
+                "UNINITIALIZED": 4,
+                "VC_CONTAINER_AGGR_CHECK": 16,
+                "VC_DYNAMIC_ACCESSIBILITY_CHECK": 2,
+                "VC_LENGTH_CHECK": 5,
+                "VC_LOOP_INVARIANT_INIT": 1,
+                "VC_LOOP_INVARIANT_PRESERV": 1,
+                "VC_NULL_POINTER_DEREFERENCE": 10,
+                "VC_OVERFLOW_CHECK": 19,
+                "VC_POSTCONDITION": 26,
+                "VC_PRECONDITION": 86,
+                "VC_PREDICATE_CHECK": 4,
+                "VC_RAISE": 3,
+                "VC_RANGE_CHECK": 17,
+                "VC_RESOURCE_LEAK": 1,
+                "VC_RESOURCE_LEAK_AT_END_OF_SCOPE": 9
+            },
+            "unproved_checks": {},
+            "warnings": {},
+            "non_spark_entities": [
+                "Memcp.Store.Bind",
+                "Memcp.Store.Header_Vectors",
+                "Memcp.Store.Is_Open",
+                "Memcp.Store.Name_Vectors",
+                "Memcp.Store.Placeholders",
+                "Memcp.Store.Prepare",
+                "Memcp.Store.Step_Row"
+            ],
+            "missing_required_checks": [],
+            "pragma_assume_count": 0
+        }
+    ]
+}

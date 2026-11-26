@@ -1,0 +1,33 @@
+{
+    "location": {
+        "path": "src/memcp-extractor.ads",
+        "subprogram_name": "Valid_Utf8"
+    },
+    "editable_path": "src/memcp-extractor-valid_utf8.adb",
+    "canonical_evaluation_results": [
+        {
+            "eval": "build",
+            "compiled": true,
+            "pre_format_warnings": false,
+            "post_format_warnings": false
+        },
+        {
+            "eval": "prove",
+            "result": "proved",
+            "proved_checks": {
+                "SUBPROGRAM_TERMINATION": 3,
+                "VC_INDEX_CHECK": 1,
+                "VC_LOOP_INVARIANT_INIT": 1,
+                "VC_LOOP_INVARIANT_PRESERV": 1,
+                "VC_LOOP_VARIANT": 1,
+                "VC_OVERFLOW_CHECK": 28,
+                "VC_PRECONDITION": 6
+            },
+            "unproved_checks": {},
+            "warnings": {},
+            "non_spark_entities": [],
+            "missing_required_checks": [],
+            "pragma_assume_count": 0
+        }
+    ]
+}

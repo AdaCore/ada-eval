@@ -1,0 +1,50 @@
+{
+    "location": {
+        "path": "src/spark-higher_order-fold.ads",
+        "subprogram_name": "Sum"
+    },
+    "expected_non_spark_entities": [
+        "Test_Higher_Order3.My_Sum_Int.Big_Integer_Sum.Fold_Sum.Acc.Fold",
+        "Test_Higher_Order3.My_Sum_Int.Big_Integer_Sum.Fold_Sum.Fold",
+        "Test_Higher_Order3.My_Sum_Int.Prove_Add",
+        "Test_Higher_Order3.My_Sum_Int.Prove_Zero",
+        "Test_Higher_Order3.Value"
+    ],
+    "prove_whole_project": true,
+    "editable_path": "src/spark-higher_order-fold-sum_2-sum.adb",
+    "canonical_evaluation_results": [
+        {
+            "eval": "build",
+            "compiled": true,
+            "pre_format_warnings": false,
+            "post_format_warnings": false
+        },
+        {
+            "eval": "prove",
+            "result": "proved",
+            "proved_checks": {
+                "SUBPROGRAM_TERMINATION": 9,
+                "VC_INDEX_CHECK": 12,
+                "VC_LOOP_INVARIANT_INIT": 4,
+                "VC_LOOP_INVARIANT_PRESERV": 4,
+                "VC_OVERFLOW_CHECK": 4,
+                "VC_POSTCONDITION": 1,
+                "VC_PRECONDITION": 13,
+                "VC_PREDICATE_CHECK": 8,
+                "VC_RANGE_CHECK": 13,
+                "VC_SUBPROGRAM_VARIANT": 2
+            },
+            "unproved_checks": {},
+            "warnings": {},
+            "non_spark_entities": [
+                "Test_Higher_Order3.My_Sum_Int.Big_Integer_Sum.Fold_Sum.Acc.Fold",
+                "Test_Higher_Order3.My_Sum_Int.Big_Integer_Sum.Fold_Sum.Fold",
+                "Test_Higher_Order3.My_Sum_Int.Prove_Add",
+                "Test_Higher_Order3.My_Sum_Int.Prove_Zero",
+                "Test_Higher_Order3.Value"
+            ],
+            "missing_required_checks": [],
+            "pragma_assume_count": 0
+        }
+    ]
+}

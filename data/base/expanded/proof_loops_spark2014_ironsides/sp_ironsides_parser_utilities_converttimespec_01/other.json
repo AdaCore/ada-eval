@@ -1,0 +1,35 @@
+{
+    "location": {
+        "path": "src/parser_utilities.ads",
+        "subprogram_name": "ConvertTimeSpec"
+    },
+    "editable_path": "src/parser_utilities-converttimespec.adb",
+    "canonical_evaluation_results": [
+        {
+            "eval": "build",
+            "compiled": true,
+            "pre_format_warnings": false,
+            "post_format_warnings": false
+        },
+        {
+            "eval": "prove",
+            "result": "proved",
+            "proved_checks": {
+                "DEPENDS_WRONG": 1,
+                "SUBPROGRAM_TERMINATION": 2,
+                "UNINITIALIZED": 6,
+                "VC_LOOP_INVARIANT_INIT": 1,
+                "VC_LOOP_INVARIANT_PRESERV": 1,
+                "VC_OVERFLOW_CHECK": 4,
+                "VC_POSTCONDITION": 1,
+                "VC_PRECONDITION": 1,
+                "VC_RANGE_CHECK": 2
+            },
+            "unproved_checks": {},
+            "warnings": {},
+            "non_spark_entities": [],
+            "missing_required_checks": [],
+            "pragma_assume_count": 0
+        }
+    ]
+}

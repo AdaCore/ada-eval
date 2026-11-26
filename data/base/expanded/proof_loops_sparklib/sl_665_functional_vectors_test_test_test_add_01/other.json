@@ -1,0 +1,32 @@
+{
+    "location": {
+        "path": "src/test.ads",
+        "subprogram_name": "Test_Add"
+    },
+    "editable_path": "src/test-test_add.adb",
+    "canonical_evaluation_results": [
+        {
+            "eval": "build",
+            "compiled": true,
+            "pre_format_warnings": false,
+            "post_format_warnings": false
+        },
+        {
+            "eval": "prove",
+            "result": "proved",
+            "proved_checks": {
+                "SUBPROGRAM_TERMINATION": 1,
+                "UNINITIALIZED": 1,
+                "VC_LOOP_INVARIANT_INIT": 2,
+                "VC_LOOP_INVARIANT_PRESERV": 2,
+                "VC_POSTCONDITION": 1,
+                "VC_PRECONDITION": 3
+            },
+            "unproved_checks": {},
+            "warnings": {},
+            "non_spark_entities": [],
+            "missing_required_checks": [],
+            "pragma_assume_count": 0
+        }
+    ]
+}

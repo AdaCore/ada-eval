@@ -1,0 +1,42 @@
+{
+    "location": {
+        "path": "src/test_higher_order2.ads",
+        "subprogram_name": "Prove_No_Overflows"
+    },
+    "expected_non_spark_entities": [
+        "Test_Higher_Order2.Value"
+    ],
+    "editable_path": "src/test_higher_order2-prove_no_overflows.adb",
+    "canonical_evaluation_results": [
+        {
+            "eval": "build",
+            "compiled": true,
+            "pre_format_warnings": false,
+            "post_format_warnings": false
+        },
+        {
+            "eval": "prove",
+            "result": "proved",
+            "proved_checks": {
+                "GLOBAL_WRONG": 1,
+                "SUBPROGRAM_TERMINATION": 14,
+                "VC_INDEX_CHECK": 6,
+                "VC_LOOP_INVARIANT_INIT": 2,
+                "VC_LOOP_INVARIANT_PRESERV": 2,
+                "VC_OVERFLOW_CHECK": 6,
+                "VC_POSTCONDITION": 5,
+                "VC_PRECONDITION": 7,
+                "VC_PREDICATE_CHECK": 4,
+                "VC_RANGE_CHECK": 10,
+                "VC_SUBPROGRAM_VARIANT": 1
+            },
+            "unproved_checks": {},
+            "warnings": {},
+            "non_spark_entities": [
+                "Test_Higher_Order2.Value"
+            ],
+            "missing_required_checks": [],
+            "pragma_assume_count": 0
+        }
+    ]
+}

@@ -1,0 +1,18 @@
+--  The one SPARKlib unit this project needs that the installed SPARKlib
+--  (FSF 16.1) does not carry: SPARK.Higher_Order.Reachability, new in the
+--  source repository.  It is copied verbatim, body included, in the form the
+--  library ships -- the body is `with SPARK_Mode => Off --  #BODYMODE`, so in
+--  a normal build it is not analysed and its lemmas are assumed at their call
+--  sites, exactly as any client of SPARKlib gets them.
+--
+--  It is a separate project rather than a source of this one because library
+--  units are meant to be `with`ed, not copied, and this one is only copied
+--  because the installed library predates it.
+with "sparklib.gpr";
+project SPARKlib_New is
+   for Source_Dirs use ("sparklib_new");
+   for Object_Dir use "sparklib_lib";
+   package Compiler is
+      for Default_Switches ("Ada") use ("-gnat2022", "-gnatwI");
+   end Compiler;
+end SPARKlib_New;

@@ -1,0 +1,46 @@
+{
+    "location": {
+        "path": "src/json-types.adb",
+        "subprogram_name": "Free_Node"
+    },
+    "expected_non_spark_entities": [
+        "Proof_Harness.Types.Dealloc",
+        "Proof_Harness.Types.Free_Text"
+    ],
+    "prove_whole_project": true,
+    "editable_path": "src/json-types-free_node.adb",
+    "canonical_evaluation_results": [
+        {
+            "eval": "build",
+            "compiled": true,
+            "pre_format_warnings": false,
+            "post_format_warnings": false
+        },
+        {
+            "eval": "prove",
+            "result": "proved",
+            "proved_checks": {
+                "DEPENDS_WRONG": 2,
+                "SUBPROGRAM_TERMINATION": 3,
+                "VC_LOOP_INVARIANT_INIT": 1,
+                "VC_LOOP_INVARIANT_PRESERV": 1,
+                "VC_LOOP_VARIANT": 1,
+                "VC_NULL_POINTER_DEREFERENCE": 7,
+                "VC_POSTCONDITION": 2,
+                "VC_PREDICATE_CHECK": 6,
+                "VC_RANGE_CHECK": 2,
+                "VC_RESOURCE_LEAK": 4,
+                "VC_RESOURCE_LEAK_AT_END_OF_SCOPE": 2,
+                "VC_SUBPROGRAM_VARIANT": 3
+            },
+            "unproved_checks": {},
+            "warnings": {},
+            "non_spark_entities": [
+                "Proof_Harness.Types.Dealloc",
+                "Proof_Harness.Types.Free_Text"
+            ],
+            "missing_required_checks": [],
+            "pragma_assume_count": 0
+        }
+    ]
+}

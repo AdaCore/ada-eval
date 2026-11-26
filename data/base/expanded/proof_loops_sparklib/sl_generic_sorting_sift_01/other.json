@@ -1,0 +1,41 @@
+{
+    "location": {
+        "path": "src/sorting.ads",
+        "subprogram_name": "Sift"
+    },
+    "editable_path": "src/sorting-sift.adb",
+    "canonical_evaluation_results": [
+        {
+            "eval": "build",
+            "compiled": true,
+            "pre_format_warnings": false,
+            "post_format_warnings": false
+        },
+        {
+            "eval": "prove",
+            "result": "proved",
+            "proved_checks": {
+                "GLOBAL_WRONG": 2,
+                "SUBPROGRAM_TERMINATION": 3,
+                "UNINITIALIZED": 1,
+                "VC_DIVISION_CHECK": 1,
+                "VC_INDEX_CHECK": 5,
+                "VC_INITIALIZATION_CHECK": 2,
+                "VC_LOOP_INVARIANT_INIT": 2,
+                "VC_LOOP_INVARIANT_PRESERV": 2,
+                "VC_LOOP_VARIANT": 1,
+                "VC_OVERFLOW_CHECK": 4,
+                "VC_POSTCONDITION": 1,
+                "VC_PRECONDITION": 5,
+                "VC_PREDICATE_CHECK": 2,
+                "VC_RANGE_CHECK": 2,
+                "VC_SUBPROGRAM_VARIANT": 1
+            },
+            "unproved_checks": {},
+            "warnings": {},
+            "non_spark_entities": [],
+            "missing_required_checks": [],
+            "pragma_assume_count": 0
+        }
+    ]
+}

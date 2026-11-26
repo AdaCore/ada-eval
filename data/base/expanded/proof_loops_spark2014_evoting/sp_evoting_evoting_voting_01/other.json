@@ -1,0 +1,44 @@
+{
+    "location": {
+        "path": "src/evoting.ads",
+        "subprogram_name": "Voting"
+    },
+    "expected_non_spark_entities": [
+        "eVoting.Get_Vote",
+        "eVoting.Print_A_Candidate"
+    ],
+    "editable_path": "src/evoting-voting.adb",
+    "canonical_evaluation_results": [
+        {
+            "eval": "build",
+            "compiled": true,
+            "pre_format_warnings": false,
+            "post_format_warnings": false
+        },
+        {
+            "eval": "prove",
+            "result": "proved",
+            "proved_checks": {
+                "UNINITIALIZED": 3,
+                "VC_EXCEPTIONAL_CASE": 1,
+                "VC_INDEX_CHECK": 2,
+                "VC_INITIALIZATION_CHECK": 2,
+                "VC_LOOP_INVARIANT_INIT": 1,
+                "VC_LOOP_INVARIANT_PRESERV": 1,
+                "VC_OVERFLOW_CHECK": 1,
+                "VC_POSTCONDITION": 1,
+                "VC_PRECONDITION": 1,
+                "VC_RAISE": 2,
+                "VC_RANGE_CHECK": 2
+            },
+            "unproved_checks": {},
+            "warnings": {},
+            "non_spark_entities": [
+                "eVoting.Get_Vote",
+                "eVoting.Print_A_Candidate"
+            ],
+            "missing_required_checks": [],
+            "pragma_assume_count": 0
+        }
+    ]
+}

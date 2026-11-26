@@ -1,0 +1,51 @@
+{
+    "location": {
+        "path": "src/c_strings.ads",
+        "subprogram_name": "New_Char_Array"
+    },
+    "expected_non_spark_entities": [
+        "C_Strings.C_Length_Ghost",
+        "C_Strings.Find_Nul"
+    ],
+    "editable_path": "src/c_strings-new_char_array.adb",
+    "canonical_evaluation_results": [
+        {
+            "eval": "build",
+            "compiled": true,
+            "pre_format_warnings": false,
+            "post_format_warnings": false
+        },
+        {
+            "eval": "prove",
+            "result": "proved",
+            "proved_checks": {
+                "GLOBAL_WRONG": 3,
+                "SUBPROGRAM_TERMINATION": 5,
+                "VC_ASSERT": 8,
+                "VC_ASSERT_PREMISE": 2,
+                "VC_ASSERT_STEP": 3,
+                "VC_DEFAULT_INITIAL_CONDITION": 1,
+                "VC_INDEX_CHECK": 21,
+                "VC_INITIALIZATION_CHECK": 3,
+                "VC_LENGTH_CHECK": 2,
+                "VC_LOOP_INVARIANT_INIT": 1,
+                "VC_LOOP_INVARIANT_PRESERV": 1,
+                "VC_NULL_POINTER_DEREFERENCE": 6,
+                "VC_OVERFLOW_CHECK": 3,
+                "VC_POSTCONDITION": 4,
+                "VC_PRECONDITION": 26,
+                "VC_PREDICATE_CHECK": 3,
+                "VC_PREDICATE_CHECK_ON_DEFAULT_VALUE": 1,
+                "VC_RANGE_CHECK": 19
+            },
+            "unproved_checks": {},
+            "warnings": {},
+            "non_spark_entities": [
+                "C_Strings.C_Length_Ghost",
+                "C_Strings.Find_Nul"
+            ],
+            "missing_required_checks": [],
+            "pragma_assume_count": 0
+        }
+    ]
+}

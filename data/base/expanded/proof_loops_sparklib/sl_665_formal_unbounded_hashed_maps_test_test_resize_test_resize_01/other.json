@@ -1,0 +1,44 @@
+{
+    "location": {
+        "path": "src/test_resize.adb",
+        "subprogram_name": "Test_Resize"
+    },
+    "expected_non_spark_entities": [
+        "Test_Resize.Inst.Int_Maps"
+    ],
+    "editable_path": "src/test_resize-insert_elements.adb",
+    "canonical_evaluation_results": [
+        {
+            "eval": "build",
+            "compiled": true,
+            "pre_format_warnings": false,
+            "post_format_warnings": false
+        },
+        {
+            "eval": "prove",
+            "result": "proved",
+            "proved_checks": {
+                "GLOBAL_WRONG": 49,
+                "SUBPROGRAM_TERMINATION": 87,
+                "UNINITIALIZED": 1,
+                "VC_CONTAINER_AGGR_CHECK": 22,
+                "VC_DIVISION_CHECK": 4,
+                "VC_DYNAMIC_ACCESSIBILITY_CHECK": 1,
+                "VC_LOOP_INVARIANT_INIT": 2,
+                "VC_LOOP_INVARIANT_PRESERV": 2,
+                "VC_OVERFLOW_CHECK": 1,
+                "VC_POSTCONDITION": 43,
+                "VC_PRECONDITION": 100,
+                "VC_PREDICATE_CHECK": 2,
+                "VC_RANGE_CHECK": 1
+            },
+            "unproved_checks": {},
+            "warnings": {},
+            "non_spark_entities": [
+                "Test_Resize.Inst.Int_Maps"
+            ],
+            "missing_required_checks": [],
+            "pragma_assume_count": 0
+        }
+    ]
+}

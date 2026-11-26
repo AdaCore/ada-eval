@@ -1,0 +1,48 @@
+{
+    "location": {
+        "path": "src/spark-containers-functional-total_maps.ads",
+        "subprogram_name": "Elements_Equal_Except"
+    },
+    "expected_non_spark_entities": [
+        "Inst.Iter_Element",
+        "Inst.Iter_First",
+        "Inst.Iter_Has_Element",
+        "Inst.Iter_Next",
+        "Inst.Maps"
+    ],
+    "prove_whole_project": true,
+    "editable_path": "src/spark-containers-functional-total_maps-elements_equal_except.adb",
+    "canonical_evaluation_results": [
+        {
+            "eval": "build",
+            "compiled": true,
+            "pre_format_warnings": false,
+            "post_format_warnings": false
+        },
+        {
+            "eval": "prove",
+            "result": "proved",
+            "proved_checks": {
+                "GLOBAL_WRONG": 18,
+                "SUBPROGRAM_TERMINATION": 34,
+                "VC_CONTAINER_AGGR_CHECK": 6,
+                "VC_INLINE_CHECK": 1,
+                "VC_LOOP_INVARIANT_INIT": 1,
+                "VC_LOOP_INVARIANT_PRESERV": 1,
+                "VC_POSTCONDITION": 14,
+                "VC_PRECONDITION": 35
+            },
+            "unproved_checks": {},
+            "warnings": {},
+            "non_spark_entities": [
+                "Inst.Iter_Element",
+                "Inst.Iter_First",
+                "Inst.Iter_Has_Element",
+                "Inst.Iter_Next",
+                "Inst.Maps"
+            ],
+            "missing_required_checks": [],
+            "pragma_assume_count": 0
+        }
+    ]
+}

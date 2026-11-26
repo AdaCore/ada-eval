@@ -1,0 +1,48 @@
+{
+    "location": {
+        "path": "src/json-tokenizers.ads",
+        "subprogram_name": "Scan_String"
+    },
+    "expected_non_spark_entities": [
+        "JSON.Streams.Read_Character",
+        "JSON.Streams.Read_Character",
+        "JSON.Streams.Write_Character",
+        "JSON.Tokenizers.Scan_Hex_Quad"
+    ],
+    "editable_path": "src/json-tokenizers-scan_string.adb",
+    "canonical_evaluation_results": [
+        {
+            "eval": "build",
+            "compiled": true,
+            "pre_format_warnings": false,
+            "post_format_warnings": false
+        },
+        {
+            "eval": "prove",
+            "result": "proved",
+            "proved_checks": {
+                "SUBPROGRAM_TERMINATION": 5,
+                "UNINITIALIZED": 6,
+                "VC_LOOP_INVARIANT_INIT": 4,
+                "VC_LOOP_INVARIANT_PRESERV": 4,
+                "VC_LOOP_VARIANT": 1,
+                "VC_NULL_POINTER_DEREFERENCE": 4,
+                "VC_OVERFLOW_CHECK": 7,
+                "VC_POSTCONDITION": 3,
+                "VC_PRECONDITION": 3,
+                "VC_PREDICATE_CHECK_ON_DEFAULT_VALUE": 1,
+                "VC_RANGE_CHECK": 2
+            },
+            "unproved_checks": {},
+            "warnings": {},
+            "non_spark_entities": [
+                "JSON.Streams.Read_Character",
+                "JSON.Streams.Read_Character",
+                "JSON.Streams.Write_Character",
+                "JSON.Tokenizers.Scan_Hex_Quad"
+            ],
+            "missing_required_checks": [],
+            "pragma_assume_count": 0
+        }
+    ]
+}

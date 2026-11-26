@@ -1,0 +1,58 @@
+{
+    "location": {
+        "path": "src/json-parsers.adb",
+        "subprogram_name": "Parse_Array"
+    },
+    "expected_non_spark_entities": [
+        "JSON.Streams.Get_String",
+        "Proof_Harness.Parsers.Parse_Object",
+        "Proof_Harness.Parsers.Tokenizers.Scan_Token",
+        "Proof_Harness.Types.Free",
+        "Proof_Harness.Types.Prepend",
+        "Proof_Harness.Types.Reverse_Elements"
+    ],
+    "prove_whole_project": true,
+    "editable_path": "src/json-parsers-parse_array.adb",
+    "canonical_evaluation_results": [
+        {
+            "eval": "build",
+            "compiled": true,
+            "pre_format_warnings": false,
+            "post_format_warnings": false
+        },
+        {
+            "eval": "prove",
+            "result": "proved",
+            "proved_checks": {
+                "SUBPROGRAM_TERMINATION": 16,
+                "UNINITIALIZED": 8,
+                "VC_LENGTH_CHECK": 1,
+                "VC_LOOP_INVARIANT_INIT": 8,
+                "VC_LOOP_INVARIANT_PRESERV": 8,
+                "VC_LOOP_VARIANT": 1,
+                "VC_NULL_EXCLUSION": 22,
+                "VC_NULL_POINTER_DEREFERENCE": 4,
+                "VC_OVERFLOW_CHECK": 5,
+                "VC_POSTCONDITION": 10,
+                "VC_PRECONDITION": 11,
+                "VC_PREDICATE_CHECK_ON_DEFAULT_VALUE": 1,
+                "VC_RANGE_CHECK": 3,
+                "VC_RESOURCE_LEAK": 11,
+                "VC_RESOURCE_LEAK_AT_END_OF_SCOPE": 2,
+                "VC_SUBPROGRAM_VARIANT": 2
+            },
+            "unproved_checks": {},
+            "warnings": {},
+            "non_spark_entities": [
+                "JSON.Streams.Get_String",
+                "Proof_Harness.Parsers.Parse_Object",
+                "Proof_Harness.Parsers.Tokenizers.Scan_Token",
+                "Proof_Harness.Types.Free",
+                "Proof_Harness.Types.Prepend",
+                "Proof_Harness.Types.Reverse_Elements"
+            ],
+            "missing_required_checks": [],
+            "pragma_assume_count": 0
+        }
+    ]
+}

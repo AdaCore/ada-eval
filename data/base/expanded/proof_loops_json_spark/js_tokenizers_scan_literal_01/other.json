@@ -1,0 +1,47 @@
+{
+    "location": {
+        "path": "src/json-tokenizers.ads",
+        "subprogram_name": "Scan_Literal"
+    },
+    "expected_non_spark_entities": [
+        "JSON.Streams.Read_Character",
+        "JSON.Streams.Read_Character",
+        "JSON.Streams.Write_Character"
+    ],
+    "editable_path": "src/json-tokenizers-scan_literal.adb",
+    "canonical_evaluation_results": [
+        {
+            "eval": "build",
+            "compiled": true,
+            "pre_format_warnings": false,
+            "post_format_warnings": false
+        },
+        {
+            "eval": "prove",
+            "result": "proved",
+            "proved_checks": {
+                "SUBPROGRAM_TERMINATION": 5,
+                "UNINITIALIZED": 5,
+                "VC_INDEX_CHECK": 1,
+                "VC_LOOP_INVARIANT_INIT": 4,
+                "VC_LOOP_INVARIANT_PRESERV": 4,
+                "VC_LOOP_VARIANT": 1,
+                "VC_NULL_POINTER_DEREFERENCE": 4,
+                "VC_OVERFLOW_CHECK": 3,
+                "VC_POSTCONDITION": 3,
+                "VC_PRECONDITION": 1,
+                "VC_PREDICATE_CHECK_ON_DEFAULT_VALUE": 1,
+                "VC_RANGE_CHECK": 5
+            },
+            "unproved_checks": {},
+            "warnings": {},
+            "non_spark_entities": [
+                "JSON.Streams.Read_Character",
+                "JSON.Streams.Read_Character",
+                "JSON.Streams.Write_Character"
+            ],
+            "missing_required_checks": [],
+            "pragma_assume_count": 0
+        }
+    ]
+}

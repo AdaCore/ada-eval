@@ -1,0 +1,54 @@
+{
+    "location": {
+        "path": "src/spark-containers-functional-sets-higher_order.ads",
+        "subprogram_name": "Transform"
+    },
+    "expected_non_spark_entities": [
+        "Inst.My_Sets",
+        "Inst.Nested.\"=\"",
+        "Inst.Nested.Element_Type",
+        "Inst.Nested.Equivalent_Elements",
+        "Inst.Nested.Witness",
+        "Inst.Nested.Witness"
+    ],
+    "prove_whole_project": true,
+    "editable_path": "src/spark-containers-functional-sets-higher_order-transform_impl.adb",
+    "canonical_evaluation_results": [
+        {
+            "eval": "build",
+            "compiled": true,
+            "pre_format_warnings": false,
+            "post_format_warnings": false
+        },
+        {
+            "eval": "prove",
+            "result": "proved",
+            "proved_checks": {
+                "GLOBAL_WRONG": 6,
+                "SUBPROGRAM_TERMINATION": 14,
+                "UNINITIALIZED": 1,
+                "VC_CONTAINER_AGGR_CHECK": 4,
+                "VC_FEASIBLE_POST": 3,
+                "VC_LOOP_INVARIANT_INIT": 4,
+                "VC_LOOP_INVARIANT_PRESERV": 4,
+                "VC_NULL_EXCLUSION": 4,
+                "VC_POSTCONDITION": 6,
+                "VC_PRECONDITION": 24,
+                "VC_PREDICATE_CHECK": 16,
+                "VC_REFINED_POST": 1
+            },
+            "unproved_checks": {},
+            "warnings": {},
+            "non_spark_entities": [
+                "Inst.My_Sets",
+                "Inst.Nested.\"=\"",
+                "Inst.Nested.Element_Type",
+                "Inst.Nested.Equivalent_Elements",
+                "Inst.Nested.Witness",
+                "Inst.Nested.Witness"
+            ],
+            "missing_required_checks": [],
+            "pragma_assume_count": 0
+        }
+    ]
+}

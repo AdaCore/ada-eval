@@ -1,0 +1,31 @@
+{
+    "location": {
+        "path": "src/evoting.ads",
+        "subprogram_name": "Compute_Print_Results"
+    },
+    "editable_path": "src/evoting-compute_print_results.adb",
+    "canonical_evaluation_results": [
+        {
+            "eval": "build",
+            "compiled": true,
+            "pre_format_warnings": false,
+            "post_format_warnings": false
+        },
+        {
+            "eval": "prove",
+            "result": "proved",
+            "proved_checks": {
+                "UNINITIALIZED": 1,
+                "VC_LOOP_INVARIANT_INIT": 1,
+                "VC_LOOP_INVARIANT_PRESERV": 1,
+                "VC_POSTCONDITION": 1,
+                "VC_RANGE_CHECK": 1
+            },
+            "unproved_checks": {},
+            "warnings": {},
+            "non_spark_entities": [],
+            "missing_required_checks": [],
+            "pragma_assume_count": 0
+        }
+    ]
+}

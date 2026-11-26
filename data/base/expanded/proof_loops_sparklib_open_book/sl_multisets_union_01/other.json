@@ -1,0 +1,60 @@
+{
+    "location": {
+        "path": "src/spark-containers-functional-multisets.ads",
+        "subprogram_name": "Union"
+    },
+    "expected_non_spark_entities": [
+        "My_Multiset.\"<=\"",
+        "My_Multiset.Equal_Except",
+        "My_Multiset.Maps",
+        "My_Multiset.Private_Key",
+        "Types.Eq",
+        "Types.Witness"
+    ],
+    "prove_whole_project": true,
+    "editable_path": "src/spark-containers-functional-multisets-union.adb",
+    "canonical_evaluation_results": [
+        {
+            "eval": "build",
+            "compiled": true,
+            "pre_format_warnings": false,
+            "post_format_warnings": false
+        },
+        {
+            "eval": "prove",
+            "result": "proved",
+            "proved_checks": {
+                "GLOBAL_WRONG": 37,
+                "SUBPROGRAM_TERMINATION": 60,
+                "UNINITIALIZED": 6,
+                "VC_ASSERT": 4,
+                "VC_CONTAINER_AGGR_CHECK": 9,
+                "VC_DEFAULT_INITIAL_CONDITION": 1,
+                "VC_INLINE_CHECK": 1,
+                "VC_INVARIANT_CHECK": 110,
+                "VC_INVARIANT_CHECK_ON_DEFAULT_VALUE": 1,
+                "VC_LOOP_INVARIANT_INIT": 6,
+                "VC_LOOP_INVARIANT_PRESERV": 6,
+                "VC_LOOP_VARIANT": 1,
+                "VC_POSTCONDITION": 34,
+                "VC_PRECONDITION": 105,
+                "VC_PREDICATE_CHECK": 148,
+                "VC_RANGE_CHECK": 5,
+                "VC_REFINED_POST": 1,
+                "VC_SUBPROGRAM_VARIANT": 8
+            },
+            "unproved_checks": {},
+            "warnings": {},
+            "non_spark_entities": [
+                "My_Multiset.\"<=\"",
+                "My_Multiset.Equal_Except",
+                "My_Multiset.Maps",
+                "My_Multiset.Private_Key",
+                "Types.Eq",
+                "Types.Witness"
+            ],
+            "missing_required_checks": [],
+            "pragma_assume_count": 0
+        }
+    ]
+}

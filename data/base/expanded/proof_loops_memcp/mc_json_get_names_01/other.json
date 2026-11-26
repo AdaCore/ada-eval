@@ -1,0 +1,33 @@
+{
+    "location": {
+        "path": "src/memcp-json.ads",
+        "subprogram_name": "Get_Names"
+    },
+    "editable_path": "src/memcp-json-get_names.adb",
+    "canonical_evaluation_results": [
+        {
+            "eval": "build",
+            "compiled": true,
+            "pre_format_warnings": false,
+            "post_format_warnings": false
+        },
+        {
+            "eval": "prove",
+            "result": "proved",
+            "proved_checks": {
+                "SUBPROGRAM_TERMINATION": 1,
+                "VC_LENGTH_CHECK": 1,
+                "VC_LOOP_INVARIANT_INIT": 1,
+                "VC_LOOP_INVARIANT_PRESERV": 1,
+                "VC_NULL_EXCLUSION": 5,
+                "VC_PRECONDITION": 4,
+                "VC_RANGE_CHECK": 1
+            },
+            "unproved_checks": {},
+            "warnings": {},
+            "non_spark_entities": [],
+            "missing_required_checks": [],
+            "pragma_assume_count": 0
+        }
+    ]
+}
